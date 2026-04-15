@@ -15,6 +15,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+const STORAGE_SIGN_BATCH_SIZE = 100;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -132,15 +133,18 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     await Promise.all(
       Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
         if (paths.length === 0) return;
-        const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, 60 * 60);
-        if (error) {
-          throw new Error(`Failed to sign inventory thumbnails: ${error.message}`);
-        }
-        (data ?? []).forEach((entry, index) => {
-          if (entry.signedUrl) {
-            signedUrlByBucketAndPath.set(`${bucket}:${paths[index]}`, entry.signedUrl);
+        for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
+          const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
+          if (error) {
+            throw new Error(`Failed to sign inventory thumbnails: ${error.message}`);
           }
-        });
+          (data ?? []).forEach((entry, index) => {
+            if (entry.signedUrl) {
+              signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
+            }
+          });
+        }
       }),
     );
 
