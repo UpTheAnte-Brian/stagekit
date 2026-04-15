@@ -114,6 +114,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
     const firstPhotoByItemId = new Map<string, { bucket: string; path: string }>();
     for (const photo of photos ?? []) {
+      if (!photo.storage_bucket || !photo.storage_path) {
+        continue;
+      }
+
       if (!firstPhotoByItemId.has(photo.item_id)) {
         firstPhotoByItemId.set(photo.item_id, {
           bucket: photo.storage_bucket,
@@ -133,16 +137,25 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     await Promise.all(
       Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
         if (paths.length === 0) return;
-        for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
-          const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
-          const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
-          if (error) {
-            throw new Error(`Failed to sign inventory thumbnails: ${error.message}`);
-          }
-          (data ?? []).forEach((entry, index) => {
-            if (entry.signedUrl) {
-              signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
+        try {
+          for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
+            const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
+            const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
+            if (error) {
+              throw error;
             }
+
+            (data ?? []).forEach((entry, index) => {
+              if (entry.signedUrl) {
+                signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Failed to sign inventory thumbnails", {
+            bucket,
+            count: paths.length,
+            error,
           });
         }
       }),

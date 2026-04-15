@@ -201,10 +201,26 @@ export default async function ItemDetailPage({
 
   const photosWithUrls = await Promise.all(
     photos.map(async (photo) => {
-      const { data } = await supabase.storage.from(photo.storage_bucket).createSignedUrl(photo.storage_path, 60 * 60);
+      if (!photo.storage_bucket || !photo.storage_path) {
+        return {
+          ...photo,
+          signedUrl: null,
+        };
+      }
+
+      const { data, error } = await supabase.storage.from(photo.storage_bucket).createSignedUrl(photo.storage_path, 60 * 60);
+      if (error) {
+        console.error("Failed to sign inventory photo", {
+          itemId: id,
+          bucket: photo.storage_bucket,
+          path: photo.storage_path,
+          error,
+        });
+      }
+
       return {
         ...photo,
-        signedUrl: data?.signedUrl ?? null,
+        signedUrl: error ? null : data?.signedUrl ?? null,
       };
     }),
   );
