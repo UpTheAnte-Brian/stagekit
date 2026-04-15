@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/apps/mobile/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +24,11 @@
 # misc
 .DS_Store
 *.pem
+.cache/
+__pycache__/
+/apps/mobile/.expo
+/apps/mobile/dist
+/apps/mobile/pnpm-lock.yaml
 
 # debug
 npm-debug.log*
@@ -32,6 +38,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +46,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Expo / React Native
+/apps/mobile/android
+/apps/mobile/ios
+
+# Local import assets and generated review output
+/imports/images/
+/imports/images-cutout-black/
+/imports/images-cutout-preview/
+/imports/images-cutout-transparent/
+/imports/review/
+/imports/review-stagekit-batch-*/

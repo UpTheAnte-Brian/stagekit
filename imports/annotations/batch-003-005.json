@@ -1,0 +1,543 @@
+[
+  {
+    "source_path": "imports/images/1AFA1470-FEAE-45FF-814D-59F412582034.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Decorative fruit basket",
+    "category": "decor",
+    "color": "natural",
+    "material": "woven",
+    "tags": ["basket", "fruit decor"]
+  },
+  {
+    "source_path": "imports/images/1B3A2B07-F1CF-4735-812D-BA1E50A559D3.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "White textured throw pillow",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow"]
+  },
+  {
+    "source_path": "imports/images/1B7EA796-89B7-4A53-9185-BED43792F6A8.heic",
+    "review_notes": "Documentation shot rather than inventory.",
+    "item_name": "Rug product label",
+    "category": "documentation",
+    "color": "gray",
+    "material": "paper",
+    "tags": ["reference", "rug tag"]
+  },
+  {
+    "source_path": "imports/images/1B87244F-72EB-41F5-9670-D75DA9AB36EE_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Small clear glass bud vase",
+    "category": "vase",
+    "color": "clear",
+    "material": "glass",
+    "tags": ["bud vase", "decor"]
+  },
+  {
+    "source_path": "imports/images/1BA8536E-FBC3-4D53-B28C-03C31C6995D6.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "White tripod floor lamp",
+    "category": "lighting",
+    "color": "white",
+    "material": "metal",
+    "tags": ["floor lamp", "tripod lamp"]
+  },
+  {
+    "source_path": "imports/images/1BAA59FC-38FE-43D3-A29D-399EF314F115.heic",
+    "review_notes": "Image is blurred; best effort guess.",
+    "item_name": "Blurred reference photo",
+    "category": "documentation",
+    "color": "unknown",
+    "material": "",
+    "tags": ["blurred", "reference"],
+    "notes": "Photo too blurred to identify confidently."
+  },
+  {
+    "source_path": "imports/images/1BBAF524-6AAF-40D0-A6B5-6B09E819CF50.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 3 metal candlesticks",
+    "category": "decor",
+    "color": "gold",
+    "material": "metal",
+    "tags": ["candlesticks", "set"]
+  },
+  {
+    "source_path": "imports/images/1BD4C828-C83A-488F-B109-D7117A4917A6.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Small HOME tabletop sign",
+    "category": "decor",
+    "color": "white",
+    "material": "wood",
+    "tags": ["sign", "table decor"]
+  },
+  {
+    "source_path": "imports/images/1C032E62-159C-4B75-B931-8A45A80F3DBC.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 2 white throw pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/1C076F03-D621-4C90-B866-83A0B72B8F06.JPG",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Round boxwood topiary in planter",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["topiary", "planter"]
+  },
+  {
+    "source_path": "imports/images/1C853A6F-3AE4-40A8-9B6D-D368072C50E1.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Black geometric side table base",
+    "category": "table",
+    "color": "black",
+    "material": "metal",
+    "tags": ["side table", "base"]
+  },
+  {
+    "source_path": "imports/images/1CAEA141-49B8-45B1-8B4D-63BC6F58E6C1.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 4 white dining chairs",
+    "category": "seating",
+    "color": "white",
+    "material": "upholstered",
+    "tags": ["dining chair", "set"]
+  },
+  {
+    "source_path": "imports/images/1CDDFD85-5621-46EB-BF34-F55FD6037B47_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "White throw pillow",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow"]
+  },
+  {
+    "source_path": "imports/images/1D4C4A27-4750-4910-8DC3-CE6F053BDC18.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Black decorative chain link",
+    "category": "decor",
+    "color": "black",
+    "material": "resin",
+    "tags": ["chain decor", "sculpture"]
+  },
+  {
+    "source_path": "imports/images/1D6FD654-B568-4CD3-8AFC-E58C832D64B6_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Round woven handled tray",
+    "category": "decor",
+    "color": "tan",
+    "material": "woven",
+    "tags": ["tray", "handled tray"]
+  },
+  {
+    "source_path": "imports/images/1E1C6442-2B77-4CAB-B13B-ACD7109EF18F.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 2 white textured throw pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/1EC28C07-41B8-4BCC-9688-1BE855542DAA.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Decorative sailboat sculpture",
+    "category": "decor",
+    "color": "neutral",
+    "material": "wood",
+    "tags": ["boat decor", "sculpture"]
+  },
+  {
+    "source_path": "imports/images/1EC670D0-A719-4D33-AE7B-9AD2EDA5B045.heic",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Wood plank tabletop panel",
+    "category": "table",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["tabletop", "wood top"]
+  },
+  {
+    "source_path": "imports/images/1FDADC1A-4352-4A40-A903-97CFE42F2B96.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Cream textured throw pillow",
+    "category": "pillow",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["throw pillow"]
+  },
+  {
+    "source_path": "imports/images/2A1C9DBB-88C2-4FDD-8C16-514DFD74B10C_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Woven storage basket with liner",
+    "category": "basket",
+    "color": "natural",
+    "material": "woven",
+    "tags": ["basket", "storage"]
+  },
+  {
+    "source_path": "imports/images/2A5A0293-BFFC-4D39-A269-FC84C8249766_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "White blossom arrangement in vase",
+    "category": "floral",
+    "color": "white",
+    "material": "faux floral",
+    "tags": ["arrangement", "vase"]
+  },
+  {
+    "source_path": "imports/images/2A37E395-FD59-49BD-8B00-0EF4649B1BF8.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "White upholstered bench",
+    "category": "seating",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["bench", "upholstered"]
+  },
+  {
+    "source_path": "imports/images/2A940E87-3BAE-499D-8389-481AA562F340.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "White channel throw pillow",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow"]
+  },
+  {
+    "source_path": "imports/images/2A64321C-D7D3-4A60-8824-26062D3019BE.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Gray faux fur throw pillow",
+    "category": "pillow",
+    "color": "gray",
+    "material": "faux fur",
+    "tags": ["throw pillow"]
+  },
+  {
+    "source_path": "imports/images/2ACE7925-29CF-4A48-BE79-0DAA4685DC7F_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Black decorative globe on stand",
+    "category": "decor",
+    "color": "black",
+    "material": "metal",
+    "tags": ["globe", "table decor"]
+  },
+  {
+    "source_path": "imports/images/2AEDCB2B-9C3D-48C6-B3C6-6DAA02958A2F.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Set of black dining chairs",
+    "category": "seating",
+    "color": "black",
+    "material": "metal",
+    "tags": ["dining chair", "set"]
+  },
+  {
+    "source_path": "imports/images/2B8B58D9-2294-4FB9-A69E-E8CA873207D4_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Black speckled decorative bowl",
+    "category": "decor",
+    "color": "black",
+    "material": "ceramic",
+    "tags": ["bowl", "decor"]
+  },
+  {
+    "source_path": "imports/images/2B991134-F165-49EA-BDF3-518206DCFCE4.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Framed neutral abstract print",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/2BD36BAC-AE8E-479F-9BE6-EF0AF95FCF7E.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Framed seascape artwork",
+    "category": "art",
+    "color": "blue",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/2BF25A6D-F4AD-4874-999B-13D2A81963D6.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Metal pencil cup with colored pencils",
+    "category": "decor",
+    "color": "gray",
+    "material": "metal",
+    "tags": ["desk accessory", "cup"]
+  },
+  {
+    "source_path": "imports/images/2C1C2579-070D-4EDA-8F9A-5D7CA24911F5_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Set of blue ceramic boats",
+    "category": "decor",
+    "color": "blue",
+    "material": "ceramic",
+    "tags": ["boat decor", "set"]
+  },
+  {
+    "source_path": "imports/images/2C5A178E-8874-4FA3-89BB-A45C8538923A_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Faux greenery in white planter",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["plant", "planter"]
+  },
+  {
+    "source_path": "imports/images/2C8E5639-40C1-4B30-AFD8-4F7E391D1C82.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Pampas grass arrangement",
+    "category": "floral",
+    "color": "cream",
+    "material": "faux grass",
+    "tags": ["arrangement", "grass"]
+  },
+  {
+    "source_path": "imports/images/2C9FA82A-3F0F-4659-8310-655EE04FA23D.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Tall clear glass vase with shells",
+    "category": "decor",
+    "color": "clear",
+    "material": "glass",
+    "tags": ["vase", "shells"]
+  },
+  {
+    "source_path": "imports/images/2C96609E-3016-4F16-9127-256C4F75AA9F_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Folded white throw blanket",
+    "category": "textile",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw blanket", "textile"]
+  },
+  {
+    "source_path": "imports/images/2CF8867F-B3B8-4AFA-B741-B87BA2C48CD9.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Decorative chain and glass votive set",
+    "category": "decor",
+    "color": "gold",
+    "material": "mixed",
+    "tags": ["chain decor", "votive"]
+  },
+  {
+    "source_path": "imports/images/2D92E406-2A9F-445C-92CF-D7ECDFD77B04.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Glass apothecary jar with filler",
+    "category": "decor",
+    "color": "clear",
+    "material": "glass",
+    "tags": ["jar", "decor"]
+  },
+  {
+    "source_path": "imports/images/2D123005-B55E-401F-979D-177429DCEE56.heic",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "White ceramic ice bucket",
+    "category": "decor",
+    "color": "white",
+    "material": "ceramic",
+    "tags": ["bucket", "vessel"]
+  },
+  {
+    "source_path": "imports/images/2DA46DB2-795A-4D53-88C2-F95D235C3CC0_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Wood bowl with decorative spheres",
+    "category": "decor",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["bowl", "orb decor"]
+  },
+  {
+    "source_path": "imports/images/2DB39052-02B2-4739-94E3-C94179EA3E43_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Black circular sculpture on stand",
+    "category": "decor",
+    "color": "black",
+    "material": "metal",
+    "tags": ["sculpture", "table decor"]
+  },
+  {
+    "source_path": "imports/images/02DEF809-E4FB-40B6-8B07-A27912B32D80_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Cream accent chair",
+    "category": "seating",
+    "color": "cream",
+    "material": "upholstered",
+    "tags": ["accent chair", "chair"]
+  },
+  {
+    "source_path": "imports/images/02DF49F0-7D23-419F-B30F-8D51DF2EDA88_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Faux ficus tree in woven basket",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["tree", "basket planter"]
+  },
+  {
+    "source_path": "imports/images/02E551CB-DFCE-437E-9ABB-864D6CD54884.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "White upholstered bench",
+    "category": "seating",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["bench", "upholstered"]
+  },
+  {
+    "source_path": "imports/images/2E929E24-3B40-487F-87DC-70D4AA7CB33B.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Narrow upholstered bench",
+    "category": "seating",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["bench", "upholstered"]
+  },
+  {
+    "source_path": "imports/images/2EAEBE0A-FC98-434D-9151-8562593C7DF6_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Set of 2 white textured poufs",
+    "category": "seating",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["pouf", "set"]
+  },
+  {
+    "source_path": "imports/images/2EBC5D56-0832-41B5-A7F5-3FC4AEA21011_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "White woven basket",
+    "category": "basket",
+    "color": "cream",
+    "material": "woven",
+    "tags": ["basket", "storage"]
+  },
+  {
+    "source_path": "imports/images/2EBD7CEC-C94A-4E92-A575-7474576CC278_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Faux greenery in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["plant", "planter"]
+  },
+  {
+    "source_path": "imports/images/2F1DFC3E-A656-4E31-90E5-AD454F114879.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Pair of white nightstands",
+    "category": "casegood",
+    "color": "white",
+    "material": "wood",
+    "tags": ["nightstand", "pair"]
+  },
+  {
+    "source_path": "imports/images/2F2B6FAB-6C4F-4C54-8252-65D49E75457B.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Gray lumbar pillow",
+    "category": "pillow",
+    "color": "gray",
+    "material": "fabric",
+    "tags": ["throw pillow", "lumbar"]
+  },
+  {
+    "source_path": "imports/images/02F9A52D-3474-46B8-B7FC-9CD01A2EDD3A.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Framed abstract canvas",
+    "category": "art",
+    "color": "blue",
+    "material": "canvas",
+    "tags": ["abstract art", "canvas"]
+  },
+  {
+    "source_path": "imports/images/2F89A5AD-DFF6-4C67-AE7D-36147D511944.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Beige ribbed ceramic planter",
+    "category": "decor",
+    "color": "beige",
+    "material": "ceramic",
+    "tags": ["planter", "vessel"]
+  },
+  {
+    "source_path": "imports/images/2F661523-A9C8-4AD7-839A-AE5F083077B1_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Black metal side table",
+    "category": "table",
+    "color": "black",
+    "material": "metal",
+    "tags": ["side table", "accent table"]
+  },
+  {
+    "source_path": "imports/images/2FA756A5-334F-4E3E-9952-F749CA749B59.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Pair of framed botanical prints",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "pair"]
+  },
+  {
+    "source_path": "imports/images/2FB7F00B-FC65-4473-9C75-779B951EF2C0.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Set of 2 white throw pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/2FEB7E44-3593-4EF7-A619-66943E8C6F26.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "White upholstered bench",
+    "category": "seating",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["bench", "upholstered"]
+  },
+  {
+    "source_path": "imports/images/2FF30351-6640-4D09-B49F-05308BAF8BC1_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Tall green rectangular vase",
+    "category": "vase",
+    "color": "green",
+    "material": "glass",
+    "tags": ["vase", "decor"]
+  },
+  {
+    "source_path": "imports/images/3A001FA0-F539-4612-880C-8F899D102C1F.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Set of 4 white throw pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/3A3DC3BE-ADF6-4AC6-A9F3-520DCBD09162.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "White ceramic ginger jar",
+    "category": "decor",
+    "color": "white",
+    "material": "ceramic",
+    "tags": ["ginger jar", "decor"]
+  },
+  {
+    "source_path": "imports/images/3A673697-D6FA-4889-A417-8314C6ECC0C1.heic",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Set of 2 white throw pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/3BC50DCC-9F6B-4203-95E8-D3FE8085254C_4_5005_c.jpeg",
+    "review_notes": "Best guess from review sheet batch 005.",
+    "item_name": "Black table lamp with white shade",
+    "category": "lighting",
+    "color": "black",
+    "material": "ceramic",
+    "tags": ["table lamp", "lamp"]
+  }
+]

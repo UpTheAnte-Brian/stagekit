@@ -1,0 +1,1 @@
+-- Seed is handled by SQL migrations in supabase/migrations.
