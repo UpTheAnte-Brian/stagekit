@@ -1,0 +1,605 @@
+[
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9833.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Faux fiddle leaf plant in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["plant", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9834.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Framed abstract landscape print",
+    "category": "art",
+    "color": "blue",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9835.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "White floral arrangement in glass vase",
+    "category": "floral",
+    "color": "white",
+    "material": "faux floral",
+    "tags": ["arrangement", "vase"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9836.jpeg",
+    "review_notes": "Storage box set shot.",
+    "item_name": "Set of 2 olive green storage boxes",
+    "category": "decor",
+    "color": "green",
+    "material": "mixed",
+    "tags": ["storage box", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9837.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Round topiary in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["topiary", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9838.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Round black wall mirror",
+    "category": "decor",
+    "color": "black",
+    "material": "metal",
+    "tags": ["mirror", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9839.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Gold floor lamp with crystal accents",
+    "category": "lighting",
+    "color": "gold",
+    "material": "metal",
+    "tags": ["floor lamp", "lighting"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9840.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "White slipcovered sofa",
+    "category": "seating",
+    "color": "white",
+    "material": "upholstered",
+    "tags": ["sofa", "seating"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9841.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Framed landscape print",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9842.jpeg",
+    "review_notes": "Round glass table shot.",
+    "item_name": "Round glass coffee table",
+    "category": "table",
+    "color": "black",
+    "material": "glass",
+    "tags": ["coffee table", "metal frame"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9843.jpeg",
+    "review_notes": "Textile shot.",
+    "item_name": "Cream knit throw blanket",
+    "category": "textile",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["throw blanket", "knit"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9844.jpeg",
+    "review_notes": "Pair of dining chairs.",
+    "item_name": "Set of 2 cream striped dining chairs",
+    "category": "seating",
+    "color": "cream",
+    "material": "upholstered",
+    "tags": ["dining chair", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9845.jpeg",
+    "review_notes": "Decorative book box set shot.",
+    "item_name": "Set of 2 white decorative book boxes",
+    "category": "decor",
+    "color": "white",
+    "material": "mixed",
+    "tags": ["decorative box", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9846.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Set of 2 cream textured throw pillows",
+    "category": "pillow",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9847.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Set of 2 cream striped throw pillows",
+    "category": "pillow",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["throw pillow", "set", "striped"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9848.jpeg",
+    "review_notes": "Pillow shot.",
+    "item_name": "Dark green throw pillow",
+    "category": "pillow",
+    "color": "green",
+    "material": "fabric",
+    "tags": ["throw pillow", "pillow"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9849.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Black round side table",
+    "category": "table",
+    "color": "black",
+    "material": "metal",
+    "tags": ["side table", "accent table"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9850.jpeg",
+    "review_notes": "Best guess from review sheet batch 001.",
+    "item_name": "Faux olive tree in basket",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["tree", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9851.jpeg",
+    "review_notes": "Ladder and throw shot.",
+    "item_name": "Black blanket ladder with striped throw",
+    "category": "decor",
+    "color": "black",
+    "material": "wood",
+    "tags": ["blanket ladder", "throw"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9852.jpeg",
+    "review_notes": "Textile shot.",
+    "item_name": "Beige striped throw blanket",
+    "category": "textile",
+    "color": "beige",
+    "material": "fabric",
+    "tags": ["throw blanket", "striped"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9853.jpeg",
+    "review_notes": "Dining table shown with surrounding chairs.",
+    "item_name": "Dark wood dining table",
+    "category": "table",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["dining table", "table"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9854.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Framed abstract landscape print",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9856.jpeg",
+    "review_notes": "Vase shot.",
+    "item_name": "Terracotta jug vase",
+    "category": "vase",
+    "color": "terracotta",
+    "material": "ceramic",
+    "tags": ["vase", "decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9857.jpeg",
+    "review_notes": "Alternate angle of the terracotta jug vase.",
+    "item_name": "Terracotta jug vase",
+    "category": "vase",
+    "color": "terracotta",
+    "material": "ceramic",
+    "tags": ["vase", "decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9858.jpeg",
+    "review_notes": "Stem bundle shot.",
+    "item_name": "Eucalyptus stem bundle",
+    "category": "floral",
+    "color": "green",
+    "material": "faux stems",
+    "tags": ["stems", "greenery"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9859.jpeg",
+    "review_notes": "Place setting shot.",
+    "item_name": "Set of 4 woven placemats with plates",
+    "category": "kitchen",
+    "color": "natural",
+    "material": "mixed",
+    "tags": ["placemat", "table setting", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9860.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Round black wall mirror",
+    "category": "decor",
+    "color": "black",
+    "material": "metal",
+    "tags": ["mirror", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9861.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Dark wood trestle dining table",
+    "category": "table",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["dining table", "table"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9862.jpeg",
+    "review_notes": "Set of dining chairs.",
+    "item_name": "Set of 4 cream dining chairs",
+    "category": "seating",
+    "color": "cream",
+    "material": "upholstered",
+    "tags": ["dining chair", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9864.jpeg",
+    "review_notes": "Bed scene; best guess is the bedding set.",
+    "item_name": "White bedding set with accent pillows",
+    "category": "textile",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["bedding", "duvet"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9865.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Framed abstract landscape print",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9866.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Round topiary in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["topiary", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9867.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Small green plant in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["plant", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9868.jpeg",
+    "review_notes": "Pair of table lamps.",
+    "item_name": "Set of 2 white textured table lamps",
+    "category": "lighting",
+    "color": "white",
+    "material": "ceramic",
+    "tags": ["table lamp", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9869.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Black metal console table",
+    "category": "table",
+    "color": "black",
+    "material": "metal",
+    "tags": ["console table", "accent table"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9870.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "White console table with drawers",
+    "category": "table",
+    "color": "white",
+    "material": "wood",
+    "tags": ["console table", "drawer"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9872.jpeg",
+    "review_notes": "Pair of table lamps.",
+    "item_name": "Set of 2 black table lamps with white shades",
+    "category": "lighting",
+    "color": "black",
+    "material": "ceramic",
+    "tags": ["table lamp", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9874.jpeg",
+    "review_notes": "Rug shot.",
+    "item_name": "Neutral area rug",
+    "category": "rug",
+    "color": "cream",
+    "material": "textile",
+    "tags": ["area rug", "rug"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9876.jpeg",
+    "review_notes": "Rug shot.",
+    "item_name": "Neutral vintage area rug",
+    "category": "rug",
+    "color": "beige",
+    "material": "textile",
+    "tags": ["area rug", "vintage rug"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9889.jpeg",
+    "review_notes": "Best guess from review sheet batch 002.",
+    "item_name": "Faux fiddle leaf tree in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["tree", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9890.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Brown console table with drawer",
+    "category": "table",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["console table", "drawer"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9891.jpeg",
+    "review_notes": "Pair of table lamps.",
+    "item_name": "Set of 2 black table lamps with white shades",
+    "category": "lighting",
+    "color": "black",
+    "material": "ceramic",
+    "tags": ["table lamp", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9892.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Framed abstract art print",
+    "category": "art",
+    "color": "neutral",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9893.jpeg",
+    "review_notes": "Decorative book stack shot.",
+    "item_name": "Decorative book stack",
+    "category": "decor",
+    "color": "neutral",
+    "material": "paper",
+    "tags": ["books", "decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9894.jpeg",
+    "review_notes": "Clock shot.",
+    "item_name": "Small black alarm clock",
+    "category": "decor",
+    "color": "black",
+    "material": "metal",
+    "tags": ["clock", "decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9895.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Small green plant in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["plant", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9896.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Green fern arrangement in white pot",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["arrangement", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9897.jpeg",
+    "review_notes": "Small framed tabletop art on stand.",
+    "item_name": "Small framed landscape print on stand",
+    "category": "art",
+    "color": "blue",
+    "material": "framed print",
+    "tags": ["framed art", "tabletop decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9898.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 2 white nightstands",
+    "category": "table",
+    "color": "white",
+    "material": "wood",
+    "tags": ["nightstand", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9899.jpeg",
+    "review_notes": "Bathroom textile shot.",
+    "item_name": "White shower curtain",
+    "category": "textile",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["shower curtain", "bath"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9900.jpeg",
+    "review_notes": "Wall basket set shot.",
+    "item_name": "Set of 3 woven wall baskets",
+    "category": "decor",
+    "color": "natural",
+    "material": "woven",
+    "tags": ["wall decor", "basket", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9901.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Framed botanical leaf print",
+    "category": "art",
+    "color": "green",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9902.jpeg",
+    "review_notes": "Abstract canvas shot.",
+    "item_name": "Black abstract canvas art",
+    "category": "art",
+    "color": "black",
+    "material": "canvas",
+    "tags": ["canvas art", "wall decor"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9903.jpeg",
+    "review_notes": "Chair shot.",
+    "item_name": "Gray barrel accent chair",
+    "category": "seating",
+    "color": "gray",
+    "material": "upholstered",
+    "tags": ["accent chair", "chair"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9904.jpeg",
+    "review_notes": "Headboard shot.",
+    "item_name": "Gray upholstered headboard",
+    "category": "decor",
+    "color": "gray",
+    "material": "upholstered",
+    "tags": ["headboard", "bedroom"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9905.jpeg",
+    "review_notes": "Pair of table lamps.",
+    "item_name": "Set of 2 gray ceramic table lamps",
+    "category": "lighting",
+    "color": "gray",
+    "material": "ceramic",
+    "tags": ["table lamp", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9906.jpeg",
+    "review_notes": "Floral arrangement shot.",
+    "item_name": "Green hydrangea arrangement in bowl",
+    "category": "floral",
+    "color": "green",
+    "material": "faux floral",
+    "tags": ["arrangement", "bowl"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9907.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Green foliage arrangement in white planter",
+    "category": "floral",
+    "color": "green",
+    "material": "faux plant",
+    "tags": ["arrangement", "planter"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9908.jpeg",
+    "review_notes": "Best guess from review sheet batch 003.",
+    "item_name": "Set of 2 wood nightstands",
+    "category": "table",
+    "color": "brown",
+    "material": "wood",
+    "tags": ["nightstand", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9909.jpeg",
+    "review_notes": "Textile shot.",
+    "item_name": "Gray knit throw blanket",
+    "category": "textile",
+    "color": "gray",
+    "material": "fabric",
+    "tags": ["throw blanket", "knit"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9910.jpeg",
+    "review_notes": "Pair of cream pillows.",
+    "item_name": "Set of 2 cream textured throw pillows",
+    "category": "pillow",
+    "color": "cream",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9911.jpeg",
+    "review_notes": "Bedding set shot.",
+    "item_name": "White ruched bedding set",
+    "category": "textile",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["bedding", "duvet"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9912.jpeg",
+    "review_notes": "Pair of dark boucle pillows.",
+    "item_name": "Set of 2 charcoal boucle throw pillows",
+    "category": "pillow",
+    "color": "charcoal",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9913.jpeg",
+    "review_notes": "Pillow shot.",
+    "item_name": "Gray patterned throw pillow",
+    "category": "pillow",
+    "color": "gray",
+    "material": "fabric",
+    "tags": ["throw pillow", "pillow"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9914.jpeg",
+    "review_notes": "Pair of blue woven pillows.",
+    "item_name": "Set of 2 blue woven throw pillows",
+    "category": "pillow",
+    "color": "blue",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9915.jpeg",
+    "review_notes": "Pair of white quilted pillows.",
+    "item_name": "Set of 2 white quilted pillows",
+    "category": "pillow",
+    "color": "white",
+    "material": "fabric",
+    "tags": ["throw pillow", "set"]
+  },
+  {
+    "source_path": "imports/images/stagekit-batch-4/IMG_9916.jpeg",
+    "review_notes": "Best guess from review sheet batch 004.",
+    "item_name": "Framed botanical leaf print",
+    "category": "art",
+    "color": "green",
+    "material": "framed print",
+    "tags": ["framed art", "wall decor"]
+  }
+]

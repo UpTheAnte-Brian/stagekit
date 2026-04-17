@@ -21,7 +21,9 @@ import {
   type JobDetail,
   type JobPackRequest,
   type JobPickItem,
+  type JobSceneApplication,
 } from "../../src/lib/jobs";
+import { applySceneTemplateToJob, createSceneTemplateFromJobRoom, deleteSceneApplication, listSceneTemplates, type SceneTemplate } from "../../src/lib/scenes";
 import { colors } from "../../src/lib/theme";
 import { buildBulkPackRequestLabel } from "../../src/lib/user";
 
@@ -91,6 +93,12 @@ function PackRequestCard({
           <Text style={{ color: colors.muted }}>
             {request.room ?? "No room"} • {request.category ?? "No category"} • {request.color ?? "No color"}
           </Text>
+          {request.scene_template_name ? (
+            <Text style={{ color: colors.muted }}>
+              Scene: {request.scene_template_name}
+              {request.scene_room_label ? ` • ${request.scene_room_label}` : ""}
+            </Text>
+          ) : null}
         </View>
         <View
           style={{
@@ -222,6 +230,15 @@ export default function ProjectDetailScreen() {
   const [assignments, setAssignments] = useState<JobAssignment[]>([]);
   const [packRequests, setPackRequests] = useState<JobPackRequest[]>([]);
   const [pickedItems, setPickedItems] = useState<JobPickItem[]>([]);
+  const [sceneApplications, setSceneApplications] = useState<JobSceneApplication[]>([]);
+  const [sceneTemplates, setSceneTemplates] = useState<SceneTemplate[]>([]);
+  const [sceneRoomLabels, setSceneRoomLabels] = useState<Record<string, string>>({});
+  const [sceneSourceRoom, setSceneSourceRoom] = useState("");
+  const [newSceneName, setNewSceneName] = useState("");
+  const [newSceneRoomType, setNewSceneRoomType] = useState("");
+  const [newSceneStyleLabel, setNewSceneStyleLabel] = useState("");
+  const [newSceneSummary, setNewSceneSummary] = useState("");
+  const [newSceneNotes, setNewSceneNotes] = useState("");
   const [showEditProject, setShowEditProject] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectAddress1, setProjectAddress1] = useState("");
@@ -247,6 +264,7 @@ export default function ProjectDetailScreen() {
   const [previewZoom, setPreviewZoom] = useState(1);
   const [showAddPackList, setShowAddPackList] = useState(true);
   const [showQuickSelect, setShowQuickSelect] = useState(false);
+  const [showSceneTemplates, setShowSceneTemplates] = useState(false);
   const [showAddPickList, setShowAddPickList] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
   const [pickNotes, setPickNotes] = useState("");
@@ -260,12 +278,43 @@ export default function ProjectDetailScreen() {
       return;
     }
 
-    const [detail, nextPackCandidates] = await Promise.all([getJobDetail(jobId), listPackListInventoryItems()]);
+    const [detail, nextPackCandidates, nextSceneTemplates] = await Promise.all([
+      getJobDetail(jobId),
+      listPackListInventoryItems(),
+      listSceneTemplates(),
+    ]);
     setJob(detail.job);
     setAssignments(detail.assignments);
     setPackRequests(detail.packRequests);
     setPickedItems(detail.pickedItems);
+    setSceneApplications(detail.sceneApplications);
     setPackCandidates(nextPackCandidates);
+    setSceneTemplates(nextSceneTemplates);
+    setSceneRoomLabels((current) => {
+      const nextLabels = { ...current };
+      for (const template of nextSceneTemplates) {
+        if (!nextLabels[template.id]) {
+          nextLabels[template.id] = template.room_type ?? "";
+        }
+      }
+      return nextLabels;
+    });
+    setSceneSourceRoom((current) => {
+      if (current) {
+        return current;
+      }
+
+      const firstNamedRoom =
+        detail.packRequests.find((request) => Boolean(request.room && request.room.trim()))?.room?.trim() ?? "";
+      return firstNamedRoom;
+    });
+    setNewSceneRoomType((current) => {
+      if (current.trim()) {
+        return current;
+      }
+
+      return detail.packRequests.find((request) => Boolean(request.room && request.room.trim()))?.room?.trim() ?? current;
+    });
   }, [jobId]);
 
   useEffect(() => {
@@ -285,6 +334,19 @@ export default function ProjectDetailScreen() {
   const activeAssignedItemIds = useMemo(() => new Set(activeAssignments.map((assignment) => assignment.item_id)), [activeAssignments]);
   const openPackRequests = useMemo(() => packRequests.filter((request) => request.status !== "cancelled"), [packRequests]);
   const fulfilledRequestCount = useMemo(() => openPackRequests.filter((request) => request.picked_count >= request.quantity).length, [openPackRequests]);
+  const openPackRequestsByRoom = useMemo(() => {
+    const groups = openPackRequests.reduce<Record<string, JobPackRequest[]>>((acc, request) => {
+      const key = (request.room ?? "").trim() || "No room";
+      acc[key] = [...(acc[key] ?? []), request];
+      return acc;
+    }, {});
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === "No room") return 1;
+      if (b === "No room") return -1;
+      return a.localeCompare(b);
+    });
+  }, [openPackRequests]);
   const projectLocation = useMemo(
     () => formatProjectAddress(job ?? {}),
     [job],
@@ -309,6 +371,22 @@ export default function ProjectDetailScreen() {
           .filter((value): value is string => Boolean(value && value !== editingPackRequest?.requested_item_id)),
       ),
     [editingPackRequest?.requested_item_id, openPackRequests],
+  );
+  const appliedSceneCountByTemplateId = useMemo(
+    () =>
+      sceneApplications.reduce<Record<string, number>>((acc, application) => {
+        acc[application.scene_template_id] = (acc[application.scene_template_id] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [sceneApplications],
+  );
+  const authorableRooms = useMemo(
+    () => openPackRequestsByRoom.filter(([roomLabel]) => roomLabel !== "No room"),
+    [openPackRequestsByRoom],
+  );
+  const selectedSourceRoomRequestCount = useMemo(
+    () => authorableRooms.find(([roomLabel]) => roomLabel === sceneSourceRoom)?.[1].length ?? 0,
+    [authorableRooms, sceneSourceRoom],
   );
   const filteredPackCandidates = useMemo(() => {
     const query = normalize(requestSearch);
@@ -457,6 +535,14 @@ export default function ProjectDetailScreen() {
     setRequestSearch("");
     setSelectedPackItemId(null);
     setRequestOptional(false);
+  }
+
+  function resetSceneAuthoringForm() {
+    setNewSceneName("");
+    setNewSceneRoomType(sceneSourceRoom);
+    setNewSceneStyleLabel("");
+    setNewSceneSummary("");
+    setNewSceneNotes("");
   }
 
   const createBulkRequestLabel = useCallback(
@@ -832,6 +918,85 @@ export default function ProjectDetailScreen() {
     }
   }
 
+  async function handleApplySceneTemplate(template: SceneTemplate) {
+    if (!jobId) {
+      return;
+    }
+
+    const roomLabel = (sceneRoomLabels[template.id] ?? "").trim() || template.room_type?.trim() || template.name;
+    if (!roomLabel) {
+      setMessage("Add a room label before applying a scene.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      await applySceneTemplateToJob({
+        jobId,
+        sceneTemplateId: template.id,
+        roomLabel,
+      });
+      await refreshJob();
+      setMessage(`${template.name} added to the pack list for ${roomLabel}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to apply scene template.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteSceneApplication(application: JobSceneApplication) {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await deleteSceneApplication(application.id);
+      await refreshJob();
+      setMessage(`${application.scene_template_name} removed from this project.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to remove scene application.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateSceneTemplateFromRoom() {
+    if (!jobId) {
+      return;
+    }
+
+    if (!sceneSourceRoom.trim()) {
+      setMessage("Choose a project room to save as a reusable scene.");
+      return;
+    }
+
+    if (!newSceneName.trim()) {
+      setMessage("Scene template name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const result = await createSceneTemplateFromJobRoom({
+        jobId,
+        sourceRoom: sceneSourceRoom,
+        name: newSceneName,
+        roomType: newSceneRoomType || sceneSourceRoom,
+        styleLabel: newSceneStyleLabel,
+        summary: newSceneSummary,
+        notes: newSceneNotes,
+      });
+      await refreshJob();
+      resetSceneAuthoringForm();
+      setMessage(`Saved ${result.sceneName} with ${result.itemCount} room request${result.itemCount === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to save room as a reusable scene.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <AppScreen>
       <Hero
@@ -840,7 +1005,7 @@ export default function ProjectDetailScreen() {
         subtitle={projectSubtitle}
         right={job ? <SecondaryButton label={showEditProject ? "Hide Edit" : "Edit Details"} onPress={showEditProject ? handleCancelEditProject : handleStartEditProject} /> : null}
       />
-      <SecondaryButton label="Back to Projects" onPress={() => router.back()} />
+      <SecondaryButton label="Back to Projects" onPress={() => router.replace("/projects")} />
       {loading ? <LoadingState label="Loading project..." /> : null}
       {message ? (
         <Message
@@ -857,6 +1022,9 @@ export default function ProjectDetailScreen() {
             message === "Exact item logged for request." ||
             message === "Exact request item logged." ||
             message === "Exact project item removed." ||
+            message?.includes("added to the pack list for") ||
+            message?.includes("removed from this project.") ||
+            message?.startsWith("Saved ") ||
             message.startsWith("Logged ") ||
             message.startsWith("Created bulk pack request")
               ? "success"
@@ -911,6 +1079,9 @@ export default function ProjectDetailScreen() {
             </Text>
             <Text style={{ color: colors.muted }}>
               Pack requests describe designer intent. Exact picks describe what you actually loaded or left at the house.
+            </Text>
+            <Text style={{ color: colors.muted }}>
+              {sceneApplications.length} applied scene{sceneApplications.length === 1 ? "" : "s"} are currently feeding this room-by-room pack list.
             </Text>
           </Card>
 
@@ -1036,36 +1207,164 @@ export default function ProjectDetailScreen() {
           </Card>
 
           <Card>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>Scene Templates</Text>
+              <SecondaryButton
+                label={showSceneTemplates ? "Hide Scene Templates" : "Open Scene Templates"}
+                onPress={() => setShowSceneTemplates((current) => !current)}
+              />
+            </View>
+            {showSceneTemplates ? (
+              <>
+                <Text style={{ color: colors.muted }}>
+                  Use reusable room recipes to generate grouped pack requests from staging patterns you repeat often.
+                </Text>
+                {sceneApplications.length > 0 ? (
+                  <View style={{ gap: 10 }}>
+                    {sceneApplications.map((application) => (
+                      <View
+                        key={application.id}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 14, gap: 6, backgroundColor: colors.panelAlt }}
+                      >
+                        <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+                          {application.scene_template_name} for {application.room_label}
+                        </Text>
+                        <Text style={{ color: colors.muted }}>
+                          {application.pack_request_count} requests • {application.fulfilled_request_count} fully covered
+                        </Text>
+                        {application.notes ? <Text style={{ color: colors.muted }}>Notes: {application.notes}</Text> : null}
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          <SecondaryButton disabled={saving} label="Remove Scene" onPress={() => void handleDeleteSceneApplication(application)} />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={{ color: colors.muted }}>No reusable scenes applied yet.</Text>
+                )}
+                <View style={{ gap: 12 }}>
+                  {sceneTemplates.map((template) => (
+                    <View
+                      key={template.id}
+                      style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 14, gap: 10, backgroundColor: colors.panel }}
+                    >
+                      <View style={{ gap: 4 }}>
+                        <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>{template.name}</Text>
+                        <Text style={{ color: colors.muted }}>
+                          {template.room_type ?? "Room"} • {template.style_label ?? "General"} • {template.item_count} template item{template.item_count === 1 ? "" : "s"}
+                        </Text>
+                        {template.summary ? <Text style={{ color: colors.muted }}>{template.summary}</Text> : null}
+                        {(appliedSceneCountByTemplateId[template.id] ?? 0) > 0 ? (
+                          <Text style={{ color: colors.muted }}>
+                            Applied {appliedSceneCountByTemplateId[template.id]} time{appliedSceneCountByTemplateId[template.id] === 1 ? "" : "s"} on this project.
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View style={{ gap: 6 }}>
+                        {template.items.map((item) => (
+                          <Text key={item.id} style={{ color: colors.muted }}>
+                            {item.quantity} x {item.request_text}
+                            {item.category ? ` • ${item.category}` : ""}
+                            {item.color ? ` • ${item.color}` : ""}
+                            {item.optional ? " • optional" : ""}
+                          </Text>
+                        ))}
+                      </View>
+                      <Field
+                        label="Apply as room"
+                        onChangeText={(value) => setSceneRoomLabels((current) => ({ ...current, [template.id]: value }))}
+                        value={sceneRoomLabels[template.id] ?? ""}
+                      />
+                      <PrimaryButton disabled={saving} label={saving ? "Working..." : "Apply Scene to Project"} onPress={() => void handleApplySceneTemplate(template)} />
+                    </View>
+                  ))}
+                </View>
+                <View style={{ gap: 10 }}>
+                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>Save Current Room as Scene</Text>
+                  <Text style={{ color: colors.muted }}>
+                    Snapshot a room&apos;s current pack requests into a reusable scene template so future projects can start from the same recipe.
+                  </Text>
+                  {authorableRooms.length === 0 ? (
+                    <Text style={{ color: colors.muted }}>Add pack requests to a named room first, then save that room as a reusable scene.</Text>
+                  ) : (
+                    <>
+                      <Field
+                        label="Source room"
+                        onChangeText={(value) => {
+                          setSceneSourceRoom(value);
+                          if (!newSceneRoomType.trim()) {
+                            setNewSceneRoomType(value);
+                          }
+                        }}
+                        placeholder={authorableRooms.map(([roomLabel]) => roomLabel).join(", ")}
+                        value={sceneSourceRoom}
+                      />
+                      <Text style={{ color: colors.muted }}>
+                        {selectedSourceRoomRequestCount > 0
+                          ? `${selectedSourceRoomRequestCount} active pack request${selectedSourceRoomRequestCount === 1 ? "" : "s"} will be saved from this room.`
+                          : "Type a room name exactly as it appears in the pack list."}
+                      </Text>
+                      <Field label="Scene template name" onChangeText={setNewSceneName} placeholder="Organic primary bedroom" value={newSceneName} />
+                      <View style={{ flexDirection: "row", gap: 12 }}>
+                        <View style={{ flex: 1 }}>
+                          <Field label="Room type" onChangeText={setNewSceneRoomType} placeholder="Primary Bedroom" value={newSceneRoomType} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Field label="Style label" onChangeText={setNewSceneStyleLabel} placeholder="Soft organic" value={newSceneStyleLabel} />
+                        </View>
+                      </View>
+                      <Field label="Summary" multiline onChangeText={setNewSceneSummary} placeholder="Short note about what defines this setup." value={newSceneSummary} />
+                      <Field label="Template notes" multiline onChangeText={setNewSceneNotes} placeholder="Anything worth remembering when this scene is reused." value={newSceneNotes} />
+                      <PrimaryButton disabled={saving} label={saving ? "Working..." : "Save Room as New Scene"} onPress={() => void handleCreateSceneTemplateFromRoom()} />
+                    </>
+                  )}
+                </View>
+              </>
+            ) : (
+              <Text style={{ color: colors.muted }}>
+                Expand this section when you want to apply reusable room recipes or save a room as a scene.
+              </Text>
+            )}
+          </Card>
+
+          <Card>
             <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>Pack Requests</Text>
             {openPackRequests.length === 0 ? (
               <EmptyState title="No pack requests yet." body="Use this list for designer asks like mirrors, pillows, or kitchen knick-knacks." />
             ) : (
-              openPackRequests.map((request) => (
-                <PackRequestCard
-                  key={request.id}
-                  request={request}
-                  saving={saving}
-                  onEdit={() => handleEditPackRequest(request)}
-                  onToggleOptional={() => void handleToggleOptional(request)}
-                  onOpenItem={() => request.requested_item_id ? openInventoryItem(request.requested_item_id) : undefined}
-                  onPreview={() => handleOpenPreview(request.requested_item_thumbnail_url, `${request.requested_item_name} (${request.requested_item_code})`)}
-                  onStartPicking={() => handleStartQuickSelect(request.id)}
-                  onLogRequestedItem={request.requested_item_id ? () => void handleLogRequestedExactItem(request) : undefined}
-                  onOpenPickedItem={(pickedItemId) => openInventoryItem(pickedItemId)}
-                  onAssignPickedItem={(pickedItemId) => void handleAssignPickedItem(pickedItemId)}
-                  onRemovePickedItem={(jobPickItemId) => void handleDeletePickItem(jobPickItemId)}
-                  onAssign={request.requested_item_id ? () => void handleAssignRequestedItem(request.requested_item_id!) : undefined}
-                  assignDisabled={!request.requested_item_id || activeAssignedItemIds.has(request.requested_item_id) || request.requested_item_status !== "available"}
-                  assignLabel={
-                    activeAssignedItemIds.has(request.requested_item_id ?? "")
-                      ? "Already Assigned"
-                      : request.requested_item_status !== "available"
-                        ? "Unavailable"
-                        : "Assign to Project"
-                  }
-                  onCancel={() => void handleUpdatePackRequest(request.id, "cancelled")}
-                  onDelete={() => void handleDeletePackRequest(request.id)}
-                />
+              openPackRequestsByRoom.map(([roomLabel, requests]) => (
+                <View key={roomLabel} style={{ gap: 10 }}>
+                  <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+                    {roomLabel} ({requests.length})
+                  </Text>
+                  {requests.map((request) => (
+                    <PackRequestCard
+                      key={request.id}
+                      request={request}
+                      saving={saving}
+                      onEdit={() => handleEditPackRequest(request)}
+                      onToggleOptional={() => void handleToggleOptional(request)}
+                      onOpenItem={() => request.requested_item_id ? openInventoryItem(request.requested_item_id) : undefined}
+                      onPreview={() => handleOpenPreview(request.requested_item_thumbnail_url, `${request.requested_item_name} (${request.requested_item_code})`)}
+                      onStartPicking={() => handleStartQuickSelect(request.id)}
+                      onLogRequestedItem={request.requested_item_id ? () => void handleLogRequestedExactItem(request) : undefined}
+                      onOpenPickedItem={(pickedItemId) => openInventoryItem(pickedItemId)}
+                      onAssignPickedItem={(pickedItemId) => void handleAssignPickedItem(pickedItemId)}
+                      onRemovePickedItem={(jobPickItemId) => void handleDeletePickItem(jobPickItemId)}
+                      onAssign={request.requested_item_id ? () => void handleAssignRequestedItem(request.requested_item_id!) : undefined}
+                      assignDisabled={!request.requested_item_id || activeAssignedItemIds.has(request.requested_item_id) || request.requested_item_status !== "available"}
+                      assignLabel={
+                        activeAssignedItemIds.has(request.requested_item_id ?? "")
+                          ? "Already Assigned"
+                          : request.requested_item_status !== "available"
+                            ? "Unavailable"
+                            : "Assign to Project"
+                      }
+                      onCancel={() => void handleUpdatePackRequest(request.id, "cancelled")}
+                      onDelete={() => void handleDeletePackRequest(request.id)}
+                    />
+                  ))}
+                </View>
               ))
             )}
           </Card>
@@ -1198,11 +1497,25 @@ export default function ProjectDetailScreen() {
                   <View style={{ gap: 10 }}>
                     {visiblePackCandidates.map((item) => (
                       <Card key={item.id}>
-                        <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>{item.name}</Text>
-                        <Text style={{ color: colors.muted }}>{item.item_code}</Text>
-                        <Text style={{ color: colors.muted }}>
-                          {item.category ?? "No category"} • {item.color ?? "No color"} • {item.current_location_name ?? "No location"}
-                        </Text>
+                        <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                          {item.thumbnail_url ? (
+                            <Pressable onPress={() => handleOpenPreview(item.thumbnail_url, `${item.name} (${item.item_code})`)}>
+                              <Image
+                                alt=""
+                                source={{ uri: item.thumbnail_url }}
+                                style={{ width: 72, height: 72, borderRadius: 12, backgroundColor: colors.panelAlt }}
+                              />
+                            </Pressable>
+                          ) : null}
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>{item.name}</Text>
+                            <Text style={{ color: colors.muted }}>{item.item_code}</Text>
+                            <Text style={{ color: colors.muted }}>
+                              {item.category ?? "No category"} • {item.color ?? "No color"} • {item.current_location_name ?? "No location"}
+                            </Text>
+                            {item.thumbnail_url ? <Text style={{ color: colors.muted }}>Tap image to preview.</Text> : null}
+                          </View>
+                        </View>
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                           <SecondaryButton
                             label={selectedPackItemId === item.id ? "Selected" : "Select Item"}

@@ -70,14 +70,6 @@ async function createItemAction(formData: FormData) {
   redirect(`/inventory/${item.id}`);
 }
 
-async function signOutAction() {
-  "use server";
-
-  const supabase = await createServerSupabaseClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
-
 export default async function InventoryPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const q = firstValue(params.q) ?? "";
@@ -190,16 +182,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
           <h1 className="text-2xl font-semibold">Inventory</h1>
           <p className="text-sm text-muted">Track staging assets, photos, and assignment status.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/jobs">
-            Jobs
-          </Link>
-          <form action={signOutAction}>
-            <button className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" type="submit">
-              Sign Out
-            </button>
-          </form>
-        </div>
+        <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/jobs">
+          View Jobs
+        </Link>
       </header>
 
       {message ? (

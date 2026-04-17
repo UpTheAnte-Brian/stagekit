@@ -1,4 +1,5 @@
 import type { Database } from "./database";
+import { isMissingSceneSchemaError } from "./schema-compat";
 import { getSupabaseClient } from "./supabase";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
@@ -17,6 +18,7 @@ export type JobWithStats = Job & {
   activeItemCount: number;
   importedItemCount: number;
   packRequestCount: number;
+  sceneApplicationCount: number;
 };
 export type ActiveJobLocation = Pick<Job, "id" | "name" | "address_label" | "latitude" | "longitude"> & {
   activeItemCount: number;
@@ -43,6 +45,10 @@ export type JobPackRequest = {
   optional: boolean;
   status: string;
   requested_item_id: string | null;
+  scene_application_id: string | null;
+  scene_template_item_id: string | null;
+  scene_template_name: string | null;
+  scene_room_label: string | null;
   requested_item_name: string | null;
   requested_item_code: string | null;
   requested_item_status: string | null;
@@ -67,12 +73,47 @@ export type JobPickItem = {
   thumbnail_url: string | null;
 };
 
+export type JobSceneApplication = {
+  id: string;
+  scene_template_id: string;
+  scene_template_name: string;
+  room_label: string;
+  notes: string | null;
+  created_at: string;
+  pack_request_count: number;
+  fulfilled_request_count: number;
+};
+
 type InventoryPhotoRow = {
   id: string;
   item_id: string;
   storage_bucket: string;
   storage_path: string;
   sort_order: number;
+};
+
+type JobPackRequestRow = {
+  id: string;
+  request_text: string;
+  quantity: number;
+  room: string | null;
+  category: string | null;
+  color: string | null;
+  notes: string | null;
+  optional: boolean;
+  status: string;
+  requested_item_id: string | null;
+  scene_application_id: string | null;
+  scene_template_item_id: string | null;
+};
+
+type JobSceneApplicationRow = {
+  id: string;
+  job_id: string;
+  scene_template_id: string;
+  room_label: string;
+  notes: string | null;
+  created_at: string;
 };
 
 function chunkArray<T>(items: T[], size: number) {
@@ -146,6 +187,56 @@ async function listInventoryPhotosForItems(itemIds: string[]) {
 function buildAddressLabel(parts: Array<string | null | undefined>) {
   const value = parts.filter(Boolean).join(", ");
   return value.length > 0 ? value : null;
+}
+
+async function listJobPackRequestsCompat(supabase: ReturnType<typeof getSupabaseClient>, jobId: string) {
+  const { data, error } = await supabase
+    .from("job_pack_requests")
+    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id,scene_application_id,scene_template_item_id")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false });
+
+  if (!error) {
+    return (data ?? []) as JobPackRequestRow[];
+  }
+
+  if (!isMissingSceneSchemaError(error)) {
+    throw new Error(error.message);
+  }
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("job_pack_requests")
+    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false });
+
+  if (fallbackError) {
+    throw new Error(fallbackError.message);
+  }
+
+  return (fallbackData ?? []).map((row) => ({
+    ...row,
+    scene_application_id: null,
+    scene_template_item_id: null,
+  })) as JobPackRequestRow[];
+}
+
+async function listJobSceneApplicationsCompat(supabase: ReturnType<typeof getSupabaseClient>, jobId: string) {
+  const { data, error } = await supabase
+    .from("job_scene_applications")
+    .select("id,job_id,scene_template_id,room_label,notes,created_at")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isMissingSceneSchemaError(error)) {
+      return [] as JobSceneApplicationRow[];
+    }
+
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as JobSceneApplicationRow[];
 }
 
 function mapJobRow(row: Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "city" | "state" | "postal">): Job {
@@ -276,7 +367,8 @@ export async function listJobsWithStats() {
   }
 
   const jobIds = jobs.map((job) => job.id);
-  const [{ data: activeAssignments, error: activeError }, { data: importedItems, error: importedError }, { data: packRequests, error: packRequestsError }] = await Promise.all([
+  const [{ data: activeAssignments, error: activeError }, { data: importedItems, error: importedError }, { data: packRequests, error: packRequestsError }] =
+    await Promise.all([
     supabase.from("job_items").select("job_id,checked_in_at").in("job_id", jobIds).is("checked_in_at", null),
     supabase.from("inventory_items").select("source_job_id").in("source_job_id", jobIds),
     supabase.from("job_pack_requests").select("job_id").in("job_id", jobIds).neq("status", "cancelled"),
@@ -290,6 +382,11 @@ export async function listJobsWithStats() {
   }
   if (packRequestsError) {
     throw new Error(packRequestsError.message);
+  }
+  const { data: sceneApplications, error: sceneApplicationsError } = await supabase.from("job_scene_applications").select("job_id").in("job_id", jobIds);
+
+  if (sceneApplicationsError && !isMissingSceneSchemaError(sceneApplicationsError)) {
+    throw new Error(sceneApplicationsError.message);
   }
 
   const activeByJobId = (activeAssignments ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -309,11 +406,17 @@ export async function listJobsWithStats() {
     return acc;
   }, {});
 
+  const sceneApplicationsByJobId = ((sceneApplications as Array<{ job_id: string }> | null) ?? []).reduce<Record<string, number>>((acc, row) => {
+    acc[row.job_id] = (acc[row.job_id] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return jobs.map((job) => ({
     ...job,
     activeItemCount: activeByJobId[job.id] ?? 0,
     importedItemCount: importedByJobId[job.id] ?? 0,
     packRequestCount: packRequestsByJobId[job.id] ?? 0,
+    sceneApplicationCount: sceneApplicationsByJobId[job.id] ?? 0,
   }));
 }
 
@@ -329,17 +432,20 @@ export async function getJobDetail(jobId: string) {
     throw new Error(jobError.message);
   }
 
-  const [{ data: jobItems, error: jobItemsError }, { data: packRequests, error: packRequestsError }, { data: pickedItems, error: pickedItemsError }] = await Promise.all([
+  const [
+    { data: jobItems, error: jobItemsError },
+    packRequests,
+    { data: pickedItems, error: pickedItemsError },
+    sceneApplications,
+  ] = await Promise.all([
     supabase.from("job_items").select("id,item_id,checked_out_at,checked_in_at").eq("job_id", jobId).order("checked_out_at", { ascending: false }),
-    supabase.from("job_pack_requests").select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id").eq("job_id", jobId).order("created_at", { ascending: false }),
+    listJobPackRequestsCompat(supabase, jobId),
     supabase.from("job_pick_items").select("id,job_id,pack_request_id,item_id,notes,created_at").eq("job_id", jobId).order("created_at", { ascending: false }),
+    listJobSceneApplicationsCompat(supabase, jobId),
   ]);
 
   if (jobItemsError) {
     throw new Error(jobItemsError.message);
-  }
-  if (packRequestsError) {
-    throw new Error(packRequestsError.message);
   }
   if (pickedItemsError) {
     throw new Error(pickedItemsError.message);
@@ -348,6 +454,7 @@ export async function getJobDetail(jobId: string) {
   const assignedItemIds = [...new Set((jobItems ?? []).map((row) => row.item_id))];
   const requestedItemIds = [...new Set((packRequests ?? []).map((row) => row.requested_item_id).filter((value): value is string => Boolean(value)))];
   const pickedItemIds = [...new Set((pickedItems ?? []).map((row) => row.item_id))];
+  const sceneTemplateIds = [...new Set((sceneApplications ?? []).map((row) => row.scene_template_id))];
   const referencedItemIds = [...new Set([...assignedItemIds, ...requestedItemIds, ...pickedItemIds])];
   const { data: assignedItems, error: assignedItemsError } =
     referencedItemIds.length === 0
@@ -397,8 +504,27 @@ export async function getJobDetail(jobId: string) {
     throw new Error(activeJobsError.message);
   }
 
+  const { data: sceneTemplates, error: sceneTemplatesError } =
+    sceneTemplateIds.length === 0
+      ? { data: [], error: null }
+      : await supabase.from("scene_templates").select("id,name").in("id", sceneTemplateIds);
+
+  if (sceneTemplatesError) {
+    throw new Error(sceneTemplatesError.message);
+  }
+
   const itemsById = new Map((assignedItems ?? []).map((item) => [item.id, item]));
   const jobNameById = new Map((activeJobs ?? []).map((activeJob) => [activeJob.id, activeJob.name]));
+  const sceneTemplateNameById = new Map((sceneTemplates ?? []).map((template) => [template.id, template.name]));
+  const sceneApplicationsById = new Map(
+    (sceneApplications ?? []).map((application) => [
+      application.id,
+      {
+        ...application,
+        scene_template_name: sceneTemplateNameById.get(application.scene_template_id) ?? "Unknown scene",
+      },
+    ]),
+  );
   const assignments = (jobItems ?? []).map((jobItem) => {
     const item = itemsById.get(jobItem.item_id);
     return {
@@ -454,6 +580,7 @@ export async function getJobDetail(jobId: string) {
   const packRequestList = (packRequests ?? []).map((request) => {
     const requestedItem = request.requested_item_id ? itemsById.get(request.requested_item_id) : null;
     const requestPickedItems = pickedItemsByRequestId[request.id] ?? [];
+    const sceneApplication = request.scene_application_id ? sceneApplicationsById.get(request.scene_application_id) : null;
     return {
       id: request.id,
       request_text: request.request_text,
@@ -465,6 +592,10 @@ export async function getJobDetail(jobId: string) {
       optional: request.optional,
       status: request.status,
       requested_item_id: request.requested_item_id,
+      scene_application_id: request.scene_application_id,
+      scene_template_item_id: request.scene_template_item_id,
+      scene_template_name: sceneApplication?.scene_template_name ?? null,
+      scene_room_label: sceneApplication?.room_label ?? null,
       requested_item_name: requestedItem?.name ?? null,
       requested_item_code: requestedItem?.item_code ?? null,
       requested_item_status: requestedItem?.status ?? null,
@@ -475,11 +606,40 @@ export async function getJobDetail(jobId: string) {
     };
   }) as JobPackRequest[];
 
+  const packRequestStatsBySceneApplicationId = packRequestList.reduce<Record<string, { total: number; fulfilled: number }>>((acc, request) => {
+    if (!request.scene_application_id) {
+      return acc;
+    }
+
+    const current = acc[request.scene_application_id] ?? { total: 0, fulfilled: 0 };
+    current.total += 1;
+    if (request.picked_count >= request.quantity) {
+      current.fulfilled += 1;
+    }
+    acc[request.scene_application_id] = current;
+    return acc;
+  }, {});
+
+  const appliedScenes = (sceneApplications ?? []).map((application) => {
+    const stats = packRequestStatsBySceneApplicationId[application.id] ?? { total: 0, fulfilled: 0 };
+    return {
+      id: application.id,
+      scene_template_id: application.scene_template_id,
+      scene_template_name: sceneTemplateNameById.get(application.scene_template_id) ?? "Unknown scene",
+      room_label: application.room_label,
+      notes: application.notes,
+      created_at: application.created_at,
+      pack_request_count: stats.total,
+      fulfilled_request_count: stats.fulfilled,
+    };
+  }) as JobSceneApplication[];
+
   return {
     job: mapJobDetailRow(job as Pick<JobRow, "id" | "name" | "status" | "notes" | "address1" | "address2" | "city" | "state" | "postal">),
     assignments,
     packRequests: packRequestList,
     pickedItems: exactPickList,
+    sceneApplications: appliedScenes,
   };
 }
 

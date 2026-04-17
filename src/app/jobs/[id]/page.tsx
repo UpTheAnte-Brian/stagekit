@@ -134,14 +134,9 @@ export default async function JobDetailPage({
           <h1 className="text-2xl font-semibold">{job.name}</h1>
           <p className="text-sm text-muted">{[formatAddress(job) || "Unknown location", job.status].filter(Boolean).join(" • ")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/jobs">
-            Back to Jobs
-          </Link>
-          <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/inventory">
-            Inventory
-          </Link>
-        </div>
+        <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/jobs">
+          Back to Jobs
+        </Link>
       </header>
 
       {message ? (

@@ -77,7 +77,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
           <p className="text-sm text-muted">Create jobs and assign inventory items to them.</p>
         </div>
         <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/inventory">
-          Inventory
+          View Inventory
         </Link>
       </header>
 

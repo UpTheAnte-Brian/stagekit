@@ -240,9 +240,6 @@ export default async function ItemDetailPage({
           <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/inventory">
             Back to Inventory
           </Link>
-          <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" href="/jobs">
-            Jobs
-          </Link>
         </div>
       </header>
 

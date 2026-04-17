@@ -95,6 +95,7 @@ export default function ProjectsTab() {
                 <Text style={{ color: "#49564f" }}>{formatProjectAddress(job) ?? "No address yet"}</Text>
                 <Text style={{ color: "#49564f" }}>{job.latitude != null && job.longitude != null ? "Map pin ready" : "Missing map coordinates"}</Text>
                 <Text style={{ color: "#49564f" }}>Status: {job.status}</Text>
+                <Text style={{ color: "#49564f" }}>Applied scenes: {job.sceneApplicationCount}</Text>
                 <Text style={{ color: "#49564f" }}>Pack requests: {job.packRequestCount}</Text>
                 <Text style={{ color: "#49564f" }}>Currently assigned: {job.activeItemCount}</Text>
                 <Text style={{ color: "#49564f" }}>Imported from this house: {job.importedItemCount}</Text>

@@ -282,6 +282,8 @@ export type Database = {
           requested_item_id: string | null
           request_text: string
           room: string | null
+          scene_application_id: string | null
+          scene_template_item_id: string | null
           status: string
           updated_at: string
         }
@@ -298,6 +300,8 @@ export type Database = {
           requested_item_id?: string | null
           request_text?: string
           room?: string | null
+          scene_application_id?: string | null
+          scene_template_item_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -314,6 +318,8 @@ export type Database = {
           requested_item_id?: string | null
           request_text?: string
           room?: string | null
+          scene_application_id?: string | null
+          scene_template_item_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -330,6 +336,68 @@ export type Database = {
             columns: ["requested_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pack_requests_scene_application_id_fkey"
+            columns: ["scene_application_id"]
+            isOneToOne: false
+            referencedRelation: "job_scene_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pack_requests_scene_template_item_id_fkey"
+            columns: ["scene_template_item_id"]
+            isOneToOne: false
+            referencedRelation: "scene_template_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_scene_applications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          room_label: string
+          scene_template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          room_label: string
+          scene_template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          room_label?: string
+          scene_template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_scene_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_scene_applications_scene_template_id_fkey"
+            columns: ["scene_template_id"]
+            isOneToOne: false
+            referencedRelation: "scene_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -446,6 +514,114 @@ export type Database = {
           start_date?: string | null
           state?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      scene_template_items: {
+        Row: {
+          category: string | null
+          color: string | null
+          created_at: string
+          id: string
+          is_anchor: boolean
+          notes: string | null
+          optional: boolean
+          quantity: number
+          request_text: string
+          requested_item_id: string | null
+          scene_template_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_anchor?: boolean
+          notes?: string | null
+          optional?: boolean
+          quantity?: number
+          request_text: string
+          requested_item_id?: string | null
+          scene_template_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_anchor?: boolean
+          notes?: string | null
+          optional?: boolean
+          quantity?: number
+          request_text?: string
+          requested_item_id?: string | null
+          scene_template_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scene_template_items_requested_item_id_fkey"
+            columns: ["requested_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scene_template_items_scene_template_id_fkey"
+            columns: ["scene_template_id"]
+            isOneToOne: false
+            referencedRelation: "scene_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scene_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          room_type: string | null
+          slug: string
+          sort_order: number
+          style_label: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          room_type?: string | null
+          slug: string
+          sort_order?: number
+          style_label?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          room_type?: string | null
+          slug?: string
+          sort_order?: number
+          style_label?: string | null
+          summary?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
