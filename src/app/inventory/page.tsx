@@ -2,23 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
+import { InventoryTable } from "@/components/inventory/inventory-table";
 import { inventoryCategorySuggestionValues, sortInventoryCategories } from "@/lib/inventory-taxonomy";
 import {
   createItem,
+  listItemThumbnailUrls,
   listItems,
   type InventoryItemCondition,
   type InventoryItemStatus,
 } from "@/lib/db/inventory";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { inventoryAuditTagConfig } from "@/lib/inventory-audit";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
 const conditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-const STORAGE_SIGN_BATCH_SIZE = 100;
-const PHOTO_QUERY_BATCH_SIZE = 100;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -68,10 +64,6 @@ function buildInventoryReturnTo(params: {
 
   const query = searchParams.toString();
   return query.length > 0 ? `/inventory?${query}` : "/inventory";
-}
-
-function formatCurrency(cents: number | null) {
-  return cents == null ? "—" : currencyFormatter.format(cents / 100);
 }
 
 async function createItemAction(formData: FormData) {
@@ -130,91 +122,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     items.length === allItems.length
       ? `Showing ${items.length} item${items.length === 1 ? "" : "s"}`
       : `Showing ${items.length} of ${allItems.length} item${allItems.length === 1 ? "" : "s"}`;
-  const supabase = await createServerSupabaseClient();
-  const itemIds = items.map((item) => item.id);
-  const thumbnailByItemId = new Map<string, string>();
-
-  if (itemIds.length > 0) {
-    const photos: Array<{
-      item_id: string;
-      storage_bucket: string;
-      storage_path: string;
-      sort_order: number;
-      created_at: string;
-    }> = [];
-
-    for (let from = 0; from < itemIds.length; from += PHOTO_QUERY_BATCH_SIZE) {
-      const itemIdBatch = itemIds.slice(from, from + PHOTO_QUERY_BATCH_SIZE);
-      const { data: photoBatch, error: photosError } = await supabase
-        .from("inventory_photos")
-        .select("item_id,storage_bucket,storage_path,sort_order,created_at")
-        .in("item_id", itemIdBatch)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
-
-      if (photosError) {
-        throw new Error(`Failed to load inventory thumbnails: ${photosError.message}`);
-      }
-
-      photos.push(...(photoBatch ?? []));
-    }
-
-    const firstPhotoByItemId = new Map<string, { bucket: string; path: string }>();
-    for (const photo of photos) {
-      if (!photo.storage_bucket || !photo.storage_path) {
-        continue;
-      }
-
-      if (!firstPhotoByItemId.has(photo.item_id)) {
-        firstPhotoByItemId.set(photo.item_id, {
-          bucket: photo.storage_bucket,
-          path: photo.storage_path,
-        });
-      }
-    }
-
-    const pathsByBucket = new Map<string, string[]>();
-    firstPhotoByItemId.forEach((photo) => {
-      const currentPaths = pathsByBucket.get(photo.bucket) ?? [];
-      currentPaths.push(photo.path);
-      pathsByBucket.set(photo.bucket, currentPaths);
-    });
-
-    const signedUrlByBucketAndPath = new Map<string, string>();
-    await Promise.all(
-      Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
-        if (paths.length === 0) return;
-        try {
-          for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
-            const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
-            const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
-            if (error) {
-              throw error;
-            }
-
-            (data ?? []).forEach((entry, index) => {
-              if (entry.signedUrl) {
-                signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
-              }
-            });
-          }
-        } catch (error) {
-          console.error("Failed to sign inventory thumbnails", {
-            bucket,
-            count: paths.length,
-            error,
-          });
-        }
-      }),
-    );
-
-    firstPhotoByItemId.forEach((photo, itemId) => {
-      const signedUrl = signedUrlByBucketAndPath.get(`${photo.bucket}:${photo.path}`);
-      if (signedUrl) {
-        thumbnailByItemId.set(itemId, signedUrl);
-      }
-    });
-  }
+  const thumbnailByItemId = await listItemThumbnailUrls(items.map((item) => item.id));
+  const auditCounts = inventoryAuditTagConfig.map((entry) => ({
+    ...entry,
+    count: allItems.filter((item) => item.tags.includes(entry.tag)).length,
+  }));
 
   return (
     <section className="space-y-6">
@@ -258,6 +170,31 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
       </form>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Audit Queue</h2>
+            <p className="text-sm text-muted">Open the filtered review screen for duplicate candidates, bad images, and unreadable-photo items.</p>
+          </div>
+          <Link className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" href="/inventory/audit">
+            Open Audit Queue
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {auditCounts.map((entry) => (
+            <Link
+              key={entry.tag}
+              className="rounded-xl border border-border/70 bg-slate-50 px-4 py-3 transition hover:border-accent/40 hover:bg-white"
+              href={`/inventory/audit?tag=${encodeURIComponent(entry.tag)}`}
+            >
+              <div className="text-sm font-semibold text-foreground">{entry.label}</div>
+              <div className="mt-1 text-2xl font-semibold text-foreground">{entry.count}</div>
+              <div className="mt-1 text-xs text-muted">{entry.description}</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Add Item</h2>
         <form action={createItemAction} className="mt-3 grid gap-3 md:grid-cols-5">
           <input name="name" placeholder="Name" required />
@@ -285,61 +222,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted">{showingCountLabel}</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Photo</th>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Disposition</th>
-              <th>List Price</th>
-              <th>Condition</th>
-              <th>Current Location</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td className="text-sm text-muted" colSpan={8}>
-                  No inventory items found.
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    {thumbnailByItemId.get(item.id) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        alt={`${item.name} thumbnail`}
-                        className="h-12 w-12 rounded-md border border-border object-cover"
-                        suppressHydrationWarning
-                        src={thumbnailByItemId.get(item.id)}
-                      />
-                    ) : (
-                      <div className="h-12 w-12 rounded-md border border-border bg-slate-100" />
-                    )}
-                  </td>
-                  <td>
-                    <Link
-                      className="font-medium text-accent hover:underline"
-                      href={`/inventory/${item.id}?returnTo=${encodeURIComponent(inventoryReturnTo)}`}
-                    >
-                      {item.name}
-                    </Link>
-                  </td>
-                  <td>{item.category ?? "—"}</td>
-                  <td>{item.status}</td>
-                  <td>{item.marked_for_disposal ? "Dispose" : "Keep"}</td>
-                  <td>{formatCurrency(item.estimated_listing_price_cents)}</td>
-                  <td>{item.condition}</td>
-                  <td>{item.current_location_name ?? "—"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <InventoryTable items={items} returnTo={inventoryReturnTo} thumbnailByItemId={thumbnailByItemId} />
       </section>
     </section>
   );

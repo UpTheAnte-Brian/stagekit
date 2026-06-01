@@ -28,6 +28,8 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const primaryButtonClass = "inline-flex items-center justify-center rounded-xl bg-[#c96f3d] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b86133]";
 const secondaryButtonClass =
   "inline-flex items-center justify-center rounded-xl border border-[#e3d0ba] bg-white px-4 py-2.5 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4]";
+const headerButtonClass =
+  "inline-flex items-center justify-center rounded-xl border border-[#d8e6dd] bg-[#fffdf9] px-4 py-2.5 text-sm font-semibold !text-[#16382d] shadow-sm transition hover:bg-[#f2eadf]";
 const quietButtonClass =
   "inline-flex items-center justify-center rounded-xl border border-[#d4ded7] bg-[#f7fbf8] px-4 py-2.5 text-sm font-semibold text-[#254238] transition hover:bg-[#eef6f0]";
 const sectionCardClass = "rounded-3xl border border-[#e8d9c6] bg-[#fffdf9] p-5 shadow-sm";
@@ -647,10 +649,10 @@ export default async function JobDetailPage({
             <p className="mt-4 text-lg text-[#d8e6dd]">{projectSubtitle || "Project detail"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "edit-project" })}>
+            <Link className={headerButtonClass} href={buildJobUrl(id, { section: "edit-project" })}>
               Edit Details
             </Link>
-            <Link className={secondaryButtonClass} href="/jobs">
+            <Link className={headerButtonClass} href="/jobs">
               Back to Projects
             </Link>
           </div>

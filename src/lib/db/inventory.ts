@@ -67,12 +67,23 @@ export type ListItemsParams = z.input<typeof listItemsSchema>;
 
 export type InventoryListRow = Pick<
   InventoryItemRow,
-  "id" | "sku" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents"
+  | "id"
+  | "sku"
+  | "item_code"
+  | "name"
+  | "category"
+  | "status"
+  | "condition"
+  | "current_location_id"
+  | "marked_for_disposal"
+  | "estimated_listing_price_cents"
+  | "tags"
 > & {
   current_location_name: string | null;
 };
 
 type InventoryItemsQuery = {
+  contains: (...args: unknown[]) => InventoryItemsQuery;
   eq: (...args: unknown[]) => InventoryItemsQuery;
   or: (...args: unknown[]) => InventoryItemsQuery;
   order: (...args: unknown[]) => InventoryItemsQuery;
@@ -124,13 +135,13 @@ export async function listItems(params: ListItemsParams = {}) {
   const supabase = await createServerSupabaseClient();
   const rows = await listInventoryItemRows<Pick<
     InventoryItemRow,
-    "id" | "sku" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents"
-  >>("id,sku,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents", (query) => {
+    "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
+  >>("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", (query) => {
     let next = query.order("created_at", { ascending: false });
 
     if (parsed.q) {
       const term = parsed.q.replaceAll(",", " ");
-      next = next.or(`name.ilike.%${term}%,sku.ilike.%${term}%,brand.ilike.%${term}%`);
+      next = next.or(`name.ilike.%${term}%,sku.ilike.%${term}%,item_code.ilike.%${term}%,brand.ilike.%${term}%`);
     }
 
     if (parsed.status) {
@@ -171,6 +182,100 @@ export async function listItems(params: ListItemsParams = {}) {
     ...row,
     current_location_name: row.current_location_id ? locationNamesById.get(row.current_location_id) ?? null : null,
   })) as InventoryListRow[];
+}
+
+const STORAGE_SIGN_BATCH_SIZE = 100;
+const PHOTO_QUERY_BATCH_SIZE = 100;
+
+export async function listItemThumbnailUrls(itemIds: string[]) {
+  const supabase = await createServerSupabaseClient();
+  const thumbnailByItemId = new Map<string, string>();
+
+  if (itemIds.length === 0) {
+    return thumbnailByItemId;
+  }
+
+  const photos: Array<{
+    item_id: string;
+    storage_bucket: string;
+    storage_path: string;
+    sort_order: number;
+    created_at: string;
+  }> = [];
+
+  for (let from = 0; from < itemIds.length; from += PHOTO_QUERY_BATCH_SIZE) {
+    const itemIdBatch = itemIds.slice(from, from + PHOTO_QUERY_BATCH_SIZE);
+    const { data: photoBatch, error: photosError } = await supabase
+      .from("inventory_photos")
+      .select("item_id,storage_bucket,storage_path,sort_order,created_at")
+      .in("item_id", itemIdBatch)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (photosError) {
+      throw new Error(`Failed to load inventory thumbnails: ${photosError.message}`);
+    }
+
+    photos.push(...(photoBatch ?? []));
+  }
+
+  const firstPhotoByItemId = new Map<string, { bucket: string; path: string }>();
+  for (const photo of photos) {
+    if (!photo.storage_bucket || !photo.storage_path) {
+      continue;
+    }
+
+    if (!firstPhotoByItemId.has(photo.item_id)) {
+      firstPhotoByItemId.set(photo.item_id, {
+        bucket: photo.storage_bucket,
+        path: photo.storage_path,
+      });
+    }
+  }
+
+  const pathsByBucket = new Map<string, string[]>();
+  firstPhotoByItemId.forEach((photo) => {
+    const currentPaths = pathsByBucket.get(photo.bucket) ?? [];
+    currentPaths.push(photo.path);
+    pathsByBucket.set(photo.bucket, currentPaths);
+  });
+
+  const signedUrlByBucketAndPath = new Map<string, string>();
+  await Promise.all(
+    Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
+      if (paths.length === 0) return;
+      try {
+        for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
+          const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
+          if (error) {
+            throw error;
+          }
+
+          (data ?? []).forEach((entry, index) => {
+            if (entry.signedUrl) {
+              signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Failed to sign inventory thumbnails", {
+          bucket,
+          count: paths.length,
+          error,
+        });
+      }
+    }),
+  );
+
+  firstPhotoByItemId.forEach((photo, itemId) => {
+    const signedUrl = signedUrlByBucketAndPath.get(`${photo.bucket}:${photo.path}`);
+    if (signedUrl) {
+      thumbnailByItemId.set(itemId, signedUrl);
+    }
+  });
+
+  return thumbnailByItemId;
 }
 
 export async function getItem(id: string) {
