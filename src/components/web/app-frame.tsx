@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -58,12 +59,15 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       <header className="border-b border-border/80 bg-white/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 md:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <Link className="text-lg font-semibold tracking-tight" href="/inventory">
-                StageKit
-              </Link>
-              <p className="text-sm text-muted">Web workspace for inventory and job operations.</p>
-            </div>
+            <Link className="flex items-center gap-3 rounded-2xl pr-2" href="/inventory">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white ring-1 ring-border/80 shadow-sm">
+                <Image alt="" aria-hidden height={32} priority src="/favicon.svg" width={32} />
+              </span>
+              <span>
+                <span className="block text-lg font-semibold tracking-tight text-foreground">StageKit</span>
+                <span className="block text-sm text-muted">Web workspace for inventory and job operations.</span>
+              </span>
+            </Link>
             <form action={signOutAction} className="lg:hidden">
               <button className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium" type="submit">
                 Sign Out

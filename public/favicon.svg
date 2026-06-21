@@ -1,56 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="bg" x1="10" y1="8" x2="56" y2="58" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7FAFF" />
-      <stop offset="1" stop-color="#DDE9FF" />
+    <linearGradient id="needle" x1="14" y1="49" x2="51" y2="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#99A8BC" />
+      <stop offset="0.5" stop-color="#F6FAFF" />
+      <stop offset="1" stop-color="#B5C1D1" />
     </linearGradient>
-    <linearGradient id="needle" x1="18" y1="50" x2="50" y2="14" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6B778C" />
-      <stop offset="0.45" stop-color="#EFF4FB" />
-      <stop offset="1" stop-color="#97A8C2" />
-    </linearGradient>
-    <filter id="shadow" x="11" y="14" width="42" height="38" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#173F97" flood-opacity="0.14" />
-    </filter>
   </defs>
 
-  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#bg)" />
-  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#C8D8F2" stroke-width="1.5" />
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#173F97" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#2D56B8" stroke-width="1.5" />
 
-  <path
-    d="M16 48L28.5 35.5"
-    stroke="url(#needle)"
-    stroke-linecap="round"
-    stroke-width="4.5"
-  />
+  <path d="M15 48L29.5 34" stroke="url(#needle)" stroke-linecap="round" stroke-width="5" />
   <ellipse
-    cx="17.5"
+    cx="15.5"
     cy="48.5"
-    rx="3.1"
-    ry="2"
-    transform="rotate(-45 17.5 48.5)"
-    fill="none"
-    stroke="#7C8CA4"
+    rx="3.6"
+    ry="2.3"
+    transform="rotate(-44 15.5 48.5)"
+    stroke="#D4DEEA"
     stroke-width="2"
   />
 
-  <g filter="url(#shadow)" transform="rotate(-12 31 32)">
-    <rect x="17" y="18" width="28" height="26" rx="9" fill="#F3DFC1" />
-    <rect x="17" y="18" width="28" height="26" rx="9" stroke="#8B6341" stroke-width="2.5" />
-    <path d="M31 24V38" stroke="#CDAE84" stroke-linecap="round" stroke-width="1.6" />
-    <path d="M24 31H38" stroke="#CDAE84" stroke-linecap="round" stroke-width="1.6" />
-    <circle cx="31" cy="31" r="2.8" fill="#D5B58D" stroke="#8B6341" stroke-width="1.4" />
-    <circle cx="22.5" cy="23.5" r="1.8" fill="#173F97" />
-    <circle cx="39.5" cy="23.5" r="1.8" fill="#173F97" />
-    <circle cx="22.5" cy="38.5" r="1.8" fill="#173F97" />
-    <circle cx="39.5" cy="38.5" r="1.8" fill="#173F97" />
+  <g transform="rotate(-11 32 32)">
+    <rect x="18" y="18" width="28" height="28" rx="8.5" fill="#F4DFC1" />
+    <rect x="18" y="18" width="28" height="28" rx="8.5" stroke="#A97747" stroke-width="2.5" />
+    <path d="M32 25V39" stroke="#D2B086" stroke-linecap="round" stroke-width="1.8" />
+    <path d="M25 32H39" stroke="#D2B086" stroke-linecap="round" stroke-width="1.8" />
+    <circle cx="32" cy="32" r="2.9" fill="#D8B58E" stroke="#A97747" stroke-width="1.4" />
+    <circle cx="23.5" cy="23.5" r="2" fill="#173F97" />
+    <circle cx="40.5" cy="23.5" r="2" fill="#173F97" />
+    <circle cx="23.5" cy="40.5" r="2" fill="#173F97" />
+    <circle cx="40.5" cy="40.5" r="2" fill="#173F97" />
   </g>
 
-  <path
-    d="M29.5 34.5L47 17"
-    stroke="url(#needle)"
-    stroke-linecap="round"
-    stroke-width="4.5"
-  />
-  <path d="M45.2 18.8L51 13L48.6 21.6L45.2 18.8Z" fill="#C9D5E8" stroke="#7C8CA4" stroke-width="1" />
+  <path d="M28 35L47.5 16" stroke="url(#needle)" stroke-linecap="round" stroke-width="5" />
+  <path d="M45.6 17.7L51 13L48.5 20.7L45.6 17.7Z" fill="#E7EEF8" stroke="#AAB8CA" stroke-width="1" />
 </svg>
