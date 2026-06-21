@@ -1,26 +1,28 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import {
-  applySceneTemplateToJob,
-  createJobPickItem,
-  createPackRequest,
-  createSceneTemplateFromJobRoom,
-  deleteJobPickItem,
-  deletePackRequest,
-  deleteSceneApplication,
   getJobDetail,
   listPackListInventoryItems,
   listSceneTemplates,
-  togglePackRequestOptional,
-  updateJob,
-  updateJobStatus,
-  updatePackRequest,
-  updatePackRequestStatus,
   type JobPackRequest,
 } from "@/lib/db/job-details";
-import { assignItemToJob, checkInItem } from "@/lib/db/inventory";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  applySceneTemplateAction,
+  archiveProjectAction,
+  assignItemAction,
+  cancelPackRequestAction,
+  checkInItemAction,
+  createSceneTemplateAction,
+  deletePackRequestAction,
+  deletePickedItemAction,
+  deleteSceneApplicationAction,
+  logPickedItemAction,
+  quickSelectAction,
+  savePackRequestAction,
+  toggleOptionalAction,
+  updateJobAction,
+} from "@/app/actions/job-detail";
 
 type Params = Promise<{ id: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -38,14 +40,6 @@ const projectStatuses = ["active", "completed", "archived", "cancelled"] as cons
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function readString(value: FormDataEntryValue | null) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function readBoolean(value: FormDataEntryValue | null) {
-  return value === "on" || value === "true" || value === "1";
 }
 
 function formatAddress(job: {
@@ -168,399 +162,6 @@ export default async function JobDetailPage({
   const activeSection = firstValue(search.section) ?? null;
   const editRequestId = firstValue(search.edit_request) ?? null;
 
-  async function resolveRequestedItem(itemId: string) {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase.from("inventory_items").select("name,category,color").eq("id", itemId).maybeSingle();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data;
-  }
-
-  async function updateJobAction(formData: FormData) {
-    "use server";
-
-    const name = readString(formData.get("name"));
-    const status = readString(formData.get("status"));
-
-    if (!name) {
-      redirect(buildJobUrl(id, { message: "Project name is required.", tone: "error", section: "edit-project" }));
-    }
-    if (!status) {
-      redirect(buildJobUrl(id, { message: "Project status is required.", tone: "error", section: "edit-project" }));
-    }
-    if (!projectStatuses.includes(status as (typeof projectStatuses)[number])) {
-      redirect(buildJobUrl(id, { message: "Choose a valid project status.", tone: "error", section: "edit-project" }));
-    }
-
-    try {
-      await updateJob({
-        jobId: id,
-        name,
-        address1: readString(formData.get("address1")),
-        address2: readString(formData.get("address2")),
-        city: readString(formData.get("city")),
-        state: readString(formData.get("state")),
-        postal: readString(formData.get("postal")),
-        notes: readString(formData.get("notes")),
-        status,
-      });
-      redirect(buildJobUrl(id, { message: "Project updated.", tone: "success" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to update project.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "edit-project" }));
-    }
-  }
-
-  async function archiveProjectAction() {
-    "use server";
-
-    try {
-      await updateJobStatus(id, "archived");
-      redirect(buildJobUrl(id, { message: "Project archived. Historical pack requests and exact picks are still visible.", tone: "success", section: "archive-readiness" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to archive project.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "archive-readiness" }));
-    }
-  }
-
-  async function savePackRequestAction(formData: FormData) {
-    "use server";
-
-    const packRequestId = readString(formData.get("pack_request_id"));
-    const requestText = readString(formData.get("request_text"));
-    const selectedItemId = readString(formData.get("requested_item_id"));
-    const requestQuantity = Number.parseInt(readString(formData.get("quantity")), 10);
-    const room = readString(formData.get("room"));
-    const category = readString(formData.get("category"));
-    const color = readString(formData.get("color"));
-    const notes = readString(formData.get("notes"));
-    const optional = readBoolean(formData.get("optional"));
-    const editRedirectId = packRequestId || null;
-    const requestedItem = selectedItemId ? await resolveRequestedItem(selectedItemId) : null;
-    const resolvedText = requestText || requestedItem?.name || "";
-    const resolvedCategory = category || requestedItem?.category || "";
-    const resolvedColor = color || requestedItem?.color || "";
-
-    if (!resolvedText) {
-      redirect(buildJobUrl(id, { message: "Add a request description or choose an inventory item.", tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
-    }
-
-    if (!Number.isFinite(requestQuantity) || requestQuantity < 1) {
-      redirect(buildJobUrl(id, { message: "Quantity must be at least 1.", tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
-    }
-
-    try {
-      if (packRequestId) {
-        await updatePackRequest({
-          packRequestId,
-          requestText: resolvedText,
-          quantity: requestQuantity,
-          room,
-          category: resolvedCategory,
-          color: resolvedColor,
-          notes,
-          optional,
-          requestedItemId: selectedItemId || null,
-        });
-        redirect(buildJobUrl(id, { message: "Pack request updated.", tone: "success", section: "pack-requests" }));
-      }
-
-      await createPackRequest({
-        jobId: id,
-        requestText: resolvedText,
-        quantity: requestQuantity,
-        room,
-        category: resolvedCategory,
-        color: resolvedColor,
-        notes,
-        optional,
-        requestedItemId: selectedItemId || null,
-      });
-      redirect(buildJobUrl(id, { message: "Pack request added.", tone: "success", section: "pack-requests" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : packRequestId ? "Failed to update pack request." : "Failed to add pack request.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
-    }
-  }
-
-  async function toggleOptionalAction(formData: FormData) {
-    "use server";
-
-    const packRequestId = readString(formData.get("pack_request_id"));
-    if (!packRequestId) {
-      redirect(buildJobUrl(id, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
-    }
-
-    try {
-      const nextOptional = await togglePackRequestOptional(packRequestId);
-      redirect(buildJobUrl(id, {
-        message: `Pack request marked ${nextOptional ? "optional" : "required"}.`,
-        tone: "success",
-        section: "pack-requests",
-      }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to update pack request.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "pack-requests" }));
-    }
-  }
-
-  async function cancelPackRequestAction(formData: FormData) {
-    "use server";
-
-    const packRequestId = readString(formData.get("pack_request_id"));
-    if (!packRequestId) {
-      redirect(buildJobUrl(id, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
-    }
-
-    try {
-      await updatePackRequestStatus(packRequestId, "cancelled");
-      redirect(buildJobUrl(id, { message: "Pack request updated.", tone: "success", section: "pack-requests" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to update pack request.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "pack-requests" }));
-    }
-  }
-
-  async function deletePackRequestAction(formData: FormData) {
-    "use server";
-
-    const packRequestId = readString(formData.get("pack_request_id"));
-    if (!packRequestId) {
-      redirect(buildJobUrl(id, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
-    }
-
-    try {
-      await deletePackRequest(packRequestId);
-      redirect(buildJobUrl(id, { message: "Pack request removed.", tone: "success", section: "pack-requests" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to remove pack request.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "pack-requests" }));
-    }
-  }
-
-  async function assignItemAction(formData: FormData) {
-    "use server";
-
-    const itemId = readString(formData.get("item_id"));
-    const section = readString(formData.get("section")) || "pack-requests";
-    if (!itemId) {
-      redirect(buildJobUrl(id, { message: "Inventory item is required.", tone: "error", section }));
-    }
-
-    try {
-      await assignItemToJob(id, itemId);
-      redirect(buildJobUrl(id, { message: "Item assigned.", tone: "success", section }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to assign item.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section }));
-    }
-  }
-
-  async function checkInItemAction(formData: FormData) {
-    "use server";
-
-    const jobItemId = readString(formData.get("job_item_id"));
-    if (!jobItemId) {
-      redirect(buildJobUrl(id, { message: "Job item is required.", tone: "error", section: "assignments" }));
-    }
-
-    try {
-      await checkInItem(jobItemId);
-      redirect(buildJobUrl(id, { message: "Item checked in.", tone: "success", section: "assignments" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to check in item.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "assignments" }));
-    }
-  }
-
-  async function logPickedItemAction(formData: FormData) {
-    "use server";
-
-    const itemId = readString(formData.get("item_id"));
-    const packRequestId = readString(formData.get("pack_request_id"));
-    const section = readString(formData.get("section")) || "pack-requests";
-    if (!itemId) {
-      redirect(buildJobUrl(id, { message: "Inventory item is required.", tone: "error", section }));
-    }
-
-    try {
-      await createJobPickItem({
-        jobId: id,
-        itemId,
-        packRequestId: packRequestId || null,
-      });
-      redirect(buildJobUrl(id, { message: "Exact item logged.", tone: "success", section }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to log exact item.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section }));
-    }
-  }
-
-  async function deletePickedItemAction(formData: FormData) {
-    "use server";
-
-    const jobPickItemId = readString(formData.get("job_pick_item_id"));
-    const section = readString(formData.get("section")) || "pack-requests";
-    if (!jobPickItemId) {
-      redirect(buildJobUrl(id, { message: "Picked item is required.", tone: "error", section }));
-    }
-
-    try {
-      await deleteJobPickItem(jobPickItemId);
-      redirect(buildJobUrl(id, { message: "Exact project item removed.", tone: "success", section }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to remove exact item.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section }));
-    }
-  }
-
-  async function quickSelectAction(formData: FormData) {
-    "use server";
-
-    const selectedItemIds = formData.getAll("item_ids").map((value) => (typeof value === "string" ? value : "")).filter(Boolean);
-    const packRequestId = readString(formData.get("pack_request_id"));
-    const notes = readString(formData.get("notes"));
-
-    if (selectedItemIds.length === 0) {
-      redirect(buildJobUrl(id, { message: "Choose at least one inventory item to log.", tone: "error", section: "quick-select" }));
-    }
-
-    try {
-      let resolvedPackRequestId = packRequestId || null;
-      const resolvedNotes = notes || `Bulk pack request at ${new Date().toLocaleString()}`;
-
-      if (!resolvedPackRequestId) {
-        resolvedPackRequestId = await createPackRequest({
-          jobId: id,
-          requestText: resolvedNotes,
-          quantity: selectedItemIds.length,
-          room: "",
-          category: "",
-          color: "",
-          notes: resolvedNotes,
-          optional: false,
-          requestedItemId: null,
-        });
-      }
-
-      let successCount = 0;
-      let failureMessage: string | null = null;
-
-      for (const itemId of selectedItemIds) {
-        try {
-          await createJobPickItem({
-            jobId: id,
-            itemId,
-            packRequestId: resolvedPackRequestId,
-            notes: resolvedNotes,
-          });
-          successCount += 1;
-        } catch (error) {
-          if (!failureMessage) {
-            failureMessage = error instanceof Error ? error.message : `Failed to log item ${itemId}.`;
-          }
-        }
-      }
-
-      if (failureMessage) {
-        redirect(buildJobUrl(id, {
-          message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
-          tone: "error",
-          section: "quick-select",
-        }));
-      }
-
-      redirect(buildJobUrl(id, {
-        message: packRequestId ? `Logged ${successCount} quick select item${successCount === 1 ? "" : "s"} for request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
-        tone: "success",
-        section: "quick-select",
-      }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to log quick select items.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "quick-select" }));
-    }
-  }
-
-  async function applySceneTemplateAction(formData: FormData) {
-    "use server";
-
-    const sceneTemplateId = readString(formData.get("scene_template_id"));
-    const roomLabel = readString(formData.get("room_label"));
-    const notes = readString(formData.get("notes"));
-
-    if (!sceneTemplateId) {
-      redirect(buildJobUrl(id, { message: "Scene template is required.", tone: "error", section: "scene-templates" }));
-    }
-
-    try {
-      const result = await applySceneTemplateToJob({
-        jobId: id,
-        sceneTemplateId,
-        roomLabel,
-        notes,
-      });
-      redirect(buildJobUrl(id, { message: `${result.sceneName} added to the pack list for ${roomLabel}.`, tone: "success", section: "scene-templates" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to apply scene template.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "scene-templates" }));
-    }
-  }
-
-  async function deleteSceneApplicationAction(formData: FormData) {
-    "use server";
-
-    const sceneApplicationId = readString(formData.get("scene_application_id"));
-    const sceneName = readString(formData.get("scene_name"));
-    if (!sceneApplicationId) {
-      redirect(buildJobUrl(id, { message: "Scene application is required.", tone: "error", section: "scene-templates" }));
-    }
-
-    try {
-      await deleteSceneApplication(sceneApplicationId);
-      redirect(buildJobUrl(id, { message: `${sceneName || "Scene"} removed from this project.`, tone: "success", section: "scene-templates" }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to remove scene application.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "scene-templates" }));
-    }
-  }
-
-  async function createSceneTemplateAction(formData: FormData) {
-    "use server";
-
-    const sourceRoom = readString(formData.get("source_room"));
-    const name = readString(formData.get("name"));
-
-    if (!sourceRoom) {
-      redirect(buildJobUrl(id, { message: "Choose a project room to save as a reusable scene.", tone: "error", section: "scene-templates" }));
-    }
-    if (!name) {
-      redirect(buildJobUrl(id, { message: "Scene template name is required.", tone: "error", section: "scene-templates" }));
-    }
-
-    try {
-      const result = await createSceneTemplateFromJobRoom({
-        jobId: id,
-        sourceRoom,
-        name,
-        roomType: readString(formData.get("room_type")),
-        styleLabel: readString(formData.get("style_label")),
-        summary: readString(formData.get("summary")),
-        notes: readString(formData.get("notes")),
-      });
-      redirect(buildJobUrl(id, {
-        message: `Saved ${result.sceneName} with ${result.itemCount} room request${result.itemCount === 1 ? "" : "s"}.`,
-        tone: "success",
-        section: "scene-templates",
-      }));
-    } catch (error) {
-      const nextMessage = error instanceof Error ? error.message : "Failed to save room as a reusable scene.";
-      redirect(buildJobUrl(id, { message: nextMessage, tone: "error", section: "scene-templates" }));
-    }
-  }
-
   const [{ job, assignments, packRequests, pickedItems, sceneApplications }, packCandidates, sceneTemplates] = await Promise.all([
     getJobDetail(id).catch((error) => {
       if (error instanceof Error && /0 rows|No rows/i.test(error.message)) {
@@ -680,6 +281,7 @@ export default async function JobDetailPage({
         </summary>
 
         <form action={updateJobAction} className="mt-5 grid gap-4 md:grid-cols-2">
+          <input name="job_id" type="hidden" value={id} />
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Client / Project Name</label>
             <input defaultValue={job.name} name="name" />
@@ -813,6 +415,7 @@ export default async function JobDetailPage({
             </p>
             {job.status === "archived" ? null : (
               <form action={archiveProjectAction} className="mt-4">
+                <input name="job_id" type="hidden" value={id} />
                 <button className={primaryButtonClass} type="submit">
                   Archive Project
                 </button>
@@ -852,6 +455,7 @@ export default async function JobDetailPage({
         </summary>
 
         <form action={savePackRequestAction} className="mt-5 grid gap-4 md:grid-cols-2">
+          <input name="job_id" type="hidden" value={id} />
           {editingPackRequest ? <input name="pack_request_id" type="hidden" value={editingPackRequest.id} /> : null}
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Request</label>
@@ -915,6 +519,7 @@ export default async function JobDetailPage({
         </summary>
 
         <form action={quickSelectAction} className="mt-5 grid gap-4">
+          <input name="job_id" type="hidden" value={id} />
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Log against existing pack request</label>
             <select defaultValue="" name="pack_request_id">
@@ -979,6 +584,7 @@ export default async function JobDetailPage({
                         {application.notes ? <p className={`${mutedTextClass} mt-2`}>Notes: {application.notes}</p> : null}
                       </div>
                       <form action={deleteSceneApplicationAction}>
+                        <input name="job_id" type="hidden" value={id} />
                         <input name="scene_application_id" type="hidden" value={application.id} />
                         <input name="scene_name" type="hidden" value={application.scene_template_name} />
                         <button className={secondaryButtonClass} type="submit">
@@ -1000,6 +606,7 @@ export default async function JobDetailPage({
               ) : (
                 sceneTemplates.map((template) => (
                   <form key={template.id} action={applySceneTemplateAction} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
+                    <input name="job_id" type="hidden" value={id} />
                     <input name="scene_template_id" type="hidden" value={template.id} />
                     <div className="space-y-3">
                       <div>
@@ -1057,6 +664,7 @@ export default async function JobDetailPage({
               <p className={`mt-4 ${mutedTextClass}`}>Add pack requests to a named room first, then save that room as a reusable scene.</p>
             ) : (
               <form action={createSceneTemplateAction} className="mt-5 grid gap-4 md:grid-cols-2">
+                <input name="job_id" type="hidden" value={id} />
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-[#33413b]">Source room</label>
                   <input defaultValue={defaultSceneSourceRoom} name="source_room" placeholder={authorableRooms.map(([roomLabel]) => roomLabel).join(", ")} />
@@ -1169,6 +777,7 @@ export default async function JobDetailPage({
                                   Open Picked Item
                                 </Link>
                                 <form action={assignItemAction}>
+                                  <input name="job_id" type="hidden" value={id} />
                                   <input name="item_id" type="hidden" value={pickedItem.item_id} />
                                   <input name="section" type="hidden" value="pack-requests" />
                                   <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
@@ -1180,6 +789,7 @@ export default async function JobDetailPage({
                                   </button>
                                 </form>
                                 <form action={deletePickedItemAction}>
+                                  <input name="job_id" type="hidden" value={id} />
                                   <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
                                   <input name="section" type="hidden" value="pack-requests" />
                                   <button className={secondaryButtonClass} type="submit">
@@ -1197,6 +807,7 @@ export default async function JobDetailPage({
                           Edit
                         </Link>
                         <form action={toggleOptionalAction}>
+                          <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
                           <button className={secondaryButtonClass} type="submit">
                             {request.optional ? "Mark Required" : "Mark Optional"}
@@ -1209,6 +820,7 @@ export default async function JobDetailPage({
                         ) : null}
                         {request.requested_item_id ? (
                           <form action={assignItemAction}>
+                            <input name="job_id" type="hidden" value={id} />
                             <input name="item_id" type="hidden" value={request.requested_item_id} />
                             <input name="section" type="hidden" value="pack-requests" />
                             <button className={secondaryButtonClass} disabled={assignDisabled} type="submit">
@@ -1225,6 +837,7 @@ export default async function JobDetailPage({
                         </Link>
                         {request.requested_item_id ? (
                           <form action={logPickedItemAction}>
+                            <input name="job_id" type="hidden" value={id} />
                             <input name="item_id" type="hidden" value={request.requested_item_id} />
                             <input name="pack_request_id" type="hidden" value={request.id} />
                             <input name="section" type="hidden" value="pack-requests" />
@@ -1234,12 +847,14 @@ export default async function JobDetailPage({
                           </form>
                         ) : null}
                         <form action={cancelPackRequestAction}>
+                          <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
                           <button className={secondaryButtonClass} type="submit">
                             Cancel
                           </button>
                         </form>
                         <form action={deletePackRequestAction}>
+                          <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
                           <button className={secondaryButtonClass} type="submit">
                             Delete
@@ -1283,6 +898,7 @@ export default async function JobDetailPage({
                     Open Item
                   </Link>
                   <form action={assignItemAction}>
+                    <input name="job_id" type="hidden" value={id} />
                     <input name="item_id" type="hidden" value={pickedItem.item_id} />
                     <input name="section" type="hidden" value="extra-items" />
                     <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
@@ -1294,6 +910,7 @@ export default async function JobDetailPage({
                     </button>
                   </form>
                   <form action={deletePickedItemAction}>
+                    <input name="job_id" type="hidden" value={id} />
                     <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
                     <input name="section" type="hidden" value="extra-items" />
                     <button className={secondaryButtonClass} type="submit">
@@ -1329,6 +946,7 @@ export default async function JobDetailPage({
                     Open Item
                   </Link>
                   <form action={checkInItemAction}>
+                    <input name="job_id" type="hidden" value={id} />
                     <input name="job_item_id" type="hidden" value={assignment.id} />
                     <button className={primaryButtonClass} type="submit">
                       Check In

@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { inventoryAuditTagValues } from "@/lib/inventory-audit";
 import { canonicalizeInventoryCategory } from "@/lib/inventory-taxonomy";
 import type { Database } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -22,6 +23,7 @@ const listItemsSchema = z.object({
   status: inventoryStatusSchema.optional(),
   category: z.string().trim().min(1).optional(),
   disposition: z.enum(["keep", "dispose"]).optional(),
+  auditTag: z.enum([...inventoryAuditTagValues, "all"]).optional(),
 });
 
 const createItemSchema = z.object({
@@ -82,14 +84,24 @@ export type InventoryListRow = Pick<
   current_location_name: string | null;
 };
 
-type InventoryItemsQuery = {
-  contains: (...args: unknown[]) => InventoryItemsQuery;
-  eq: (...args: unknown[]) => InventoryItemsQuery;
-  or: (...args: unknown[]) => InventoryItemsQuery;
-  order: (...args: unknown[]) => InventoryItemsQuery;
+export type PaginatedInventoryItems = {
+  items: InventoryListRow[];
+  totalCount: number;
+};
+
+type InventoryItemsFilterQuery = {
+  contains: (...args: unknown[]) => InventoryItemsFilterQuery;
+  eq: (...args: unknown[]) => InventoryItemsFilterQuery;
+  or: (...args: unknown[]) => InventoryItemsFilterQuery;
+  overlaps: (...args: unknown[]) => InventoryItemsFilterQuery;
+};
+
+type InventoryItemsListQuery = InventoryItemsFilterQuery & {
+  order: (...args: unknown[]) => InventoryItemsListQuery;
   range: (from: number, to: number) => Promise<{
     data: unknown[] | null;
     error: { message: string } | null;
+    count?: number | null;
   }>;
 };
 
@@ -106,12 +118,15 @@ function assertData<T>(data: T | null, label: string) {
   return data;
 }
 
-async function listInventoryItemRows<T>(selectClause: string, configure?: (query: InventoryItemsQuery) => InventoryItemsQuery) {
+async function listInventoryItemRows<T>(
+  selectClause: string,
+  configure?: (query: InventoryItemsListQuery) => InventoryItemsListQuery,
+) {
   const supabase = await createServerSupabaseClient();
   const rows: T[] = [];
 
   for (let from = 0; ; from += INVENTORY_PAGE_SIZE) {
-    let query: InventoryItemsQuery = supabase.from("inventory_items").select(selectClause) as unknown as InventoryItemsQuery;
+    let query: InventoryItemsListQuery = supabase.from("inventory_items").select(selectClause) as unknown as InventoryItemsListQuery;
     if (configure) {
       query = configure(query);
     }
@@ -130,38 +145,43 @@ async function listInventoryItemRows<T>(selectClause: string, configure?: (query
   return rows;
 }
 
-export async function listItems(params: ListItemsParams = {}) {
-  const parsed = listItemsSchema.parse(params);
+function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, parsed: z.output<typeof listItemsSchema>) {
+  let next = query;
+
+  if (parsed.q) {
+    const term = parsed.q.replaceAll(",", " ");
+    next = next.or(`name.ilike.%${term}%,sku.ilike.%${term}%,item_code.ilike.%${term}%,brand.ilike.%${term}%`) as T;
+  }
+
+  if (parsed.status) {
+    next = next.eq("status", parsed.status) as T;
+  }
+
+  if (parsed.category) {
+    next = next.eq("category", canonicalizeInventoryCategory(parsed.category) ?? parsed.category) as T;
+  }
+
+  if (parsed.disposition === "dispose") {
+    next = next.eq("marked_for_disposal", true) as T;
+  }
+
+  if (parsed.disposition === "keep") {
+    next = next.eq("marked_for_disposal", false) as T;
+  }
+
+  if (parsed.auditTag === "all") {
+    next = next.overlaps("tags", inventoryAuditTagValues) as T;
+  } else if (parsed.auditTag) {
+    next = next.contains("tags", [parsed.auditTag]) as T;
+  }
+
+  return next;
+}
+
+async function attachLocationNames<
+  T extends Pick<InventoryItemRow, "current_location_id" | "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags">
+>(rows: T[]) {
   const supabase = await createServerSupabaseClient();
-  const rows = await listInventoryItemRows<Pick<
-    InventoryItemRow,
-    "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
-  >>("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", (query) => {
-    let next = query.order("created_at", { ascending: false });
-
-    if (parsed.q) {
-      const term = parsed.q.replaceAll(",", " ");
-      next = next.or(`name.ilike.%${term}%,sku.ilike.%${term}%,item_code.ilike.%${term}%,brand.ilike.%${term}%`);
-    }
-
-    if (parsed.status) {
-      next = next.eq("status", parsed.status);
-    }
-
-    if (parsed.category) {
-      next = next.eq("category", canonicalizeInventoryCategory(parsed.category) ?? parsed.category);
-    }
-
-    if (parsed.disposition === "dispose") {
-      next = next.eq("marked_for_disposal", true);
-    }
-
-    if (parsed.disposition === "keep") {
-      next = next.eq("marked_for_disposal", false);
-    }
-
-    return next;
-  });
   const locationIds = [
     ...new Set(rows.map((row) => row.current_location_id).filter((value): value is string => Boolean(value))),
   ];
@@ -182,6 +202,87 @@ export async function listItems(params: ListItemsParams = {}) {
     ...row,
     current_location_name: row.current_location_id ? locationNamesById.get(row.current_location_id) ?? null : null,
   })) as InventoryListRow[];
+}
+
+export async function countItems(params: ListItemsParams = {}) {
+  const parsed = listItemsSchema.parse(params);
+  const supabase = await createServerSupabaseClient();
+  const query = applyListItemFilters(
+    supabase.from("inventory_items").select("id", { count: "exact", head: true }) as unknown as InventoryItemsFilterQuery,
+    parsed,
+  ) as unknown as Promise<{ count: number | null; error: { message: string } | null }>;
+
+  const { count, error } = await query;
+  assertNoError(error, "Failed to count inventory items");
+  return count ?? 0;
+}
+
+export async function listItemsPage(
+  params: ListItemsParams = {},
+  pagination: {
+    page: number;
+    pageSize: number;
+  },
+): Promise<PaginatedInventoryItems> {
+  const parsed = listItemsSchema.parse(params);
+  const supabase = await createServerSupabaseClient();
+  const from = Math.max(0, (pagination.page - 1) * pagination.pageSize);
+  const to = from + pagination.pageSize - 1;
+
+  let query = supabase
+    .from("inventory_items")
+    .select("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", {
+      count: "exact",
+    }) as unknown as InventoryItemsListQuery;
+
+  query = applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery;
+
+  const { data, error, count } = await query.range(from, to);
+  assertNoError(error, "Failed to list inventory items");
+
+  const items = await attachLocationNames(
+    ((data ?? []) as Array<
+      Pick<
+        InventoryItemRow,
+        | "id"
+        | "sku"
+        | "item_code"
+        | "name"
+        | "category"
+        | "status"
+        | "condition"
+        | "current_location_id"
+        | "marked_for_disposal"
+        | "estimated_listing_price_cents"
+        | "tags"
+      >
+    >),
+  );
+
+  return {
+    items,
+    totalCount: count ?? 0,
+  };
+}
+
+export async function listItemCategories() {
+  const rows = await listInventoryItemRows<Pick<InventoryItemRow, "category">>("category", (query) =>
+    query.order("category", { ascending: true }),
+  );
+
+  return [...new Set(rows.map((row) => row.category).filter((value): value is string => Boolean(value)))];
+}
+
+export async function listItems(params: ListItemsParams = {}) {
+  const parsed = listItemsSchema.parse(params);
+  const rows = await listInventoryItemRows<Pick<
+    InventoryItemRow,
+    "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
+  >>("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", (query) =>
+    applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery,
+  );
+
+  return attachLocationNames(rows);
 }
 
 const STORAGE_SIGN_BATCH_SIZE = 100;

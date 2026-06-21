@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
+import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryTable } from "@/components/inventory/inventory-table";
-import { listItemThumbnailUrls, listItems, type InventoryItemStatus } from "@/lib/db/inventory";
-import { hasAnyInventoryAuditTag, inventoryAuditTagConfig, isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
+import { countItems, listItemsPage, type InventoryItemStatus } from "@/lib/db/inventory";
+import { inventoryAuditTagConfig, isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
+const INVENTORY_AUDIT_PAGE_SIZE = 50;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -17,12 +19,17 @@ function parseStatus(value: string): InventoryItemStatus | undefined {
   return statusOptions.includes(value as InventoryItemStatus) ? (value as InventoryItemStatus) : undefined;
 }
 
-function parseDisposition(value: string) {
+function parseDisposition(value: string): "keep" | "dispose" | undefined {
   return value === "keep" || value === "dispose" ? value : undefined;
 }
 
-function parseAuditTag(value: string | undefined) {
+function parseAuditTag(value: string | undefined): "all" | InventoryAuditTag {
   return value === "all" || isInventoryAuditTag(value) ? value : "all";
+}
+
+function parsePage(value: string | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 function buildAuditReturnTo(params: {
@@ -30,6 +37,7 @@ function buildAuditReturnTo(params: {
   tag: "all" | InventoryAuditTag;
   statusFilter?: InventoryItemStatus;
   dispositionFilter?: "keep" | "dispose";
+  page: number;
 }) {
   const searchParams = new URLSearchParams();
   if (params.q) {
@@ -44,6 +52,9 @@ function buildAuditReturnTo(params: {
   if (params.dispositionFilter) {
     searchParams.set("disposition", params.dispositionFilter);
   }
+  if (params.page > 1) {
+    searchParams.set("page", String(params.page));
+  }
 
   const query = searchParams.toString();
   return query.length > 0 ? `/inventory/audit?${query}` : "/inventory/audit";
@@ -55,34 +66,42 @@ export default async function InventoryAuditPage({ searchParams }: { searchParam
   const selectedTag = parseAuditTag(firstValue(params.tag));
   const statusFilter = parseStatus(firstValue(params.status) ?? "");
   const dispositionFilter = parseDisposition(firstValue(params.disposition) ?? "");
+  const page = parsePage(firstValue(params.page));
 
-  const [filteredRows, allItems] = await Promise.all([
-    listItems({
-      q: q || undefined,
-      status: statusFilter,
-      disposition: dispositionFilter,
+  const filters = {
+    q: q || undefined,
+    status: statusFilter,
+    disposition: dispositionFilter,
+    auditTag: selectedTag,
+  };
+
+  const [pageResult, totalAuditCount, auditCounts] = await Promise.all([
+    listItemsPage(filters, {
+      page,
+      pageSize: INVENTORY_AUDIT_PAGE_SIZE,
     }),
-    listItems(),
+    countItems({ auditTag: "all" }),
+    Promise.all(
+      inventoryAuditTagConfig.map(async (entry) => ({
+        ...entry,
+        count: await countItems({ auditTag: entry.tag }),
+      })),
+    ),
   ]);
 
-  const auditCounts = inventoryAuditTagConfig.map((entry) => ({
-    ...entry,
-    count: allItems.filter((item) => item.tags.includes(entry.tag)).length,
-  }));
-
-  const items =
-    selectedTag === "all"
-      ? filteredRows.filter((item) => hasAnyInventoryAuditTag(item.tags))
-      : filteredRows.filter((item) => item.tags.includes(selectedTag));
-
-  const totalAuditCount = allItems.filter((item) => hasAnyInventoryAuditTag(item.tags)).length;
-  const thumbnailByItemId = await listItemThumbnailUrls(items.map((item) => item.id));
   const returnTo = buildAuditReturnTo({
     q,
     tag: selectedTag,
     statusFilter,
     dispositionFilter,
+    page,
   });
+  const queryEntries = [
+    ...(q ? ([["q", q]] as Array<[string, string]>) : []),
+    ...(selectedTag !== "all" ? ([["tag", selectedTag]] as Array<[string, string]>) : []),
+    ...(statusFilter ? ([["status", statusFilter]] as Array<[string, string]>) : []),
+    ...(dispositionFilter ? ([["disposition", dispositionFilter]] as Array<[string, string]>) : []),
+  ];
 
   const activeTagLabel =
     selectedTag === "all"
@@ -167,15 +186,21 @@ export default async function InventoryAuditPage({ searchParams }: { searchParam
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted">
-          Showing {items.length} audit item{items.length === 1 ? "" : "s"}
+          {pageResult.totalCount} audit item{pageResult.totalCount === 1 ? "" : "s"}
           {selectedTag === "all" ? "" : ` in ${activeTagLabel}`}
         </div>
         <InventoryTable
           emptyMessage="No audit-tagged inventory items match these filters."
-          items={items}
+          items={pageResult.items}
           returnTo={returnTo}
           showAuditTags
-          thumbnailByItemId={thumbnailByItemId}
+        />
+        <InventoryPagination
+          basePath="/inventory/audit"
+          page={page}
+          pageSize={INVENTORY_AUDIT_PAGE_SIZE}
+          queryEntries={queryEntries}
+          totalCount={pageResult.totalCount}
         />
       </section>
     </section>

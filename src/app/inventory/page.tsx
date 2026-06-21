@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
 import { InventoryTable } from "@/components/inventory/inventory-table";
 import { inventoryCategorySuggestionValues, sortInventoryCategories } from "@/lib/inventory-taxonomy";
 import {
+  countItems,
   createItem,
-  listItemThumbnailUrls,
-  listItems,
+  listItemCategories,
+  listItemsPage,
   type InventoryItemCondition,
   type InventoryItemStatus,
 } from "@/lib/db/inventory";
@@ -15,6 +17,7 @@ import { inventoryAuditTagConfig } from "@/lib/inventory-audit";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
 const conditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
+const INVENTORY_TABLE_PAGE_SIZE = 50;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -38,8 +41,13 @@ function parseCondition(value: string): InventoryItemCondition | undefined {
   return conditionOptions.includes(value as InventoryItemCondition) ? (value as InventoryItemCondition) : undefined;
 }
 
-function parseDisposition(value: string) {
+function parseDisposition(value: string): "keep" | "dispose" | undefined {
   return value === "keep" || value === "dispose" ? value : undefined;
+}
+
+function parsePage(value: string | undefined) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 function buildInventoryReturnTo(params: {
@@ -47,6 +55,7 @@ function buildInventoryReturnTo(params: {
   statusFilter?: InventoryItemStatus;
   categoryFilter: string;
   dispositionFilter?: "keep" | "dispose";
+  page: number;
 }) {
   const searchParams = new URLSearchParams();
   if (params.q) {
@@ -60,6 +69,9 @@ function buildInventoryReturnTo(params: {
   }
   if (params.dispositionFilter) {
     searchParams.set("disposition", params.dispositionFilter);
+  }
+  if (params.page > 1) {
+    searchParams.set("page", String(params.page));
   }
 
   const query = searchParams.toString();
@@ -94,22 +106,35 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
   const statusFilter = parseStatus(firstValue(params.status) ?? "");
   const categoryFilter = firstValue(params.category) ?? "";
   const dispositionFilter = parseDisposition(firstValue(params.disposition) ?? "");
+  const page = parsePage(firstValue(params.page));
   const message = firstValue(params.message);
 
-  const [items, allItems] = await Promise.all([
-    listItems({
-      q: q || undefined,
-      status: statusFilter,
-      category: categoryFilter || undefined,
-      disposition: dispositionFilter,
+  const filters = {
+    q: q || undefined,
+    status: statusFilter,
+    category: categoryFilter || undefined,
+    disposition: dispositionFilter,
+  };
+
+  const [pageResult, totalInventoryCount, itemCategories, auditCounts] = await Promise.all([
+    listItemsPage(filters, {
+      page,
+      pageSize: INVENTORY_TABLE_PAGE_SIZE,
     }),
-    listItems(),
+    countItems(),
+    listItemCategories(),
+    Promise.all(
+      inventoryAuditTagConfig.map(async (entry) => ({
+        ...entry,
+        count: await countItems({ auditTag: entry.tag }),
+      })),
+    ),
   ]);
 
   const categories = sortInventoryCategories([
     ...new Set([
       ...inventoryCategorySuggestionValues,
-      ...allItems.map((item) => item.category).filter((value): value is string => Boolean(value)),
+      ...itemCategories,
     ]),
   ]);
   const inventoryReturnTo = buildInventoryReturnTo({
@@ -117,16 +142,18 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     statusFilter,
     categoryFilter,
     dispositionFilter,
+    page,
   });
+  const queryEntries = [
+    ...(q ? ([["q", q]] as Array<[string, string]>) : []),
+    ...(statusFilter ? ([["status", statusFilter]] as Array<[string, string]>) : []),
+    ...(categoryFilter ? ([["category", categoryFilter]] as Array<[string, string]>) : []),
+    ...(dispositionFilter ? ([["disposition", dispositionFilter]] as Array<[string, string]>) : []),
+  ];
   const showingCountLabel =
-    items.length === allItems.length
-      ? `Showing ${items.length} item${items.length === 1 ? "" : "s"}`
-      : `Showing ${items.length} of ${allItems.length} item${allItems.length === 1 ? "" : "s"}`;
-  const thumbnailByItemId = await listItemThumbnailUrls(items.map((item) => item.id));
-  const auditCounts = inventoryAuditTagConfig.map((entry) => ({
-    ...entry,
-    count: allItems.filter((item) => item.tags.includes(entry.tag)).length,
-  }));
+    pageResult.totalCount === totalInventoryCount
+      ? `${pageResult.totalCount} item${pageResult.totalCount === 1 ? "" : "s"}`
+      : `${pageResult.totalCount} matching item${pageResult.totalCount === 1 ? "" : "s"} of ${totalInventoryCount}`;
 
   return (
     <section className="space-y-6">
@@ -222,7 +249,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted">{showingCountLabel}</div>
-        <InventoryTable items={items} returnTo={inventoryReturnTo} thumbnailByItemId={thumbnailByItemId} />
+        <InventoryTable items={pageResult.items} returnTo={inventoryReturnTo} />
+        <InventoryPagination
+          basePath="/inventory"
+          page={page}
+          pageSize={INVENTORY_TABLE_PAGE_SIZE}
+          queryEntries={queryEntries}
+          totalCount={pageResult.totalCount}
+        />
       </section>
     </section>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import type { InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
@@ -35,20 +38,73 @@ function tagClass(tag: string) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+type InventoryThumbnailResponse = {
+  thumbnails?: Record<string, string>;
+};
+
 export function InventoryTable({
   items,
-  thumbnailByItemId,
   returnTo,
   emptyMessage = "No inventory items found.",
   showAuditTags = false,
 }: {
   items: InventoryListRow[];
-  thumbnailByItemId: Map<string, string>;
   returnTo: string;
   emptyMessage?: string;
   showAuditTags?: boolean;
 }) {
+  const [thumbnailByItemId, setThumbnailByItemId] = useState<Record<string, string>>({});
+  const itemIdsKey = items.map((item) => item.id).join(",");
   const colSpan = showAuditTags ? 9 : 8;
+
+  useEffect(() => {
+    const itemIds = itemIdsKey ? itemIdsKey.split(",") : [];
+
+    if (itemIds.length === 0) {
+      setThumbnailByItemId({});
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadThumbnails() {
+      try {
+        const response = await fetch("/api/inventory/thumbnails", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ itemIds }),
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load thumbnails: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as InventoryThumbnailResponse;
+        setThumbnailByItemId(payload.thumbnails ?? {});
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error("Failed to load inventory thumbnails", {
+          itemIds,
+          error,
+        });
+        setThumbnailByItemId({});
+      }
+    }
+
+    setThumbnailByItemId({});
+    void loadThumbnails();
+
+    return () => {
+      controller.abort();
+    };
+  }, [itemIdsKey]);
 
   return (
     <table>
@@ -75,17 +131,20 @@ export function InventoryTable({
         ) : (
           items.map((item) => {
             const auditTags = (item.tags ?? []).filter((tag) => isInventoryAuditTag(tag));
+            const thumbnailUrl = thumbnailByItemId[item.id];
 
             return (
               <tr key={item.id}>
                 <td>
-                  {thumbnailByItemId.get(item.id) ? (
+                  {thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       alt={`${item.name} thumbnail`}
                       className="h-12 w-12 rounded-md border border-border object-cover"
+                      decoding="async"
+                      loading="lazy"
                       suppressHydrationWarning
-                      src={thumbnailByItemId.get(item.id)}
+                      src={thumbnailUrl}
                     />
                   ) : (
                     <div className="h-12 w-12 rounded-md border border-border bg-slate-100" />
