@@ -70,6 +70,19 @@ export type JobWithStats = Pick<
   sceneApplicationCount: number;
 };
 
+export type AssignableJob = Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "address_label" | "city" | "state" | "postal"> & {
+  address_label: string | null;
+};
+
+function withResolvedAddressLabel<T extends Pick<JobRow, "address1" | "address2" | "address_label" | "city" | "state" | "postal">>(job: T) {
+  const fallbackAddress = [job.address1, job.address2, job.city, job.state, job.postal].filter(Boolean).join(", ");
+
+  return {
+    ...job,
+    address_label: job.address_label ?? (fallbackAddress || null),
+  };
+}
+
 export async function listJobsWithStats(): Promise<JobWithStats[]> {
   const supabase = await createServerSupabaseClient();
   const { data: jobs, error: jobsError } = await supabase
@@ -123,4 +136,19 @@ export async function listJobsWithStats(): Promise<JobWithStats[]> {
     packRequestCount: packRequestsByJobId[job.id] ?? 0,
     sceneApplicationCount: sceneApplicationsByJobId[job.id] ?? 0,
   }));
+}
+
+export async function listAssignableJobs(): Promise<AssignableJob[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("id,name,status,address1,address2,address_label,city,state,postal")
+    .eq("status", "active")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load assignable jobs: ${error.message}`);
+  }
+
+  return (data ?? []).map((job) => withResolvedAddressLabel(job)) as AssignableJob[];
 }

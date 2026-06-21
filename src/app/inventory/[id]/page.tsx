@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
+import { listAssignableJobs } from "@/lib/db/jobs";
 import {
   addPhotoRow,
+  assignItemToJob,
   deleteItem,
   getItem,
   listPhotos,
@@ -205,6 +208,30 @@ async function deleteItemAction(formData: FormData) {
   redirect(appendSearchParams(returnTo ?? "/inventory", { message: "Item deleted." }));
 }
 
+async function assignToProjectAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const returnTo = readReturnTo(formData);
+  const jobId = readString(formData.get("job_id"));
+
+  if (!itemId) {
+    redirect(`/inventory?message=${encodeURIComponent("Invalid item id.")}`);
+  }
+
+  if (!jobId) {
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Choose a house or project first.", returnTo }));
+  }
+
+  try {
+    await assignItemToJob(jobId, itemId);
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Item assigned to project.", returnTo }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to assign item to project.";
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: nextMessage, returnTo }));
+  }
+}
+
 type LocationOption = {
   id: string;
   name: string;
@@ -239,6 +266,18 @@ function groupLocations(locations: LocationOption[]) {
   }));
 }
 
+function formatProjectAddress(job: {
+  address_label?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal?: string | null;
+}) {
+  const fallbackAddress = [job.address1, job.address2, job.city, job.state, job.postal].filter(Boolean).join(", ");
+  return job.address_label ?? (fallbackAddress || null);
+}
+
 export default async function ItemDetailPage({
   params,
   searchParams,
@@ -257,11 +296,35 @@ export default async function ItemDetailPage({
   }
 
   const supabase = await createServerSupabaseClient();
-  const [{ data: locations }, photos] = await Promise.all([
+  const [{ data: locations }, photos, assignableJobs, activeAssignmentResult] = await Promise.all([
     supabase.from("locations").select("id,name,kind").order("kind", { ascending: true }).order("name", { ascending: true }),
     listPhotos(id),
+    listAssignableJobs(),
+    supabase.from("job_items").select("id,job_id,checked_out_at").eq("item_id", id).is("checked_in_at", null).maybeSingle(),
   ]);
+  if (activeAssignmentResult.error) {
+    throw new Error(activeAssignmentResult.error.message);
+  }
   const locationGroups = groupLocations((locations ?? []) as LocationOption[]);
+  const activeAssignmentJobId = activeAssignmentResult.data?.job_id ?? null;
+  const { data: activeAssignmentJobData, error: activeAssignmentJobError } =
+    activeAssignmentJobId == null
+      ? { data: null, error: null }
+      : await supabase
+          .from("jobs")
+          .select("id,name,status,address1,address2,address_label,city,state,postal")
+          .eq("id", activeAssignmentJobId)
+          .maybeSingle();
+  if (activeAssignmentJobError) {
+    throw new Error(activeAssignmentJobError.message);
+  }
+  const activeAssignmentJob =
+    activeAssignmentJobData == null
+      ? null
+      : {
+          ...activeAssignmentJobData,
+          address_label: formatProjectAddress(activeAssignmentJobData),
+        };
 
   const photosWithUrls = await Promise.all(
     photos.map(async (photo) => {
@@ -288,6 +351,7 @@ export default async function ItemDetailPage({
       };
     }),
   );
+  const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
 
   return (
     <section className="space-y-6">
@@ -308,6 +372,74 @@ export default async function ItemDetailPage({
       {message ? (
         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p>
       ) : null}
+
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <div className="overflow-hidden rounded-2xl border border-border bg-slate-50">
+            {coverPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt={`${item.name} cover`} className="h-full min-h-64 w-full object-cover" src={coverPhoto} />
+            ) : (
+              <div className="flex min-h-64 items-center justify-center text-sm text-muted">No photo uploaded yet.</div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Assign to House / Project</h2>
+              <p className="mt-1 text-sm text-muted">Send this item straight to an active project without leaving the item page.</p>
+            </div>
+
+            {activeAssignmentJob ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <p className="font-semibold">Currently assigned to {activeAssignmentJob.name}</p>
+                <p className="mt-1">{activeAssignmentJob.address_label ?? "No project address saved."}</p>
+                <p className="mt-2">
+                  <Link className="font-semibold underline" href={`/jobs/${activeAssignmentJob.id}`}>
+                    Open project
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <p className="font-semibold">Status: ready to assign</p>
+                <p className="mt-1">Choose an active house or project below to check this item out.</p>
+              </div>
+            )}
+
+            <form action={assignToProjectAction} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <input type="hidden" name="item_id" value={item.id} />
+              <input type="hidden" name="return_to" value={returnTo ?? ""} />
+              <div>
+                <label className="mb-1 block text-sm font-medium" htmlFor="job_id">
+                  Active House / Project
+                </label>
+                <select defaultValue="" disabled={item.status !== "available" || assignableJobs.length === 0} id="job_id" name="job_id">
+                  <option value="">Choose a project</option>
+                  {assignableJobs.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      {job.name}
+                      {job.address_label ? ` • ${job.address_label}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={item.status !== "available" || assignableJobs.length === 0}
+                type="submit"
+              >
+                {item.status === "available" ? "Assign to Project" : "Item Unavailable"}
+              </button>
+            </form>
+
+            {assignableJobs.length === 0 ? <p className="text-sm text-muted">No active projects are available yet.</p> : null}
+            {item.status !== "available" && !activeAssignmentJob ? (
+              <p className="text-sm text-muted">Only available items can be assigned from this screen.</p>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Details</h2>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
 import {
   getJobDetail,
   listPackListInventoryItems,
@@ -537,14 +538,17 @@ export default async function JobDetailPage({
           </div>
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Inventory Items</label>
-            <select className="min-h-72" multiple name="item_ids">
-              {packCandidates.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.item_code ?? "No code"}) • {item.status} • {item.current_location_name ?? "No location"}
-                </option>
-              ))}
-            </select>
-            <p className={`mt-2 ${mutedTextClass}`}>Hold Command on Mac or Control on Windows to select multiple items.</p>
+            <JobQuickSelectPicker
+              items={packCandidates.map((item) => ({
+                id: item.id,
+                name: item.name,
+                item_code: item.item_code,
+                status: item.status,
+                category: item.category,
+                color: item.color,
+                current_location_name: item.current_location_name,
+              }))}
+            />
           </div>
           <div>
             <button className={primaryButtonClass} type="submit">
@@ -870,21 +874,14 @@ export default async function JobDetailPage({
         </div>
       </section>
 
-      <section className={sectionCardClass}>
-        <SectionHeader
-          title="Extra Items at House"
-          description="These are legacy exact items logged for the project without a matching pack request."
-        />
-        <div className="mt-5 space-y-4">
-          {extraPickedItems.length === 0 ? (
-            <div className="rounded-2xl border border-[#ecdcc7] bg-white p-5">
-              <p className="text-lg font-semibold text-[#20322a]">No unlinked items logged.</p>
-              <p className={`${mutedTextClass} mt-2`}>
-                New quick-select entries are grouped into generated bulk pack requests instead of being left unlinked.
-              </p>
-            </div>
-          ) : (
-            extraPickedItems.map((pickedItem) => (
+      {extraPickedItems.length > 0 ? (
+        <section className={sectionCardClass}>
+          <SectionHeader
+            title="Legacy Unlinked Items"
+            description="Older exact-item logs without a matching pack request still live here until they are cleaned up."
+          />
+          <div className="mt-5 space-y-4">
+            {extraPickedItems.map((pickedItem) => (
               <article key={pickedItem.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
                 <p className="text-lg font-semibold text-[#20322a]">
                   {pickedItem.item_name} ({pickedItem.item_code})
@@ -919,10 +916,10 @@ export default async function JobDetailPage({
                   </form>
                 </div>
               </article>
-            ))
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className={sectionCardClass}>
         <SectionHeader
