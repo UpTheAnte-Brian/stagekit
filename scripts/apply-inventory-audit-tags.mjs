@@ -100,6 +100,12 @@ function addReason(map, item, tag, reason) {
   map.set(item.item_id, entry);
 }
 
+const suppressionTagByAuditTag = {
+  "audit-unreadable-photo": "audit-ignore-unreadable-photo",
+  "audit-bad-image": "audit-ignore-bad-image",
+  "audit-duplicate-candidate": "audit-ignore-duplicate-candidate",
+};
+
 function timestampForFilename(date = new Date()) {
   return date.toISOString().replaceAll(":", "-");
 }
@@ -189,7 +195,11 @@ for (const candidate of targetedItems) {
   }
 
   const existingTags = Array.isArray(existing.tags) ? existing.tags : [];
-  const nextTags = [...new Set([...existingTags, ...candidate.tags_to_add])].sort((left, right) => left.localeCompare(right));
+  const allowedAuditTags = [...candidate.tags_to_add].filter((tag) => {
+    const suppressionTag = suppressionTagByAuditTag[tag];
+    return suppressionTag ? !existingTags.includes(suppressionTag) : true;
+  });
+  const nextTags = [...new Set([...existingTags, ...allowedAuditTags])].sort((left, right) => left.localeCompare(right));
 
   if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) {
     continue;

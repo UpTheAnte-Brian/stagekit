@@ -17,11 +17,25 @@ export const inventoryAuditTagConfig = [
 ] as const;
 
 export type InventoryAuditTag = (typeof inventoryAuditTagConfig)[number]["tag"];
+export type InventoryAuditSuppressionTag =
+  | "audit-ignore-unreadable-photo"
+  | "audit-ignore-bad-image"
+  | "audit-ignore-duplicate-candidate";
 
 export const inventoryAuditTagValues = inventoryAuditTagConfig.map((entry) => entry.tag);
+export const inventoryAuditSuppressionTagByTag: Record<InventoryAuditTag, InventoryAuditSuppressionTag> = {
+  "audit-unreadable-photo": "audit-ignore-unreadable-photo",
+  "audit-bad-image": "audit-ignore-bad-image",
+  "audit-duplicate-candidate": "audit-ignore-duplicate-candidate",
+};
+export const inventoryAuditSuppressionTagValues = Object.values(inventoryAuditSuppressionTagByTag);
 
 export function isInventoryAuditTag(value: string | null | undefined): value is InventoryAuditTag {
   return inventoryAuditTagValues.includes(value as InventoryAuditTag);
+}
+
+export function isInventoryAuditSuppressionTag(value: string | null | undefined): value is InventoryAuditSuppressionTag {
+  return inventoryAuditSuppressionTagValues.includes(value as InventoryAuditSuppressionTag);
 }
 
 export function hasAnyInventoryAuditTag(tags: string[] | null | undefined) {

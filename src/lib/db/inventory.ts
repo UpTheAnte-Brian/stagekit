@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
+import { inventoryAuditSuppressionTagByTag, inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { canonicalizeInventoryCategory } from "@/lib/inventory-taxonomy";
 import type { Database } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -439,7 +439,10 @@ export async function removeInventoryAuditTag(itemId: string, tag: InventoryAudi
   }
 
   const existingTags = Array.isArray(item.tags) ? item.tags : [];
-  const nextTags = existingTags.filter((existingTag) => existingTag !== parsed.tag);
+  const suppressionTag = inventoryAuditSuppressionTagByTag[parsed.tag];
+  const nextTags = [...new Set([...existingTags.filter((existingTag) => existingTag !== parsed.tag), suppressionTag])].sort((left, right) =>
+    left.localeCompare(right),
+  );
 
   if (nextTags.length === existingTags.length) {
     return item;

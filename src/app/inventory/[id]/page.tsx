@@ -70,14 +70,14 @@ function auditTagLabel(tag: InventoryAuditTag) {
 
 function auditTagDescription(tag: InventoryAuditTag) {
   if (tag === "audit-unreadable-photo") {
-    return "This came from the media audit pass. Clear it after confirming the stored photo is usable.";
+    return "This came from the media audit pass. Clear it after confirming the stored photo is usable. Clearing also suppresses automatic re-adding.";
   }
 
   if (tag === "audit-bad-image") {
-    return "This photo was flagged by the audit as low quality. Clear it after manual review or replacement.";
+    return "This photo was flagged by the audit as low quality. Clear it after manual review or replacement. Clearing also suppresses automatic re-adding.";
   }
 
-  return "This item was flagged as a possible duplicate. Clear it once you have finished reviewing it.";
+  return "This item was flagged as a possible duplicate. Clear it once you have finished reviewing it. Clearing also suppresses automatic re-adding.";
 }
 
 function auditTagBadgeClass(tag: InventoryAuditTag) {
