@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { inventoryAuditTagValues } from "@/lib/inventory-audit";
+import { inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { canonicalizeInventoryCategory } from "@/lib/inventory-taxonomy";
 import type { Database } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -51,6 +51,10 @@ const addPhotoRowSchema = z.object({
   itemId: uuidSchema,
   storagePath: z.string().trim().min(1),
   sortOrder: z.number().int().nonnegative().default(0),
+});
+const removeAuditTagSchema = z.object({
+  itemId: uuidSchema,
+  tag: z.enum(inventoryAuditTagValues),
 });
 
 const assignItemSchema = z.object({
@@ -424,6 +428,32 @@ export async function updateItem(id: string, payload: InventoryItemUpdate) {
     .single();
   assertNoError(error, "Failed to update inventory item");
   return assertData(data, "Failed to update inventory item");
+}
+
+export async function removeInventoryAuditTag(itemId: string, tag: InventoryAuditTag) {
+  const parsed = removeAuditTagSchema.parse({ itemId, tag });
+  const item = await getItem(parsed.itemId);
+
+  if (!item) {
+    throw new Error("Inventory item not found.");
+  }
+
+  const existingTags = Array.isArray(item.tags) ? item.tags : [];
+  const nextTags = existingTags.filter((existingTag) => existingTag !== parsed.tag);
+
+  if (nextTags.length === existingTags.length) {
+    return item;
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("inventory_items")
+    .update({ tags: nextTags })
+    .eq("id", parsed.itemId)
+    .select("*")
+    .single();
+  assertNoError(error, "Failed to remove inventory audit tag");
+  return assertData(data, "Failed to remove inventory audit tag");
 }
 
 export async function listPhotos(itemId: string) {

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
+import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
 import { listAssignableJobs } from "@/lib/db/jobs";
 import {
@@ -11,6 +12,7 @@ import {
   deleteItem,
   getItem,
   listPhotos,
+  removeInventoryAuditTag,
   updateItem,
   type InventoryItemCondition,
   type InventoryItemStatus,
@@ -58,6 +60,36 @@ function statusBadgeClass(status: InventoryItemStatus) {
   if (status === "maintenance") return "bg-amber-100 text-amber-800";
   if (status === "sold" || status === "lost") return "bg-rose-100 text-rose-800";
   return "bg-slate-100 text-slate-700";
+}
+
+function auditTagLabel(tag: InventoryAuditTag) {
+  if (tag === "audit-unreadable-photo") return "Unreadable Photo";
+  if (tag === "audit-bad-image") return "Bad Image";
+  return "Duplicate Candidate";
+}
+
+function auditTagDescription(tag: InventoryAuditTag) {
+  if (tag === "audit-unreadable-photo") {
+    return "This came from the media audit pass. Clear it after confirming the stored photo is usable.";
+  }
+
+  if (tag === "audit-bad-image") {
+    return "This photo was flagged by the audit as low quality. Clear it after manual review or replacement.";
+  }
+
+  return "This item was flagged as a possible duplicate. Clear it once you have finished reviewing it.";
+}
+
+function auditTagBadgeClass(tag: InventoryAuditTag) {
+  if (tag === "audit-unreadable-photo") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  if (tag === "audit-bad-image") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-700";
 }
 
 function formatCurrencyInput(cents: number | null) {
@@ -208,6 +240,25 @@ async function deleteItemAction(formData: FormData) {
   redirect(appendSearchParams(returnTo ?? "/inventory", { message: "Item deleted." }));
 }
 
+async function removeAuditTagAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const returnTo = readReturnTo(formData);
+  const tag = readString(formData.get("tag"));
+
+  if (!itemId) {
+    redirect(`/inventory?message=${encodeURIComponent("Invalid item id.")}`);
+  }
+
+  if (!isInventoryAuditTag(tag)) {
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Invalid audit tag.", returnTo }));
+  }
+
+  await removeInventoryAuditTag(itemId, tag);
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: `${auditTagLabel(tag)} cleared.`, returnTo }));
+}
+
 async function assignToProjectAction(formData: FormData) {
   "use server";
 
@@ -352,6 +403,7 @@ export default async function ItemDetailPage({
     }),
   );
   const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
+  const auditTags = (item.tags ?? []).filter((tag): tag is InventoryAuditTag => isInventoryAuditTag(tag));
 
   return (
     <section className="space-y-6">
@@ -371,6 +423,41 @@ export default async function ItemDetailPage({
 
       {message ? (
         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p>
+      ) : null}
+
+      {auditTags.length > 0 ? (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 shadow-sm">
+          <div className="flex flex-col gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Audit Review</h2>
+              <p className="mt-1 text-sm text-slate-700">
+                This item is currently in the audit queue. If the photo and item look fine after manual review, clear the tag here.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {auditTags.map((tag) => (
+                <form
+                  action={removeAuditTagAction}
+                  className="flex flex-col gap-3 rounded-xl border border-white/70 bg-white/80 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                  key={tag}
+                >
+                  <input type="hidden" name="item_id" value={item.id} />
+                  <input type="hidden" name="return_to" value={returnTo ?? ""} />
+                  <input type="hidden" name="tag" value={tag} />
+                  <div>
+                    <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-medium ${auditTagBadgeClass(tag)}`}>
+                      {auditTagLabel(tag)}
+                    </span>
+                    <p className="mt-2 text-sm text-slate-700">{auditTagDescription(tag)}</p>
+                  </div>
+                  <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900" type="submit">
+                    Clear Tag
+                  </button>
+                </form>
+              ))}
+            </div>
+          </div>
+        </section>
       ) : null}
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
