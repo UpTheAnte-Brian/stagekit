@@ -444,7 +444,7 @@ export async function removeInventoryAuditTag(itemId: string, tag: InventoryAudi
     left.localeCompare(right),
   );
 
-  if (nextTags.length === existingTags.length) {
+  if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) {
     return item;
   }
 
