@@ -9,6 +9,7 @@ import { listAssignableJobs } from "@/lib/db/jobs";
 import {
   addPhotoRow,
   assignItemToJob,
+  createInventoryThumbnailAsset,
   deleteItem,
   getItem,
   listPhotos,
@@ -210,6 +211,7 @@ async function uploadPhotoAction(formData: FormData) {
   const supabase = await createServerSupabaseClient();
   const fileBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage.from("inventory").upload(storagePath, fileBuffer, {
+    cacheControl: "31536000",
     contentType: file.type || "application/octet-stream",
     upsert: false,
   });
@@ -218,12 +220,23 @@ async function uploadPhotoAction(formData: FormData) {
     redirect(appendSearchParams(`/inventory/${itemId}`, { message: uploadError.message, returnTo }));
   }
 
+  let thumbnailStoragePath: string | null = null;
+  try {
+    thumbnailStoragePath = await createInventoryThumbnailAsset("inventory", storagePath, supabase);
+  } catch (error) {
+    console.error("Failed to create inventory thumbnail asset during upload", {
+      itemId,
+      storagePath,
+      error,
+    });
+  }
+
   const { count } = await supabase
     .from("inventory_photos")
     .select("*", { count: "exact", head: true })
     .eq("item_id", itemId);
 
-  await addPhotoRow(itemId, storagePath, count ?? 0);
+  await addPhotoRow(itemId, storagePath, count ?? 0, thumbnailStoragePath);
   redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Photo uploaded.", returnTo }));
 }
 

@@ -191,6 +191,7 @@ export type Database = {
           sort_order: number
           storage_bucket: string
           storage_path: string
+          thumbnail_storage_path: string | null
         }
         Insert: {
           caption?: string | null
@@ -200,6 +201,7 @@ export type Database = {
           sort_order?: number
           storage_bucket?: string
           storage_path: string
+          thumbnail_storage_path?: string | null
         }
         Update: {
           caption?: string | null
@@ -209,6 +211,7 @@ export type Database = {
           sort_order?: number
           storage_bucket?: string
           storage_path?: string
+          thumbnail_storage_path?: string | null
         }
         Relationships: [
           {

@@ -50,6 +50,7 @@ const updateItemSchema = createItemSchema.partial();
 const addPhotoRowSchema = z.object({
   itemId: uuidSchema,
   storagePath: z.string().trim().min(1),
+  thumbnailStoragePath: z.string().trim().min(1).nullable().optional(),
   sortOrder: z.number().int().nonnegative().default(0),
 });
 const removeAuditTagSchema = z.object({
@@ -109,6 +110,33 @@ type InventoryItemsListQuery = InventoryItemsFilterQuery & {
   }>;
 };
 
+type InventoryThumbnailTransform = {
+  width: number;
+  height: number;
+  resize: "cover" | "contain" | "fill";
+  quality: number;
+};
+
+type InventoryCoverPhotoRow = Pick<
+  InventoryPhotoRow,
+  "id" | "item_id" | "storage_bucket" | "storage_path" | "thumbnail_storage_path" | "sort_order" | "created_at"
+>;
+
+type CachedSignedStorageUrl = {
+  expiresAt: number;
+  url: string;
+};
+
+const INVENTORY_THUMBNAIL_TRANSFORM: InventoryThumbnailTransform = {
+  width: 240,
+  height: 240,
+  resize: "cover",
+  quality: 60,
+};
+const SIGNED_STORAGE_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+const SIGNED_STORAGE_URL_REFRESH_MARGIN_MS = 60 * 60 * 1000;
+const signedStorageUrlCache = new Map<string, CachedSignedStorageUrl>();
+
 function assertNoError(error: { message: string } | null, label: string) {
   if (error) {
     throw new Error(`${label}: ${error.message}`);
@@ -120,6 +148,159 @@ function assertData<T>(data: T | null, label: string) {
     throw new Error(`${label}: empty response`);
   }
   return data;
+}
+
+function getSignedStorageCacheKey(bucket: string, storagePath: string) {
+  return `${bucket}:${storagePath}`;
+}
+
+function getCachedSignedStorageUrl(bucket: string, storagePath: string) {
+  const cached = signedStorageUrlCache.get(getSignedStorageCacheKey(bucket, storagePath));
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt - SIGNED_STORAGE_URL_REFRESH_MARGIN_MS <= Date.now()) {
+    signedStorageUrlCache.delete(getSignedStorageCacheKey(bucket, storagePath));
+    return null;
+  }
+
+  return cached.url;
+}
+
+function setCachedSignedStorageUrl(bucket: string, storagePath: string, url: string, expiresInSeconds = SIGNED_STORAGE_URL_TTL_SECONDS) {
+  signedStorageUrlCache.set(getSignedStorageCacheKey(bucket, storagePath), {
+    expiresAt: Date.now() + expiresInSeconds * 1000,
+    url,
+  });
+}
+
+function contentTypeToExtension(contentType: string | null) {
+  if (!contentType) {
+    return null;
+  }
+
+  if (contentType.includes("jpeg")) return "jpg";
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("gif")) return "gif";
+  if (contentType.includes("heic")) return "heic";
+  return null;
+}
+
+function buildThumbnailStoragePath(storagePath: string, contentType?: string | null) {
+  const pathParts = storagePath.split("/");
+  const fileName = pathParts.pop() ?? "photo";
+  const fileNameWithoutExtension = fileName.replace(/\.[^.]+$/, "");
+  const originalExtension = fileName.includes(".") ? fileName.split(".").pop() ?? "jpg" : "jpg";
+  const nextExtension = contentTypeToExtension(contentType ?? null) ?? originalExtension;
+
+  return `${pathParts.join("/")}/thumbnails/${fileNameWithoutExtension}.${nextExtension}`;
+}
+
+async function createSignedStorageUrlMap(
+  storageTargets: Array<{ bucket: string; storagePath: string }>,
+  expiresInSeconds = SIGNED_STORAGE_URL_TTL_SECONDS,
+) {
+  const supabase = await createServerSupabaseClient();
+  const signedUrlByBucketAndPath = new Map<string, string>();
+  const pathsByBucket = new Map<string, string[]>();
+
+  for (const target of storageTargets) {
+    const cachedUrl = getCachedSignedStorageUrl(target.bucket, target.storagePath);
+    if (cachedUrl) {
+      signedUrlByBucketAndPath.set(getSignedStorageCacheKey(target.bucket, target.storagePath), cachedUrl);
+      continue;
+    }
+
+    const currentPaths = pathsByBucket.get(target.bucket) ?? [];
+    currentPaths.push(target.storagePath);
+    pathsByBucket.set(target.bucket, currentPaths);
+  }
+
+  await Promise.all(
+    Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
+      if (paths.length === 0) {
+        return;
+      }
+
+      for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
+        const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
+        const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, expiresInSeconds);
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        (data ?? []).forEach((entry, index) => {
+          if (!entry.signedUrl) {
+            return;
+          }
+
+          const storagePath = pathBatch[index];
+          setCachedSignedStorageUrl(bucket, storagePath, entry.signedUrl, expiresInSeconds);
+          signedUrlByBucketAndPath.set(getSignedStorageCacheKey(bucket, storagePath), entry.signedUrl);
+        });
+      }
+    }),
+  );
+
+  return signedUrlByBucketAndPath;
+}
+
+export async function createInventoryThumbnailAsset(
+  bucket: string,
+  storagePath: string,
+  supabaseClient?: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+) {
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storagePath, 5 * 60, {
+    transform: INVENTORY_THUMBNAIL_TRANSFORM,
+  });
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message ?? "Failed to create transformed thumbnail URL.");
+  }
+
+  const response = await fetch(data.signedUrl, {
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to download transformed thumbnail: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  const thumbnailStoragePath = buildThumbnailStoragePath(storagePath, contentType);
+  const transformedImageBuffer = await response.arrayBuffer();
+  const { error: uploadError } = await supabase.storage.from(bucket).upload(thumbnailStoragePath, transformedImageBuffer, {
+    contentType: contentType ?? "image/jpeg",
+    cacheControl: "31536000",
+    upsert: true,
+  });
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  return thumbnailStoragePath;
+}
+
+async function ensureInventoryThumbnail(
+  photo: Pick<InventoryPhotoRow, "id" | "storage_bucket" | "storage_path" | "thumbnail_storage_path">,
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+) {
+  if (photo.thumbnail_storage_path) {
+    return photo.thumbnail_storage_path;
+  }
+
+  const thumbnailStoragePath = await createInventoryThumbnailAsset(photo.storage_bucket, photo.storage_path, supabase);
+
+  const { error: updateError } = await supabase
+    .from("inventory_photos")
+    .update({ thumbnail_storage_path: thumbnailStoragePath })
+    .eq("id", photo.id);
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  return thumbnailStoragePath;
 }
 
 async function listInventoryItemRows<T>(
@@ -301,9 +482,11 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
   }
 
   const photos: Array<{
+    id: string;
     item_id: string;
     storage_bucket: string;
     storage_path: string;
+    thumbnail_storage_path: string | null;
     sort_order: number;
     created_at: string;
   }> = [];
@@ -312,7 +495,7 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
     const itemIdBatch = itemIds.slice(from, from + PHOTO_QUERY_BATCH_SIZE);
     const { data: photoBatch, error: photosError } = await supabase
       .from("inventory_photos")
-      .select("item_id,storage_bucket,storage_path,sort_order,created_at")
+      .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order,created_at")
       .in("item_id", itemIdBatch)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -324,59 +507,52 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
     photos.push(...(photoBatch ?? []));
   }
 
-  const firstPhotoByItemId = new Map<string, { bucket: string; path: string }>();
+  const firstPhotoByItemId = new Map<string, InventoryCoverPhotoRow>();
   for (const photo of photos) {
     if (!photo.storage_bucket || !photo.storage_path) {
       continue;
     }
 
     if (!firstPhotoByItemId.has(photo.item_id)) {
-      firstPhotoByItemId.set(photo.item_id, {
-        bucket: photo.storage_bucket,
-        path: photo.storage_path,
-      });
+      firstPhotoByItemId.set(photo.item_id, photo);
     }
   }
 
-  const pathsByBucket = new Map<string, string[]>();
-  firstPhotoByItemId.forEach((photo) => {
-    const currentPaths = pathsByBucket.get(photo.bucket) ?? [];
-    currentPaths.push(photo.path);
-    pathsByBucket.set(photo.bucket, currentPaths);
-  });
+  const storageTargets: Array<{ itemId: string; bucket: string; storagePath: string }> = [];
+  for (const [itemId, photo] of firstPhotoByItemId.entries()) {
+    let storagePath = photo.thumbnail_storage_path;
 
-  const signedUrlByBucketAndPath = new Map<string, string>();
-  await Promise.all(
-    Array.from(pathsByBucket.entries()).map(async ([bucket, paths]) => {
-      if (paths.length === 0) return;
+    if (!storagePath) {
       try {
-        for (let from = 0; from < paths.length; from += STORAGE_SIGN_BATCH_SIZE) {
-          const pathBatch = paths.slice(from, from + STORAGE_SIGN_BATCH_SIZE);
-          const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathBatch, 60 * 60);
-          if (error) {
-            throw error;
-          }
-
-          (data ?? []).forEach((entry, index) => {
-            if (entry.signedUrl) {
-              signedUrlByBucketAndPath.set(`${bucket}:${pathBatch[index]}`, entry.signedUrl);
-            }
-          });
-        }
+        storagePath = await ensureInventoryThumbnail(photo, supabase);
       } catch (error) {
-        console.error("Failed to sign inventory thumbnails", {
-          bucket,
-          count: paths.length,
+        console.error("Failed to generate inventory thumbnail asset", {
+          itemId,
+          photoId: photo.id,
           error,
         });
+        storagePath = photo.storage_path;
       }
-    }),
+    }
+
+    storageTargets.push({
+      itemId,
+      bucket: photo.storage_bucket,
+      storagePath,
+    });
+  }
+
+  const signedUrlByBucketAndPath = await createSignedStorageUrlMap(
+    storageTargets.map((target) => ({
+      bucket: target.bucket,
+      storagePath: target.storagePath,
+    })),
   );
 
-  firstPhotoByItemId.forEach((photo, itemId) => {
-    const signedUrl = signedUrlByBucketAndPath.get(`${photo.bucket}:${photo.path}`);
+  storageTargets.forEach((target) => {
+    const signedUrl = signedUrlByBucketAndPath.get(getSignedStorageCacheKey(target.bucket, target.storagePath));
     if (signedUrl) {
-      thumbnailByItemId.set(itemId, signedUrl);
+      thumbnailByItemId.set(target.itemId, signedUrl);
     }
   });
 
@@ -473,14 +649,15 @@ export async function listPhotos(itemId: string) {
   return (data ?? []) as InventoryPhotoRow[];
 }
 
-export async function addPhotoRow(itemId: string, storagePath: string, sortOrder = 0) {
-  const parsed = addPhotoRowSchema.parse({ itemId, storagePath, sortOrder });
+export async function addPhotoRow(itemId: string, storagePath: string, sortOrder = 0, thumbnailStoragePath?: string | null) {
+  const parsed = addPhotoRowSchema.parse({ itemId, storagePath, sortOrder, thumbnailStoragePath });
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("inventory_photos")
     .insert({
       item_id: parsed.itemId,
       storage_path: parsed.storagePath,
+      thumbnail_storage_path: parsed.thumbnailStoragePath ?? null,
       sort_order: parsed.sortOrder,
       storage_bucket: "inventory",
     })
@@ -497,7 +674,7 @@ export async function deleteItem(id: string) {
 
   const { data: photos, error: photosError } = await supabase
     .from("inventory_photos")
-    .select("storage_bucket,storage_path")
+    .select("storage_bucket,storage_path,thumbnail_storage_path")
     .eq("item_id", parsedId);
   assertNoError(photosError, "Failed to load inventory photos");
 
@@ -505,6 +682,9 @@ export async function deleteItem(id: string) {
   (photos ?? []).forEach((photo) => {
     const bucketPaths = pathsByBucket.get(photo.storage_bucket) ?? [];
     bucketPaths.push(photo.storage_path);
+    if (photo.thumbnail_storage_path) {
+      bucketPaths.push(photo.thumbnail_storage_path);
+    }
     pathsByBucket.set(photo.storage_bucket, bucketPaths);
   });
 
