@@ -637,6 +637,15 @@ export async function updatePackRequest({
   }
 }
 
+export async function linkRequestedItemToPackRequest(packRequestId: string, requestedItemId: string | null) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("job_pack_requests").update({ requested_item_id: requestedItemId }).eq("id", packRequestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function updatePackRequestStatus(packRequestId: string, status: "requested" | "packed" | "cancelled") {
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.from("job_pack_requests").update({ status }).eq("id", packRequestId);

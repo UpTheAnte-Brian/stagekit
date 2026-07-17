@@ -10,16 +10,18 @@ import {
   deleteJobPickItem,
   deletePackRequest,
   deleteSceneApplication,
+  linkRequestedItemToPackRequest,
   togglePackRequestOptional,
   updateJob,
   updateJobStatus,
   updatePackRequest,
   updatePackRequestStatus,
 } from "@/lib/db/job-details";
-import { assignItemToJob, checkInItem } from "@/lib/db/inventory";
+import { assignItemToJob, checkInItem, createItem, type InventoryItemCondition } from "@/lib/db/inventory";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
+const inventoryConditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
 
 function readString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -27,6 +29,10 @@ function readString(value: FormDataEntryValue | null) {
 
 function readBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true" || value === "1";
+}
+
+function parseInventoryCondition(value: string) {
+  return inventoryConditionOptions.includes(value as InventoryItemCondition) ? (value as InventoryItemCondition) : "good";
 }
 
 function buildJobUrl(
@@ -239,6 +245,62 @@ export async function deletePackRequestAction(formData: FormData) {
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to remove pack request.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "pack-requests" }));
+  }
+}
+
+export async function createExactInventoryItemForPackRequestAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const packRequestId = readString(formData.get("pack_request_id"));
+  const name = readString(formData.get("name"));
+  const sku = readString(formData.get("sku"));
+  const room = readString(formData.get("room"));
+  const category = readString(formData.get("category"));
+  const color = readString(formData.get("color"));
+  const notes = readString(formData.get("notes"));
+  const condition = parseInventoryCondition(readString(formData.get("condition")));
+
+  if (!packRequestId) {
+    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
+  }
+
+  if (!name) {
+    redirect(buildJobUrl(jobId, {
+      message: "Item name is required.",
+      tone: "error",
+      section: "add-pack-list",
+      editRequestId: packRequestId,
+    }));
+  }
+
+  try {
+    const item = await createItem({
+      name,
+      sku: sku || null,
+      room: room || null,
+      category: category || null,
+      color: color || null,
+      notes: notes || null,
+      condition,
+      status: "available",
+      source_job_id: jobId,
+    });
+
+    await linkRequestedItemToPackRequest(packRequestId, item.id);
+
+    redirect(buildJobUrl(jobId, {
+      message: "Exact inventory item created and linked to this request.",
+      tone: "success",
+      section: "add-pack-list",
+      editRequestId: packRequestId,
+    }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to create exact inventory item.";
+    redirect(buildJobUrl(jobId, {
+      message: nextMessage,
+      tone: "error",
+      section: "add-pack-list",
+      editRequestId: packRequestId,
+    }));
   }
 }
 

@@ -32,6 +32,7 @@ const createItemSchema = z.object({
   brand: z.string().trim().max(200).nullable().optional(),
   category: z.string().trim().max(120).nullable().optional(),
   color: z.string().trim().max(120).nullable().optional(),
+  room: z.string().trim().max(120).nullable().optional(),
   material: z.string().trim().max(120).nullable().optional(),
   dimensions: z.string().trim().max(120).nullable().optional(),
   status: inventoryStatusSchema.optional(),
@@ -44,6 +45,7 @@ const createItemSchema = z.object({
   notes: z.string().trim().max(5000).nullable().optional(),
   home_location_id: uuidSchema.nullable().optional(),
   current_location_id: uuidSchema.nullable().optional(),
+  source_job_id: uuidSchema.nullable().optional(),
 });
 
 const updateItemSchema = createItemSchema.partial();

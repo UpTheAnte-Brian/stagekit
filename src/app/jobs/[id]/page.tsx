@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { JobExactItemPicker } from "@/components/jobs/job-exact-item-picker";
 import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
 import {
   getJobDetail,
@@ -14,6 +15,7 @@ import {
   assignItemAction,
   cancelPackRequestAction,
   checkInItemAction,
+  createExactInventoryItemForPackRequestAction,
   createSceneTemplateAction,
   deletePackRequestAction,
   deletePickedItemAction,
@@ -38,6 +40,13 @@ const quietButtonClass =
 const sectionCardClass = "rounded-3xl border border-[#e8d9c6] bg-[#fffdf9] p-5 shadow-sm";
 const mutedTextClass = "text-sm leading-6 text-[#6f756c]";
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
+const inventoryConditionOptions = [
+  { value: "new", label: "New" },
+  { value: "like_new", label: "Like New" },
+  { value: "good", label: "Good" },
+  { value: "fair", label: "Fair" },
+  { value: "rough", label: "Rough" },
+] as const;
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -488,14 +497,23 @@ export default async function JobDetailPage({
           </label>
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Link Exact Inventory Item</label>
-            <select defaultValue={editingPackRequest?.requested_item_id ?? ""} name="requested_item_id">
-              <option value="">No exact inventory item linked</option>
-              {packCandidates.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.item_code ?? "No code"}) • {item.status} • {item.current_location_name ?? "No location"}
-                </option>
-              ))}
-            </select>
+            <JobExactItemPicker
+              defaultValue={editingPackRequest?.requested_item_id ?? ""}
+              initialSearch={editingPackRequest?.requested_item_name ?? editingPackRequest?.request_text ?? ""}
+              inputName="requested_item_id"
+              items={packCandidates.map((item) => ({
+                id: item.id,
+                name: item.name,
+                item_code: item.item_code,
+                status: item.status,
+                category: item.category,
+                color: item.color,
+                current_location_name: item.current_location_name,
+              }))}
+            />
+            <p className={`mt-2 ${mutedTextClass}`}>
+              Search here to find the exact piece already in inventory, or create it below if this request surfaced a missing item.
+            </p>
           </div>
           <div className="flex flex-wrap gap-3 md:col-span-2">
             <button className={primaryButtonClass} type="submit">
@@ -508,6 +526,62 @@ export default async function JobDetailPage({
             ) : null}
           </div>
         </form>
+
+        {editingPackRequest ? (
+          <form action={createExactInventoryItemForPackRequestAction} className="mt-6 grid gap-4 rounded-2xl border border-[#ecdcc7] bg-white p-5 md:grid-cols-2">
+            <input name="job_id" type="hidden" value={id} />
+            <input name="pack_request_id" type="hidden" value={editingPackRequest.id} />
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-semibold text-[#20322a]">Create Exact Inventory Item</h3>
+              <p className={`mt-2 ${mutedTextClass}`}>
+                Use this when the request describes a real piece that never got entered into inventory. The new item will be linked back to this pack request automatically.
+              </p>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Item Name</label>
+              <input defaultValue={editingPackRequest.request_text} name="name" placeholder="Walnut dining table with black metal legs" required />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">SKU</label>
+              <input name="sku" placeholder="Optional SKU" />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room</label>
+              <input defaultValue={editingPackRequest.room ?? ""} name="room" placeholder="Dining room" />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Category</label>
+              <input defaultValue={editingPackRequest.category ?? ""} name="category" placeholder="Tables / Dining" />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Color</label>
+              <input defaultValue={editingPackRequest.color ?? ""} name="color" placeholder="Walnut/Brown" />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Condition</label>
+              <select defaultValue="good" name="condition">
+                {inventoryConditionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Inventory Notes</label>
+              <textarea
+                defaultValue={editingPackRequest.notes ?? ""}
+                name="notes"
+                placeholder="Add any identifying details that will help the team recognize this exact piece later."
+              />
+            </div>
+            <div className="md:col-span-2">
+              <button className={quietButtonClass} type="submit">
+                Create Exact Item and Link Request
+              </button>
+            </div>
+          </form>
+        ) : null}
       </details>
 
       <details className={sectionCardClass} open={detailsOpen(activeSection, "quick-select")}>
@@ -809,6 +883,9 @@ export default async function JobDetailPage({
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list", editRequestId: request.id })}>
                           Edit
+                        </Link>
+                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list", editRequestId: request.id })}>
+                          Find / Create Exact Item
                         </Link>
                         <form action={toggleOptionalAction}>
                           <input name="job_id" type="hidden" value={id} />
