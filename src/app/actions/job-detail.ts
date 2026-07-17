@@ -180,25 +180,29 @@ export async function savePackRequestAction(formData: FormData) {
         optional,
         requestedItemId: selectedItemId || null,
       });
-      redirect(buildJobUrl(jobId, { message: "Pack request updated.", tone: "success", section: "pack-requests" }));
+    } else {
+      await createPackRequest({
+        jobId,
+        requestText: resolvedText,
+        quantity: requestQuantity,
+        room,
+        category: resolvedCategory,
+        color: resolvedColor,
+        notes,
+        optional,
+        requestedItemId: selectedItemId || null,
+      });
     }
-
-    await createPackRequest({
-      jobId,
-      requestText: resolvedText,
-      quantity: requestQuantity,
-      room,
-      category: resolvedCategory,
-      color: resolvedColor,
-      notes,
-      optional,
-      requestedItemId: selectedItemId || null,
-    });
-    redirect(buildJobUrl(jobId, { message: "Pack request added.", tone: "success", section: "pack-requests" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : packRequestId ? "Failed to update pack request." : "Failed to add pack request.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
   }
+
+  redirect(buildJobUrl(jobId, {
+    message: packRequestId ? "Pack request updated." : "Pack request added.",
+    tone: "success",
+    section: "pack-requests",
+  }));
 }
 
 export async function toggleOptionalAction(formData: FormData) {
@@ -291,13 +295,6 @@ export async function createExactInventoryItemForPackRequestAction(formData: For
     });
 
     await linkRequestedItemToPackRequest(packRequestId, item.id);
-
-    redirect(buildJobUrl(jobId, {
-      message: "Exact inventory item created and linked to this request.",
-      tone: "success",
-      section: "add-pack-list",
-      editRequestId: packRequestId,
-    }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to create exact inventory item.";
     redirect(buildJobUrl(jobId, {
@@ -307,6 +304,13 @@ export async function createExactInventoryItemForPackRequestAction(formData: For
       editRequestId: packRequestId,
     }));
   }
+
+  redirect(buildJobUrl(jobId, {
+    message: "Exact inventory item created and linked to this request.",
+    tone: "success",
+    section: "add-pack-list",
+    editRequestId: packRequestId,
+  }));
 }
 
 export async function assignItemAction(formData: FormData) {

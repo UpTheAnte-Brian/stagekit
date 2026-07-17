@@ -831,11 +831,16 @@ export default async function JobDetailPage({
                       <div className="mt-4 space-y-2">
                         {request.optional ? <p className={mutedTextClass}>Optional item</p> : null}
                         <p className={request.picked_count >= request.quantity ? "text-sm leading-6 text-emerald-700" : mutedTextClass}>
-                          Exact picks logged: {request.picked_count} of {request.quantity}
+                          Exact items actually logged for this request: {request.picked_count} of {request.quantity}
                         </p>
                         {request.requested_item_name ? (
                           <p className={mutedTextClass}>
                             Exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
+                          </p>
+                        ) : null}
+                        {request.requested_item_id && request.picked_count === 0 ? (
+                          <p className={mutedTextClass}>
+                            This exact item is linked to the request, but it has not been logged yet as the item actually used or loaded for this project.
                           </p>
                         ) : null}
                         {request.active_job_names.length > 0 ? (
