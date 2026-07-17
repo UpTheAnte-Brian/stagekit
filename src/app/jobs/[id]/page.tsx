@@ -92,6 +92,10 @@ function detailsOpen(activeSection: string | null, sectionName: string, fallback
   return fallback || activeSection === sectionName;
 }
 
+function buildJobSectionHash(section?: string) {
+  return section ? `#${section}` : "";
+}
+
 function buildJobUrl(
   jobId: string,
   {
@@ -122,7 +126,8 @@ function buildJobUrl(
   }
 
   const query = params.toString();
-  return query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
+  const basePath = query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
+  return `${basePath}${buildJobSectionHash(section)}`;
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -281,7 +286,7 @@ export default async function JobDetailPage({
         </p>
       ) : null}
 
-      <details className={sectionCardClass} open={detailsOpen(activeSection, "edit-project")}>
+      <details className={`${sectionCardClass} scroll-mt-6`} id="edit-project" open={detailsOpen(activeSection, "edit-project")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Edit Project Details"
@@ -363,7 +368,7 @@ export default async function JobDetailPage({
         </p>
       </section>
 
-      <details className={sectionCardClass} open={detailsOpen(activeSection, "archive-readiness", job.status === "archived")}>
+      <details className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", job.status === "archived")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Archive Readiness"
@@ -451,7 +456,7 @@ export default async function JobDetailPage({
         ) : null}
       </details>
 
-      <details className={sectionCardClass} open={detailsOpen(activeSection, "add-pack-list", Boolean(editingPackRequest))}>
+      <details className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open={detailsOpen(activeSection, "add-pack-list", Boolean(editingPackRequest))}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title={editingPackRequest ? "Edit Pack Request" : "Add to Pack List"}
@@ -584,7 +589,7 @@ export default async function JobDetailPage({
         ) : null}
       </details>
 
-      <details className={sectionCardClass} open={detailsOpen(activeSection, "quick-select")}>
+      <details className={`${sectionCardClass} scroll-mt-6`} id="quick-select" open={detailsOpen(activeSection, "quick-select")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Quick Select"
@@ -632,7 +637,7 @@ export default async function JobDetailPage({
         </form>
       </details>
 
-      <details className={sectionCardClass} open={detailsOpen(activeSection, "scene-templates")}>
+      <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Scene Templates"
@@ -778,7 +783,7 @@ export default async function JobDetailPage({
         </div>
       </details>
 
-      <section className={sectionCardClass}>
+      <section className={`${sectionCardClass} scroll-mt-6`} id="pack-requests">
         <SectionHeader
           title="Pack Requests"
           description="Designer asks like mirrors, pillows, art, and kitchen styling live here, grouped by room."
@@ -952,7 +957,7 @@ export default async function JobDetailPage({
       </section>
 
       {extraPickedItems.length > 0 ? (
-        <section className={sectionCardClass}>
+        <section className={`${sectionCardClass} scroll-mt-6`} id="extra-items">
           <SectionHeader
             title="Legacy Unlinked Items"
             description="Older exact-item logs without a matching pack request still live here until they are cleaned up."
@@ -998,7 +1003,7 @@ export default async function JobDetailPage({
         </section>
       ) : null}
 
-      <section className={sectionCardClass}>
+      <section className={`${sectionCardClass} scroll-mt-6`} id="assignments">
         <SectionHeader
           title="Currently Assigned"
           description="These items are currently checked out to this project. Use Check In when the item physically returns from the house or stage."

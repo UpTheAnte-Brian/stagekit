@@ -35,6 +35,10 @@ function parseInventoryCondition(value: string) {
   return inventoryConditionOptions.includes(value as InventoryItemCondition) ? (value as InventoryItemCondition) : "good";
 }
 
+function buildJobSectionHash(section?: string) {
+  return section ? `#${section}` : "";
+}
+
 function buildJobUrl(
   jobId: string,
   {
@@ -65,7 +69,8 @@ function buildJobUrl(
   }
 
   const query = params.toString();
-  return query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
+  const basePath = query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
+  return `${basePath}${buildJobSectionHash(section)}`;
 }
 
 function readJobId(formData: FormData) {
