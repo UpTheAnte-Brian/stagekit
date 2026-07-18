@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
+import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
@@ -197,49 +198,59 @@ async function uploadPhotoAction(formData: FormData) {
     redirect(`/inventory?message=${encodeURIComponent("Invalid item id.")}`);
   }
 
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Select a photo to upload.", returnTo }));
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Photo must be 20MB or smaller.", returnTo }));
+  const files = formData
+    .getAll("photo")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+  if (files.length === 0) {
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Select at least one photo to upload.", returnTo }));
   }
 
-  const extensionMatch = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
-  const extension = extensionMatch?.[1] ?? "jpg";
-  const photoId = crypto.randomUUID();
-  const storagePath = `items/${itemId}/${photoId}.${extension}`;
+  const oversizedFile = files.find((file) => file.size > MAX_UPLOAD_BYTES);
+  if (oversizedFile) {
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: `${oversizedFile.name} must be 20MB or smaller.`, returnTo }));
+  }
 
   const supabase = await createServerSupabaseClient();
-  const fileBuffer = await file.arrayBuffer();
-  const { error: uploadError } = await supabase.storage.from("inventory").upload(storagePath, fileBuffer, {
-    cacheControl: "31536000",
-    contentType: file.type || "application/octet-stream",
-    upsert: false,
-  });
-
-  if (uploadError) {
-    redirect(appendSearchParams(`/inventory/${itemId}`, { message: uploadError.message, returnTo }));
-  }
-
-  let thumbnailStoragePath: string | null = null;
-  try {
-    thumbnailStoragePath = await createInventoryThumbnailAsset("inventory", storagePath, supabase);
-  } catch (error) {
-    console.error("Failed to create inventory thumbnail asset during upload", {
-      itemId,
-      storagePath,
-      error,
-    });
-  }
-
   const { count } = await supabase
     .from("inventory_photos")
     .select("*", { count: "exact", head: true })
     .eq("item_id", itemId);
 
-  await addPhotoRow(itemId, storagePath, count ?? 0, thumbnailStoragePath);
-  redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Photo uploaded.", returnTo }));
+  let sortOrder = count ?? 0;
+  for (const file of files) {
+    const extensionMatch = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
+    const extension = extensionMatch?.[1] ?? "jpg";
+    const photoId = crypto.randomUUID();
+    const storagePath = `items/${itemId}/${photoId}.${extension}`;
+    const fileBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage.from("inventory").upload(storagePath, fileBuffer, {
+      cacheControl: "31536000",
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+    if (uploadError) {
+      redirect(appendSearchParams(`/inventory/${itemId}`, { message: uploadError.message, returnTo }));
+    }
+
+    let thumbnailStoragePath: string | null = null;
+    try {
+      thumbnailStoragePath = await createInventoryThumbnailAsset("inventory", storagePath, supabase);
+    } catch (error) {
+      console.error("Failed to create inventory thumbnail asset during upload", {
+        itemId,
+        storagePath,
+        error,
+      });
+    }
+
+    await addPhotoRow(itemId, storagePath, sortOrder, thumbnailStoragePath);
+    sortOrder += 1;
+  }
+
+  const successMessage = files.length === 1 ? "Photo uploaded." : `${files.length} photos uploaded.`;
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: successMessage, returnTo }));
 }
 
 async function deleteItemAction(formData: FormData) {
@@ -637,9 +648,9 @@ export default async function ItemDetailPage({
             </label>
             <input id="dimensions" name="dimensions" defaultValue={item.dimensions ?? ""} />
           </div>
-          <label className="flex items-center gap-3 rounded-lg border border-border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800">
-            <input defaultChecked={item.marked_for_disposal} name="marked_for_disposal" type="checkbox" />
-            Mark this item for disposal
+          <label className="flex items-start gap-3 rounded-lg border border-border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800">
+            <input className="mt-0.5 h-4 w-4 shrink-0" defaultChecked={item.marked_for_disposal} name="marked_for_disposal" type="checkbox" />
+            <span>Mark this item for disposal</span>
           </label>
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="estimated_listing_price_cents">
@@ -736,14 +747,7 @@ export default async function ItemDetailPage({
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Photos</h2>
-        <form action={uploadPhotoAction} className="mt-3 flex flex-wrap items-center gap-3">
-          <input type="hidden" name="item_id" value={item.id} />
-          <input type="hidden" name="return_to" value={returnTo ?? ""} />
-          <input accept="image/*" name="photo" type="file" />
-          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" type="submit">
-            Upload
-          </button>
-        </form>
+        <PhotoUploadForm action={uploadPhotoAction} itemId={item.id} returnTo={returnTo ?? ""} />
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {photosWithUrls.length === 0 ? (
             <p className="text-sm text-muted">No photos uploaded yet.</p>
