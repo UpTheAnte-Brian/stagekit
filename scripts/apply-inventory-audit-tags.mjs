@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
@@ -28,8 +28,9 @@ async function loadEnv(cwd) {
 function parseArgs(rawArgs) {
   const options = {
     apply: false,
-    queue: "audits/inventory-media-review-queue-2026-04-25T03-01-16.523Z.json",
+    queue: null,
     output: null,
+    sync: false,
     help: false,
   };
 
@@ -61,6 +62,11 @@ function parseArgs(rawArgs) {
       continue;
     }
 
+    if (arg === "--sync") {
+      options.sync = true;
+      continue;
+    }
+
     if (arg === "--help" || arg === "-h") {
       options.help = true;
       continue;
@@ -73,7 +79,7 @@ function parseArgs(rawArgs) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/apply-inventory-audit-tags.mjs [--apply] [--queue audits/review.json] [--output audits/file.json]
+  console.log(`Usage: node scripts/apply-inventory-audit-tags.mjs [--apply] [--sync] [--queue audits/review.json] [--output audits/file.json]
 
 Applies non-destructive audit tags to inventory items from a review queue.
 
@@ -83,6 +89,7 @@ Tags:
   audit-unreadable-photo
 
 Without --apply, the script runs as a dry run and only writes a report.
+With --sync, the script removes stale audit tags that are not present in the current queue before reapplying the current queue.
 `);
 }
 
@@ -105,9 +112,30 @@ const suppressionTagByAuditTag = {
   "audit-bad-image": "audit-ignore-bad-image",
   "audit-duplicate-candidate": "audit-ignore-duplicate-candidate",
 };
+const auditTagValues = Object.keys(suppressionTagByAuditTag);
 
 function timestampForFilename(date = new Date()) {
   return date.toISOString().replaceAll(":", "-");
+}
+
+async function findLatestQueueFile(cwd) {
+  const queueDirectory = path.resolve(cwd, "audits");
+  const entries = await readdir(queueDirectory, { withFileTypes: true });
+  const candidateNames = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((name) => /^inventory-media-review-queue-.*\.json$/.test(name))
+    .sort((left, right) => right.localeCompare(left));
+
+  if (candidateNames.length === 0) {
+    throw new Error("No inventory-media-review-queue-*.json files found in audits.");
+  }
+
+  return path.join(queueDirectory, candidateNames[0]);
+}
+
+function uniqueSortedTags(tags) {
+  return [...new Set(tags)].sort((left, right) => left.localeCompare(right));
 }
 
 const cwd = process.cwd();
@@ -118,7 +146,7 @@ if (options.help) {
   process.exit(0);
 }
 
-const queuePath = path.resolve(cwd, options.queue);
+const queuePath = options.queue ? path.resolve(cwd, options.queue) : await findLatestQueueFile(cwd);
 const queue = JSON.parse(await readFile(queuePath, "utf8"));
 
 const itemsById = new Map();
@@ -168,50 +196,77 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const itemIds = targetedItems.map((item) => item.item_id);
-const existingRows = [];
+const targetedById = new Map(targetedItems.map((item) => [item.item_id, item]));
+const existingRowsById = new Map();
 
-for (let from = 0; from < itemIds.length; from += 100) {
-  const batch = itemIds.slice(from, from + 100);
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("id,item_code,name,tags")
-    .in("id", batch);
+if (targetedById.size > 0) {
+  const itemIds = [...targetedById.keys()];
+  for (let from = 0; from < itemIds.length; from += 100) {
+    const batch = itemIds.slice(from, from + 100);
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("id,item_code,name,tags")
+      .in("id", batch);
 
-  if (error) {
-    throw new Error(`Failed to load inventory items: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to load inventory items: ${error.message}`);
+    }
+
+    for (const row of data ?? []) {
+      existingRowsById.set(row.id, row);
+    }
   }
-
-  existingRows.push(...(data ?? []));
 }
 
-const existingById = new Map(existingRows.map((row) => [row.id, row]));
+if (options.sync) {
+  for (let from = 0; ; from += 1000) {
+    const to = from + 999;
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("id,item_code,name,tags")
+      .overlaps("tags", auditTagValues)
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Failed to load current audit-tagged inventory items: ${error.message}`);
+    }
+
+    const batch = data ?? [];
+    for (const row of batch) {
+      existingRowsById.set(row.id, row);
+    }
+
+    if (batch.length < 1000) {
+      break;
+    }
+  }
+}
+
 const updates = [];
 
-for (const candidate of targetedItems) {
-  const existing = existingById.get(candidate.item_id);
-  if (!existing) {
-    continue;
-  }
-
+for (const existing of existingRowsById.values()) {
+  const candidate = targetedById.get(existing.id);
   const existingTags = Array.isArray(existing.tags) ? existing.tags : [];
-  const allowedAuditTags = [...candidate.tags_to_add].filter((tag) => {
-    const suppressionTag = suppressionTagByAuditTag[tag];
-    return suppressionTag ? !existingTags.includes(suppressionTag) : true;
-  });
-  const nextTags = [...new Set([...existingTags, ...allowedAuditTags])].sort((left, right) => left.localeCompare(right));
+  const allowedAuditTags = candidate
+    ? [...candidate.tags_to_add].filter((tag) => {
+        const suppressionTag = suppressionTagByAuditTag[tag];
+        return suppressionTag ? !existingTags.includes(suppressionTag) : true;
+      })
+    : [];
+  const baseTags = options.sync ? existingTags.filter((tag) => !auditTagValues.includes(tag)) : existingTags;
+  const nextTags = uniqueSortedTags([...baseTags, ...allowedAuditTags]);
 
   if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) {
     continue;
   }
 
   updates.push({
-    item_id: candidate.item_id,
-    item_code: existing.item_code ?? candidate.item_code,
-    item_name: existing.name ?? candidate.item_name,
+    item_id: existing.id,
+    item_code: existing.item_code ?? candidate?.item_code ?? null,
+    item_name: existing.name ?? candidate?.item_name ?? null,
     previous_tags: existingTags,
     next_tags: nextTags,
-    reasons: candidate.reasons,
+    reasons: candidate?.reasons ?? [],
   });
 }
 
@@ -235,6 +290,7 @@ const reportPath = path.resolve(
 const report = {
   generated_at: new Date().toISOString(),
   dry_run: !options.apply,
+  sync: options.sync,
   source_queue: path.relative(cwd, queuePath),
   targeted_item_count: targetedItems.length,
   updated_item_count: updates.length,

@@ -79,6 +79,7 @@ export default async function InventoryAuditPage({ searchParams }: { searchParam
     listItemsPage(filters, {
       page,
       pageSize: INVENTORY_AUDIT_PAGE_SIZE,
+      sort: "name_asc",
     }),
     countItems({ auditTag: "all" }),
     Promise.all(

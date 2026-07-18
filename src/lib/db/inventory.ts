@@ -511,6 +511,7 @@ export async function listItemsPage(
   pagination: {
     page: number;
     pageSize: number;
+    sort?: "created_at_desc" | "name_asc";
   },
 ): Promise<PaginatedInventoryItems> {
   const parsed = listItemsSchema.parse(params);
@@ -524,7 +525,15 @@ export async function listItemsPage(
       count: "exact",
     }) as unknown as InventoryItemsListQuery;
 
-  query = applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery;
+  query = applyListItemFilters(query, parsed) as InventoryItemsListQuery;
+  if (pagination.sort === "name_asc") {
+    query = query
+      .order("name", { ascending: true })
+      .order("item_code", { ascending: true })
+      .order("created_at", { ascending: false }) as InventoryItemsListQuery;
+  } else {
+    query = query.order("created_at", { ascending: false }) as InventoryItemsListQuery;
+  }
 
   const { data, error, count } = await query.range(from, to);
   assertNoError(error, "Failed to list inventory items");

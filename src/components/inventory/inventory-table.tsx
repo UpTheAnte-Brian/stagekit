@@ -161,7 +161,9 @@ export function InventoryTable({
                       src={thumbnailUrl}
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-md border border-border bg-slate-100" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-slate-100 p-1 text-center text-[8px] leading-tight text-muted">
+                      No photo uploaded yet.
+                    </div>
                   )}
                 </td>
                 <td>
