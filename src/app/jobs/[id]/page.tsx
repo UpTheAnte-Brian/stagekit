@@ -103,11 +103,13 @@ function buildJobUrl(
     tone,
     section,
     editRequestId,
+    pickRequestId,
   }: {
     message?: string;
     tone?: "success" | "error";
     section?: string;
     editRequestId?: string | null;
+    pickRequestId?: string | null;
   } = {},
 ) {
   const params = new URLSearchParams();
@@ -123,6 +125,9 @@ function buildJobUrl(
   }
   if (editRequestId) {
     params.set("edit_request", editRequestId);
+  }
+  if (pickRequestId) {
+    params.set("pick_request", pickRequestId);
   }
 
   const query = params.toString();
@@ -176,6 +181,7 @@ export default async function JobDetailPage({
   const tone = firstValue(search.tone) === "error" ? "error" : "success";
   const activeSection = firstValue(search.section) ?? null;
   const editRequestId = firstValue(search.edit_request) ?? null;
+  const pickRequestId = firstValue(search.pick_request) ?? null;
 
   const [{ job, assignments, packRequests, pickedItems, sceneApplications }, packCandidates, sceneTemplates] = await Promise.all([
     getJobDetail(id).catch((error) => {
@@ -248,6 +254,7 @@ export default async function JobDetailPage({
     return a.localeCompare(b);
   });
   const editingPackRequest = editRequestId ? openPackRequests.find((request) => request.id === editRequestId) ?? null : null;
+  const activePickRequest = pickRequestId ? openPackRequests.find((request) => request.id === pickRequestId) ?? null : null;
   const authorableRooms = openPackRequestsByRoom.filter(([roomLabel]) => roomLabel !== "No room");
   const defaultSceneSourceRoom = authorableRooms[0]?.[0] ?? "";
   const appliedSceneCountByTemplateId = sceneApplications.reduce<Record<string, number>>((acc, application) => {
@@ -582,7 +589,7 @@ export default async function JobDetailPage({
             </div>
             <div className="md:col-span-2">
               <button className={quietButtonClass} type="submit">
-                Create Exact Item and Link Request
+                Create Reference Item and Link Request
               </button>
             </div>
           </form>
@@ -593,16 +600,33 @@ export default async function JobDetailPage({
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Quick Select"
-            description="Log multiple exact items at once. If you do not choose an existing request, the web page will create a grouped bulk request for them."
+            description="Log multiple exact items at once. Use this when one request has several real-piece options; if you do not choose an existing request, the web page will create a grouped bulk request for them."
             right={<span className={secondaryButtonClass}>Toggle</span>}
           />
         </summary>
 
         <form action={quickSelectAction} className="mt-5 grid gap-4">
           <input name="job_id" type="hidden" value={id} />
+          <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] p-4">
+            <p className="font-semibold text-[#20322a]">
+              {activePickRequest ? `Logging for: ${activePickRequest.request_text}` : "Creating a generated bulk pack request"}
+            </p>
+            <p className={`mt-2 ${mutedTextClass}`}>
+              {activePickRequest
+                ? `This request currently has ${activePickRequest.picked_count} of ${activePickRequest.quantity} exact picks logged. You can add several options here, then remove the ones you do not want from the request card.`
+                : "Selected items will be grouped under a generated bulk pack request so they stay linked together."}
+            </p>
+            {activePickRequest ? (
+              <p className={`mt-2 ${mutedTextClass}`}>
+                <Link className="font-semibold text-[#33413b] underline underline-offset-2" href={buildJobUrl(id, { section: "quick-select" })}>
+                  Switch back to generated bulk request
+                </Link>
+              </p>
+            ) : null}
+          </div>
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Log against existing pack request</label>
-            <select defaultValue="" name="pack_request_id">
+            <select defaultValue={activePickRequest?.id ?? ""} name="pack_request_id">
               <option value="">Create a generated bulk pack request</option>
               {openPackRequests.map((request) => (
                 <option key={request.id} value={request.id}>
@@ -631,7 +655,7 @@ export default async function JobDetailPage({
           </div>
           <div>
             <button className={primaryButtonClass} type="submit">
-              Log Quick Select
+              {activePickRequest ? "Log Quick Select for Request" : "Log Quick Select"}
             </button>
           </div>
         </form>
@@ -835,12 +859,12 @@ export default async function JobDetailPage({
                         </p>
                         {request.requested_item_name ? (
                           <p className={mutedTextClass}>
-                            Exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
+                            Reference exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
                           </p>
                         ) : null}
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <p className={mutedTextClass}>
-                            This exact item is linked to the request, but it has not been logged yet as the item actually used or loaded for this project.
+                            This linked item is just the reference piece for the request. Use Pick for Request to log one or more actual exact-item options, then remove any picks you do not want.
                           </p>
                         ) : null}
                         {request.active_job_names.length > 0 ? (
@@ -895,7 +919,7 @@ export default async function JobDetailPage({
                           Edit
                         </Link>
                         <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list", editRequestId: request.id })}>
-                          Find / Create Exact Item
+                          Find / Create Reference Item
                         </Link>
                         <form action={toggleOptionalAction}>
                           <input name="job_id" type="hidden" value={id} />
@@ -906,7 +930,7 @@ export default async function JobDetailPage({
                         </form>
                         {request.requested_item_id ? (
                           <Link className={secondaryButtonClass} href={`/inventory/${request.requested_item_id}`}>
-                            Open Exact Item
+                            Open Reference Item
                           </Link>
                         ) : null}
                         {request.requested_item_id ? (
@@ -923,7 +947,7 @@ export default async function JobDetailPage({
                             </button>
                           </form>
                         ) : null}
-                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "quick-select" })}>
+                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "quick-select", pickRequestId: request.id })}>
                           Pick for Request
                         </Link>
                         {request.requested_item_id ? (
@@ -933,7 +957,7 @@ export default async function JobDetailPage({
                             <input name="pack_request_id" type="hidden" value={request.id} />
                             <input name="section" type="hidden" value="pack-requests" />
                             <button className={secondaryButtonClass} type="submit">
-                              Log Exact Item
+                              Log Linked Exact Item
                             </button>
                           </form>
                         ) : null}

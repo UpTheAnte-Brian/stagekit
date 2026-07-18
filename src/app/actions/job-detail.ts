@@ -46,11 +46,13 @@ function buildJobUrl(
     tone,
     section,
     editRequestId,
+    pickRequestId,
   }: {
     message?: string;
     tone?: "success" | "error";
     section?: string;
     editRequestId?: string | null;
+    pickRequestId?: string | null;
   } = {},
 ) {
   const params = new URLSearchParams();
@@ -66,6 +68,9 @@ function buildJobUrl(
   }
   if (editRequestId) {
     params.set("edit_request", editRequestId);
+  }
+  if (pickRequestId) {
+    params.set("pick_request", pickRequestId);
   }
 
   const query = params.toString();
@@ -390,9 +395,10 @@ export async function quickSelectAction(formData: FormData) {
   const selectedItemIds = formData.getAll("item_ids").map((value) => (typeof value === "string" ? value : "")).filter(Boolean);
   const packRequestId = readString(formData.get("pack_request_id"));
   const notes = readString(formData.get("notes"));
+  const pickRequestId = packRequestId || null;
 
   if (selectedItemIds.length === 0) {
-    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to log.", tone: "error", section: "quick-select" }));
+    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to log.", tone: "error", section: "quick-select", pickRequestId }));
   }
 
   try {
@@ -437,6 +443,7 @@ export async function quickSelectAction(formData: FormData) {
         message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
         tone: "error",
         section: "quick-select",
+        pickRequestId,
       }));
     }
 
@@ -444,10 +451,11 @@ export async function quickSelectAction(formData: FormData) {
       message: packRequestId ? `Logged ${successCount} quick select item${successCount === 1 ? "" : "s"} for request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
       tone: "success",
       section: "quick-select",
+      pickRequestId,
     }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to log quick select items.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "quick-select" }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "quick-select", pickRequestId }));
   }
 }
 

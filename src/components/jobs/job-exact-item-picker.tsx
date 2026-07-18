@@ -68,20 +68,20 @@ export function JobExactItemPicker({
           onClick={() => setSelectedItemId("")}
           type="button"
         >
-          Clear Exact Item
+          Clear Reference Item
         </button>
       </div>
 
       {selectedItem ? (
         <div className="rounded-2xl border border-[#d8e6dd] bg-[#f7fbf8] px-4 py-3 text-sm text-[#254238]">
-          Linked exact item: <span className="font-semibold">{selectedItem.name}</span> ({selectedItem.item_code || "No code"}) •{" "}
+          Linked reference item: <span className="font-semibold">{selectedItem.name}</span> ({selectedItem.item_code || "No code"}) •{" "}
           {selectedItem.status}
         </div>
       ) : null}
 
       {!deferredSearch && !selectedItemId ? (
         <div className="rounded-2xl border border-[#ecdcc7] bg-white p-5 text-sm text-[#6f756c]">
-          Start typing to search inventory and link the exact piece for this request.
+          Start typing to search inventory and link a reference piece for this request.
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="rounded-2xl border border-[#ecdcc7] bg-white p-5 text-sm text-[#6f756c]">No inventory items match this search.</div>
