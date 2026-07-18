@@ -119,6 +119,12 @@ type InventoryThumbnailTransform = {
   quality: number;
 };
 
+type PostgrestLikeError = {
+  code?: string;
+  details?: string | null;
+  message?: string;
+};
+
 type InventoryCoverPhotoRow = Pick<
   InventoryPhotoRow,
   "id" | "item_id" | "storage_bucket" | "storage_path" | "thumbnail_storage_path" | "sort_order" | "created_at"
@@ -138,6 +144,7 @@ const INVENTORY_THUMBNAIL_TRANSFORM: InventoryThumbnailTransform = {
 const SIGNED_STORAGE_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SIGNED_STORAGE_URL_REFRESH_MARGIN_MS = 60 * 60 * 1000;
 const signedStorageUrlCache = new Map<string, CachedSignedStorageUrl>();
+const inventorySearchColumns = ["name", "sku", "item_code", "brand"] as const;
 
 function assertNoError(error: { message: string } | null, label: string) {
   if (error) {
@@ -177,6 +184,10 @@ function setCachedSignedStorageUrl(bucket: string, storagePath: string, url: str
   });
 }
 
+function getInventoryThumbnailSignedStorageCacheKey(storagePath: string) {
+  return `thumbnail:${storagePath}`;
+}
+
 function contentTypeToExtension(contentType: string | null) {
   if (!contentType) {
     return null;
@@ -188,6 +199,17 @@ function contentTypeToExtension(contentType: string | null) {
   if (contentType.includes("gif")) return "gif";
   if (contentType.includes("heic")) return "heic";
   return null;
+}
+
+function isMissingInventoryPhotoThumbnailColumnError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const value = error as PostgrestLikeError;
+  const haystack = `${value.code ?? ""} ${value.message ?? ""} ${value.details ?? ""}`.toLowerCase();
+
+  return haystack.includes("thumbnail_storage_path") && haystack.includes("inventory_photos");
 }
 
 function buildThumbnailStoragePath(storagePath: string, contentType?: string | null) {
@@ -249,6 +271,30 @@ async function createSignedStorageUrlMap(
   return signedUrlByBucketAndPath;
 }
 
+export async function createSignedInventoryThumbnailUrl(
+  bucket: string,
+  storagePath: string,
+  expiresInSeconds = SIGNED_STORAGE_URL_TTL_SECONDS,
+  supabaseClient?: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+) {
+  const cacheStoragePath = getInventoryThumbnailSignedStorageCacheKey(storagePath);
+  const cachedUrl = getCachedSignedStorageUrl(bucket, cacheStoragePath);
+  if (cachedUrl) {
+    return cachedUrl;
+  }
+
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storagePath, expiresInSeconds, {
+    transform: INVENTORY_THUMBNAIL_TRANSFORM,
+  });
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message ?? "Failed to create signed inventory thumbnail URL.");
+  }
+
+  setCachedSignedStorageUrl(bucket, cacheStoragePath, data.signedUrl, expiresInSeconds);
+  return data.signedUrl;
+}
+
 export async function createInventoryThumbnailAsset(
   bucket: string,
   storagePath: string,
@@ -284,25 +330,72 @@ export async function createInventoryThumbnailAsset(
   return thumbnailStoragePath;
 }
 
-async function ensureInventoryThumbnail(
-  photo: Pick<InventoryPhotoRow, "id" | "storage_bucket" | "storage_path" | "thumbnail_storage_path">,
+async function listInventoryCoverPhotoRows(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  itemIdBatch: string[],
 ) {
-  if (photo.thumbnail_storage_path) {
-    return photo.thumbnail_storage_path;
-  }
-
-  const thumbnailStoragePath = await createInventoryThumbnailAsset(photo.storage_bucket, photo.storage_path, supabase);
-
-  const { error: updateError } = await supabase
+  const { data: photoBatch, error: photosError } = await supabase
     .from("inventory_photos")
-    .update({ thumbnail_storage_path: thumbnailStoragePath })
-    .eq("id", photo.id);
-  if (updateError) {
-    throw new Error(updateError.message);
+    .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order,created_at")
+    .in("item_id", itemIdBatch)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (!photosError) {
+    return (photoBatch ?? []) as InventoryCoverPhotoRow[];
   }
 
-  return thumbnailStoragePath;
+  if (!isMissingInventoryPhotoThumbnailColumnError(photosError)) {
+    throw new Error(`Failed to load inventory thumbnails: ${photosError.message}`);
+  }
+
+  const { data: fallbackPhotoBatch, error: fallbackPhotosError } = await supabase
+    .from("inventory_photos")
+    .select("id,item_id,storage_bucket,storage_path,sort_order,created_at")
+    .in("item_id", itemIdBatch)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (fallbackPhotosError) {
+    throw new Error(`Failed to load inventory thumbnails: ${fallbackPhotosError.message}`);
+  }
+
+  return (fallbackPhotoBatch ?? []).map((photo) => ({
+    ...photo,
+    thumbnail_storage_path: null,
+  })) as InventoryCoverPhotoRow[];
+}
+
+async function listInventoryPhotoStorageRows(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  itemId: string,
+) {
+  const { data: photos, error: photosError } = await supabase
+    .from("inventory_photos")
+    .select("storage_bucket,storage_path,thumbnail_storage_path")
+    .eq("item_id", itemId);
+
+  if (!photosError) {
+    return (photos ?? []) as Array<Pick<InventoryPhotoRow, "storage_bucket" | "storage_path" | "thumbnail_storage_path">>;
+  }
+
+  if (!isMissingInventoryPhotoThumbnailColumnError(photosError)) {
+    throw new Error(`Failed to load inventory photos: ${photosError.message}`);
+  }
+
+  const { data: fallbackPhotos, error: fallbackPhotosError } = await supabase
+    .from("inventory_photos")
+    .select("storage_bucket,storage_path")
+    .eq("item_id", itemId);
+
+  if (fallbackPhotosError) {
+    throw new Error(`Failed to load inventory photos: ${fallbackPhotosError.message}`);
+  }
+
+  return (fallbackPhotos ?? []).map((photo) => ({
+    ...photo,
+    thumbnail_storage_path: null,
+  })) as Array<Pick<InventoryPhotoRow, "storage_bucket" | "storage_path" | "thumbnail_storage_path">>;
 }
 
 async function listInventoryItemRows<T>(
@@ -332,12 +425,21 @@ async function listInventoryItemRows<T>(
   return rows;
 }
 
+function splitInventorySearchTerms(query: string) {
+  return [...new Set(query.split(/[\s,]+/).map((term) => term.trim()).filter(Boolean))];
+}
+
+function buildInventorySearchClause(term: string) {
+  return inventorySearchColumns.map((column) => `${column}.ilike.%${term}%`).join(",");
+}
+
 function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, parsed: z.output<typeof listItemsSchema>) {
   let next = query;
 
   if (parsed.q) {
-    const term = parsed.q.replaceAll(",", " ");
-    next = next.or(`name.ilike.%${term}%,sku.ilike.%${term}%,item_code.ilike.%${term}%,brand.ilike.%${term}%`) as T;
+    for (const term of splitInventorySearchTerms(parsed.q)) {
+      next = next.or(buildInventorySearchClause(term)) as T;
+    }
   }
 
   if (parsed.status) {
@@ -495,18 +597,8 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
 
   for (let from = 0; from < itemIds.length; from += PHOTO_QUERY_BATCH_SIZE) {
     const itemIdBatch = itemIds.slice(from, from + PHOTO_QUERY_BATCH_SIZE);
-    const { data: photoBatch, error: photosError } = await supabase
-      .from("inventory_photos")
-      .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order,created_at")
-      .in("item_id", itemIdBatch)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-
-    if (photosError) {
-      throw new Error(`Failed to load inventory thumbnails: ${photosError.message}`);
-    }
-
-    photos.push(...(photoBatch ?? []));
+    const photoBatch = await listInventoryCoverPhotoRows(supabase, itemIdBatch);
+    photos.push(...photoBatch);
   }
 
   const firstPhotoByItemId = new Map<string, InventoryCoverPhotoRow>();
@@ -521,26 +613,21 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
   }
 
   const storageTargets: Array<{ itemId: string; bucket: string; storagePath: string }> = [];
+  const transformedTargets: Array<{ itemId: string; bucket: string; storagePath: string }> = [];
   for (const [itemId, photo] of firstPhotoByItemId.entries()) {
-    let storagePath = photo.thumbnail_storage_path;
-
-    if (!storagePath) {
-      try {
-        storagePath = await ensureInventoryThumbnail(photo, supabase);
-      } catch (error) {
-        console.error("Failed to generate inventory thumbnail asset", {
-          itemId,
-          photoId: photo.id,
-          error,
-        });
-        storagePath = photo.storage_path;
-      }
+    if (photo.thumbnail_storage_path) {
+      storageTargets.push({
+        itemId,
+        bucket: photo.storage_bucket,
+        storagePath: photo.thumbnail_storage_path,
+      });
+      continue;
     }
 
-    storageTargets.push({
+    transformedTargets.push({
       itemId,
       bucket: photo.storage_bucket,
-      storagePath,
+      storagePath: photo.storage_path,
     });
   }
 
@@ -557,6 +644,27 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
       thumbnailByItemId.set(target.itemId, signedUrl);
     }
   });
+
+  await Promise.all(
+    transformedTargets.map(async (target) => {
+      try {
+        const signedUrl = await createSignedInventoryThumbnailUrl(
+          target.bucket,
+          target.storagePath,
+          SIGNED_STORAGE_URL_TTL_SECONDS,
+          supabase,
+        );
+        thumbnailByItemId.set(target.itemId, signedUrl);
+      } catch (error) {
+        console.error("Failed to sign transformed inventory thumbnail", {
+          itemId: target.itemId,
+          bucket: target.bucket,
+          storagePath: target.storagePath,
+          error,
+        });
+      }
+    }),
+  );
 
   return thumbnailByItemId;
 }
@@ -666,19 +774,45 @@ export async function addPhotoRow(itemId: string, storagePath: string, sortOrder
     .select("*")
     .single();
 
-  assertNoError(error, "Failed to add photo row");
-  return assertData(data, "Failed to add photo row");
+  if (!error) {
+    return assertData(data, "Failed to add photo row");
+  }
+
+  if (!isMissingInventoryPhotoThumbnailColumnError(error)) {
+    assertNoError(error, "Failed to add photo row");
+  }
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("inventory_photos")
+    .insert({
+      item_id: parsed.itemId,
+      storage_path: parsed.storagePath,
+      sort_order: parsed.sortOrder,
+      storage_bucket: "inventory",
+    })
+    .select("*")
+    .single();
+
+  if (parsed.thumbnailStoragePath) {
+    const { error: cleanupError } = await supabase.storage.from("inventory").remove([parsed.thumbnailStoragePath]);
+    if (cleanupError) {
+      console.error("Failed to clean up inventory thumbnail after schema-compat fallback", {
+        itemId: parsed.itemId,
+        thumbnailStoragePath: parsed.thumbnailStoragePath,
+        error: cleanupError,
+      });
+    }
+  }
+
+  assertNoError(fallbackError, "Failed to add photo row");
+  return assertData(fallbackData, "Failed to add photo row");
 }
 
 export async function deleteItem(id: string) {
   const parsedId = uuidSchema.parse(id);
   const supabase = await createServerSupabaseClient();
 
-  const { data: photos, error: photosError } = await supabase
-    .from("inventory_photos")
-    .select("storage_bucket,storage_path,thumbnail_storage_path")
-    .eq("item_id", parsedId);
-  assertNoError(photosError, "Failed to load inventory photos");
+  const photos = await listInventoryPhotoStorageRows(supabase, parsedId);
 
   const pathsByBucket = new Map<string, string[]>();
   (photos ?? []).forEach((photo) => {
@@ -686,6 +820,8 @@ export async function deleteItem(id: string) {
     bucketPaths.push(photo.storage_path);
     if (photo.thumbnail_storage_path) {
       bucketPaths.push(photo.thumbnail_storage_path);
+    } else {
+      bucketPaths.push(buildThumbnailStoragePath(photo.storage_path));
     }
     pathsByBucket.set(photo.storage_bucket, bucketPaths);
   });

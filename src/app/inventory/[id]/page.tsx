@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
+import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
@@ -12,6 +13,7 @@ import {
   createInventoryThumbnailAsset,
   deleteItem,
   getItem,
+  listItemThumbnailUrls,
   listPhotos,
   removeInventoryAuditTag,
   updateItem,
@@ -360,11 +362,12 @@ export default async function ItemDetailPage({
   }
 
   const supabase = await createServerSupabaseClient();
-  const [{ data: locations }, photos, assignableJobs, activeAssignmentResult] = await Promise.all([
+  const [{ data: locations }, photos, assignableJobs, activeAssignmentResult, thumbnailByItemId] = await Promise.all([
     supabase.from("locations").select("id,name,kind").order("kind", { ascending: true }).order("name", { ascending: true }),
     listPhotos(id),
     listAssignableJobs(),
     supabase.from("job_items").select("id,job_id,checked_out_at").eq("item_id", id).is("checked_in_at", null).maybeSingle(),
+    listItemThumbnailUrls([id]),
   ]);
   if (activeAssignmentResult.error) {
     throw new Error(activeAssignmentResult.error.message);
@@ -416,10 +419,12 @@ export default async function ItemDetailPage({
     }),
   );
   const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
+  const inventoryThumbnailUrl = thumbnailByItemId.get(id) ?? null;
   const auditTags = (item.tags ?? []).filter((tag): tag is InventoryAuditTag => isInventoryAuditTag(tag));
 
   return (
     <section className="space-y-6">
+      <InventoryThumbnailCacheSeed itemId={item.id} thumbnailUrl={inventoryThumbnailUrl} />
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div>
           <p className="text-sm text-muted">Inventory Item</p>

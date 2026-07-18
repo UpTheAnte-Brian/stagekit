@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
+import { getCachedInventoryThumbnails, primeInventoryThumbnailCache } from "@/lib/inventory-thumbnail-cache";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -53,8 +54,10 @@ export function InventoryTable({
   emptyMessage?: string;
   showAuditTags?: boolean;
 }) {
-  const [thumbnailByItemId, setThumbnailByItemId] = useState<Record<string, string>>({});
   const itemIdsKey = items.map((item) => item.id).join(",");
+  const [thumbnailByItemId, setThumbnailByItemId] = useState<Record<string, string>>(() =>
+    getCachedInventoryThumbnails(itemIdsKey ? itemIdsKey.split(",") : []),
+  );
   const colSpan = showAuditTags ? 9 : 8;
 
   useEffect(() => {
@@ -62,6 +65,14 @@ export function InventoryTable({
 
     if (itemIds.length === 0) {
       setThumbnailByItemId({});
+      return;
+    }
+
+    const cachedThumbnails = getCachedInventoryThumbnails(itemIds);
+    setThumbnailByItemId(cachedThumbnails);
+
+    const missingItemIds = itemIds.filter((itemId) => !cachedThumbnails[itemId]);
+    if (missingItemIds.length === 0) {
       return;
     }
 
@@ -74,7 +85,7 @@ export function InventoryTable({
           headers: {
             "content-type": "application/json",
           },
-          body: JSON.stringify({ itemIds }),
+          body: JSON.stringify({ itemIds: missingItemIds }),
           cache: "no-store",
           signal: controller.signal,
         });
@@ -84,21 +95,24 @@ export function InventoryTable({
         }
 
         const payload = (await response.json()) as InventoryThumbnailResponse;
-        setThumbnailByItemId(payload.thumbnails ?? {});
+        const nextThumbnails = payload.thumbnails ?? {};
+        primeInventoryThumbnailCache(nextThumbnails);
+        setThumbnailByItemId((current) => ({
+          ...current,
+          ...nextThumbnails,
+        }));
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
 
         console.error("Failed to load inventory thumbnails", {
-          itemIds,
+          itemIds: missingItemIds,
           error,
         });
-        setThumbnailByItemId({});
       }
     }
 
-    setThumbnailByItemId({});
     void loadThumbnails();
 
     return () => {
