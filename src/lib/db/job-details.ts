@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Database } from "@/lib/supabase/database.types";
+import { listItemThumbnailUrls } from "@/lib/db/inventory";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
@@ -199,6 +200,7 @@ export type JobPickItem = {
   item_status: string;
   item_code: string;
   item_room: string | null;
+  thumbnail_url: string | null;
 };
 
 export type JobPackRequest = {
@@ -219,6 +221,7 @@ export type JobPackRequest = {
   requested_item_name: string | null;
   requested_item_code: string | null;
   requested_item_status: string | null;
+  requested_item_thumbnail_url: string | null;
   active_job_names: string[];
   picked_items: JobPickItem[];
   picked_count: number;
@@ -379,6 +382,7 @@ export async function getJobDetail(jobId: string) {
   const pickedItemIds = [...new Set((pickedItems ?? []).map((row) => row.item_id))];
   const sceneTemplateIds = [...new Set(sceneApplications.map((row) => row.scene_template_id))];
   const referencedItemIds = [...new Set([...assignedItemIds, ...requestedItemIds, ...pickedItemIds])];
+  const itemIdsNeedingThumbnails = [...new Set([...requestedItemIds, ...pickedItemIds])];
 
   const { data: referencedItems, error: referencedItemsError } =
     referencedItemIds.length === 0
@@ -388,6 +392,8 @@ export async function getJobDetail(jobId: string) {
   if (referencedItemsError) {
     throw new Error(referencedItemsError.message);
   }
+
+  const thumbnailUrlByItemId = await listItemThumbnailUrls(itemIdsNeedingThumbnails);
 
   const { data: activeRequestAssignments, error: activeRequestAssignmentsError } =
     requestedItemIds.length === 0
@@ -466,6 +472,7 @@ export async function getJobDetail(jobId: string) {
       item_status: item?.status ?? "unknown",
       item_code: item?.item_code ?? "unknown",
       item_room: item?.room ?? null,
+      thumbnail_url: thumbnailUrlByItemId.get(pickedItem.item_id) ?? null,
     };
   }) as JobPickItem[];
 
@@ -501,6 +508,7 @@ export async function getJobDetail(jobId: string) {
       requested_item_name: requestedItem?.name ?? null,
       requested_item_code: requestedItem?.item_code ?? null,
       requested_item_status: requestedItem?.status ?? null,
+      requested_item_thumbnail_url: request.requested_item_id ? thumbnailUrlByItemId.get(request.requested_item_id) ?? null : null,
       active_job_names:
         request.requested_item_id != null ? [...new Set((activeJobNamesByItemId[request.requested_item_id] ?? []).filter((name) => name !== job.name))] : [],
       picked_items: requestPickedItems,

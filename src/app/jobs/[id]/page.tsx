@@ -164,6 +164,23 @@ function SectionHeader({
   );
 }
 
+function ItemThumbnail({
+  href,
+  src,
+  alt,
+}: {
+  href: string;
+  src: string;
+  alt: string;
+}) {
+  return (
+    <Link className="block h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#f7f3ee]" href={href}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img alt={alt} className="h-full w-full object-cover" loading="lazy" src={src} />
+    </Link>
+  );
+}
+
 function buildCountLabel(count: number, singular: string, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -858,9 +875,21 @@ export default async function JobDetailPage({
                           Exact items actually logged for this request: {request.picked_count} of {request.quantity}
                         </p>
                         {request.requested_item_name ? (
-                          <p className={mutedTextClass}>
-                            Reference exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            {request.requested_item_thumbnail_url ? (
+                              <ItemThumbnail
+                                alt={`${request.requested_item_name} thumbnail`}
+                                href={`/inventory/${request.requested_item_id}`}
+                                src={request.requested_item_thumbnail_url}
+                              />
+                            ) : null}
+                            <div className="min-w-0">
+                              <p className={mutedTextClass}>
+                                Reference exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
+                              </p>
+                              {request.requested_item_thumbnail_url ? <p className={mutedTextClass}>Open Reference Item to see it larger.</p> : null}
+                            </div>
+                          </div>
                         ) : null}
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <p className={mutedTextClass}>
@@ -877,13 +906,24 @@ export default async function JobDetailPage({
                         <div className="mt-4 space-y-3">
                           {request.picked_items.map((pickedItem) => (
                             <div key={pickedItem.id} className="rounded-2xl border border-[#efe2d0] bg-[#fff8ef] p-3">
-                              <p className="font-semibold text-[#20322a]">
-                                {pickedItem.item_name} ({pickedItem.item_code})
-                              </p>
-                              <p className={`${mutedTextClass} mt-2`}>
-                                {pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}
-                              </p>
-                              {pickedItem.notes ? <p className={`${mutedTextClass} mt-2`}>Pick notes: {pickedItem.notes}</p> : null}
+                              <div className="flex items-start gap-3">
+                                {pickedItem.thumbnail_url ? (
+                                  <ItemThumbnail
+                                    alt={`${pickedItem.item_name} thumbnail`}
+                                    href={`/inventory/${pickedItem.item_id}`}
+                                    src={pickedItem.thumbnail_url}
+                                  />
+                                ) : null}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-[#20322a]">
+                                    {pickedItem.item_name} ({pickedItem.item_code})
+                                  </p>
+                                  <p className={`${mutedTextClass} mt-2`}>
+                                    {pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}
+                                  </p>
+                                  {pickedItem.notes ? <p className={`${mutedTextClass} mt-2`}>Pick notes: {pickedItem.notes}</p> : null}
+                                </div>
+                              </div>
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <Link className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`}>
                                   Open Picked Item
