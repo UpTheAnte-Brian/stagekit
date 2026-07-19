@@ -14,6 +14,10 @@ type ExactItem = {
   current_location_name: string | null;
 };
 
+function splitSearchTerms(query: string) {
+  return [...new Set(query.split(/[\s,]+/).map((term) => term.trim()).filter(Boolean))];
+}
+
 function matchesSearch(item: ExactItem, query: string) {
   if (!query) {
     return true;
@@ -24,7 +28,7 @@ function matchesSearch(item: ExactItem, query: string) {
     .join(" ")
     .toLowerCase();
 
-  return haystack.includes(query);
+  return splitSearchTerms(query).every((term) => haystack.includes(term));
 }
 
 export function JobExactItemPicker({
@@ -58,7 +62,7 @@ export function JobExactItemPicker({
           <input
             id={`${inputName}-search`}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, code, category, color, or location"
+            placeholder="Search by name, code, category, color, or location. Each word is matched separately."
             type="search"
             value={search}
           />

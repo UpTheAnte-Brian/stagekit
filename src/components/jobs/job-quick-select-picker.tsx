@@ -18,6 +18,10 @@ type InventoryThumbnailResponse = {
 
 const PAGE_SIZE = 18;
 
+function splitSearchTerms(query: string) {
+  return [...new Set(query.split(/[\s,]+/).map((term) => term.trim()).filter(Boolean))];
+}
+
 function matchesSearch(item: QuickPickItem, query: string) {
   if (!query) {
     return true;
@@ -28,7 +32,7 @@ function matchesSearch(item: QuickPickItem, query: string) {
     .join(" ")
     .toLowerCase();
 
-  return haystack.includes(query);
+  return splitSearchTerms(query).every((term) => haystack.includes(term));
 }
 
 export function JobQuickSelectPicker({ items }: { items: QuickPickItem[] }) {
@@ -118,7 +122,7 @@ export function JobQuickSelectPicker({ items }: { items: QuickPickItem[] }) {
           <input
             id="quick-select-search"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, SKU, category, color, or location"
+            placeholder="Search by name, SKU, category, color, or location. Each word is matched separately."
             type="search"
             value={search}
           />

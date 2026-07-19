@@ -185,6 +185,22 @@ function buildCountLabel(count: number, singular: string, plural = `${singular}s
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function getCheckoutButtonLabel(itemStatus: string, isCheckedOutToThisProject: boolean) {
+  if (isCheckedOutToThisProject) {
+    return "Already Checked Out";
+  }
+
+  if (itemStatus === "available") {
+    return "Check Out to Project";
+  }
+
+  if (itemStatus === "on_job") {
+    return "Checked Out Elsewhere";
+  }
+
+  return "Unavailable";
+}
+
 export default async function JobDetailPage({
   params,
   searchParams,
@@ -217,6 +233,7 @@ export default async function JobDetailPage({
   const completedAssignments = assignments.filter((assignment) => Boolean(assignment.checked_in_at));
   const activeAssignedItemIds = new Set(activeAssignments.map((assignment) => assignment.item_id));
   const openPackRequests = packRequests.filter((request) => request.status !== "cancelled");
+  const openPackRequestById = new Map(openPackRequests.map((request) => [request.id, request]));
   const fulfilledRequestCount = openPackRequests.filter((request) => request.picked_count >= request.quantity).length;
   const totalRequestedQuantity = openPackRequests.reduce((sum, request) => sum + request.quantity, 0);
   const openPackRequestsByRoom = Object.entries(
@@ -231,6 +248,7 @@ export default async function JobDetailPage({
     return a.localeCompare(b);
   });
   const extraPickedItems = pickedItems.filter((pickedItem) => !pickedItem.pack_request_id);
+  const pickedQueueItems = pickedItems.filter((pickedItem) => !activeAssignedItemIds.has(pickedItem.item_id));
   const exactItemIds = new Set(pickedItems.map((pickedItem) => pickedItem.item_id));
   const assignedItemIds = new Set(assignments.map((assignment) => assignment.item_id));
   const rememberedItemIds = new Set([...exactItemIds, ...assignedItemIds]);
@@ -380,7 +398,7 @@ export default async function JobDetailPage({
       <section className={sectionCardClass}>
         <SectionHeader
           title="Pack List"
-          description="Pack requests describe designer intent. Exact picks describe what actually got loaded or left at the house."
+          description="Pack requests describe intent. Reference items are examples. Picked items are candidate exact pieces. Checked-out items are the pieces physically committed to this project."
         />
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <MetricCard label="Requests Total" value={String(openPackRequests.length)} />
@@ -525,7 +543,7 @@ export default async function JobDetailPage({
             Mark as optional
           </label>
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Link Exact Inventory Item</label>
+            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Link Reference Inventory Item</label>
             <JobExactItemPicker
               defaultValue={editingPackRequest?.requested_item_id ?? ""}
               initialSearch={editingPackRequest?.requested_item_name ?? editingPackRequest?.request_text ?? ""}
@@ -541,7 +559,7 @@ export default async function JobDetailPage({
               }))}
             />
             <p className={`mt-2 ${mutedTextClass}`}>
-              Search here to find the exact piece already in inventory, or create it below if this request surfaced a missing item.
+              Search here to find the reference piece already in inventory, or create it below if this request surfaced a missing item.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 md:col-span-2">
@@ -617,7 +635,7 @@ export default async function JobDetailPage({
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Quick Select"
-            description="Log multiple exact items at once. Use this when one request has several real-piece options; if you do not choose an existing request, the web page will create a grouped bulk request for them."
+            description="Log multiple exact-item options at once. Use this when one request has several real-piece options. Logging picks does not replace the reference item or check anything out by itself."
             right={<span className={secondaryButtonClass}>Toggle</span>}
           />
         </summary>
@@ -626,11 +644,11 @@ export default async function JobDetailPage({
           <input name="job_id" type="hidden" value={id} />
           <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] p-4">
             <p className="font-semibold text-[#20322a]">
-              {activePickRequest ? `Logging for: ${activePickRequest.request_text}` : "Creating a generated bulk pack request"}
+              {activePickRequest ? `Adding pick options for: ${activePickRequest.request_text}` : "Creating a generated bulk pack request"}
             </p>
             <p className={`mt-2 ${mutedTextClass}`}>
               {activePickRequest
-                ? `This request currently has ${activePickRequest.picked_count} of ${activePickRequest.quantity} exact picks logged. You can add several options here, then remove the ones you do not want from the request card.`
+                ? `This request currently has ${activePickRequest.picked_count} exact option record${activePickRequest.picked_count === 1 ? "" : "s"} logged. You can add several options here, then remove the ones you do not want from the request card.`
                 : "Selected items will be grouped under a generated bulk pack request so they stay linked together."}
             </p>
             {activePickRequest ? (
@@ -870,9 +888,9 @@ export default async function JobDetailPage({
                       </div>
 
                       <div className="mt-4 space-y-2">
-                        {request.optional ? <p className={mutedTextClass}>Optional item</p> : null}
+                          {request.optional ? <p className={mutedTextClass}>Optional item</p> : null}
                         <p className={request.picked_count >= request.quantity ? "text-sm leading-6 text-emerald-700" : mutedTextClass}>
-                          Exact items actually logged for this request: {request.picked_count} of {request.quantity}
+                          Exact option records logged for this request: {request.picked_count}
                         </p>
                         {request.requested_item_name ? (
                           <div className="flex items-center gap-3">
@@ -893,7 +911,7 @@ export default async function JobDetailPage({
                         ) : null}
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <p className={mutedTextClass}>
-                            This linked item is just the reference piece for the request. Use Pick for Request to log one or more actual exact-item options, then remove any picks you do not want.
+                            This linked item is only the reference piece for the request. Use Add Pick Options to log one or more actual exact-item options. That does not replace the reference piece, and it does not check items out yet.
                           </p>
                         ) : null}
                         {request.active_job_names.length > 0 ? (
@@ -933,11 +951,7 @@ export default async function JobDetailPage({
                                   <input name="item_id" type="hidden" value={pickedItem.item_id} />
                                   <input name="section" type="hidden" value="pack-requests" />
                                   <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
-                                    {pickedItem.item_status === "available"
-                                      ? "Assign to Project"
-                                      : pickedItem.item_status === "on_job"
-                                        ? "Already Assigned"
-                                        : "Unavailable"}
+                                    {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
                                   </button>
                                 </form>
                                 <form action={deletePickedItemAction}>
@@ -979,16 +993,12 @@ export default async function JobDetailPage({
                             <input name="item_id" type="hidden" value={request.requested_item_id} />
                             <input name="section" type="hidden" value="pack-requests" />
                             <button className={secondaryButtonClass} disabled={assignDisabled} type="submit">
-                              {activeAssignedItemIds.has(request.requested_item_id)
-                                ? "Already Assigned"
-                                : request.requested_item_status !== "available"
-                                  ? "Unavailable"
-                                  : "Assign to Project"}
+                              {getCheckoutButtonLabel(request.requested_item_status ?? "unknown", activeAssignedItemIds.has(request.requested_item_id))}
                             </button>
                           </form>
                         ) : null}
                         <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "quick-select", pickRequestId: request.id })}>
-                          Pick for Request
+                          Add Pick Options
                         </Link>
                         {request.requested_item_id ? (
                           <form action={logPickedItemAction}>
@@ -997,7 +1007,7 @@ export default async function JobDetailPage({
                             <input name="pack_request_id" type="hidden" value={request.id} />
                             <input name="section" type="hidden" value="pack-requests" />
                             <button className={secondaryButtonClass} type="submit">
-                              Log Linked Exact Item
+                              Log Reference as Pick
                             </button>
                           </form>
                         ) : null}
@@ -1050,11 +1060,7 @@ export default async function JobDetailPage({
                     <input name="item_id" type="hidden" value={pickedItem.item_id} />
                     <input name="section" type="hidden" value="extra-items" />
                     <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
-                      {pickedItem.item_status === "available"
-                        ? "Assign to Project"
-                        : pickedItem.item_status === "on_job"
-                          ? "Already Assigned"
-                          : "Unavailable"}
+                      {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
                     </button>
                   </form>
                   <form action={deletePickedItemAction}>
@@ -1072,10 +1078,69 @@ export default async function JobDetailPage({
         </section>
       ) : null}
 
+      <section className={`${sectionCardClass} scroll-mt-6`} id="picked-queue">
+        <SectionHeader
+          title="Picked Queue"
+          description="These exact picks are logged for this project but not yet checked out. Use this as the trailer/load queue. As items are checked out, they disappear from here and move into Checked Out to Project."
+        />
+        <div className="mt-5 space-y-4">
+          {pickedQueueItems.length === 0 ? (
+            <p className={mutedTextClass}>No picked items are waiting for checkout.</p>
+          ) : (
+            pickedQueueItems.map((pickedItem) => {
+              const linkedRequest = pickedItem.pack_request_id ? openPackRequestById.get(pickedItem.pack_request_id) ?? null : null;
+
+              return (
+                <article key={pickedItem.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    {pickedItem.thumbnail_url ? (
+                      <ItemThumbnail alt={`${pickedItem.item_name} thumbnail`} href={`/inventory/${pickedItem.item_id}`} src={pickedItem.thumbnail_url} />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-lg font-semibold text-[#20322a]">
+                        {pickedItem.item_name} ({pickedItem.item_code})
+                      </p>
+                      <p className={`${mutedTextClass} mt-2`}>
+                        {pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}
+                      </p>
+                      <p className={`${mutedTextClass} mt-2`}>
+                        Source request: {linkedRequest ? `${linkedRequest.request_text}${linkedRequest.room ? ` • ${linkedRequest.room}` : ""}` : "Legacy unlinked pick"}
+                      </p>
+                      {pickedItem.notes ? <p className={`${mutedTextClass} mt-2`}>Pick notes: {pickedItem.notes}</p> : null}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`}>
+                      Open Picked Item
+                    </Link>
+                    <form action={assignItemAction}>
+                      <input name="job_id" type="hidden" value={id} />
+                      <input name="item_id" type="hidden" value={pickedItem.item_id} />
+                      <input name="section" type="hidden" value="assignments" />
+                      <button className={primaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
+                        {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
+                      </button>
+                    </form>
+                    <form action={deletePickedItemAction}>
+                      <input name="job_id" type="hidden" value={id} />
+                      <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
+                      <input name="section" type="hidden" value="picked-queue" />
+                      <button className={secondaryButtonClass} type="submit">
+                        Remove Pick
+                      </button>
+                    </form>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+
       <section className={`${sectionCardClass} scroll-mt-6`} id="assignments">
         <SectionHeader
-          title="Currently Assigned"
-          description="These items are currently checked out to this project. Use Check In when the item physically returns from the house or stage."
+          title="Checked Out to Project"
+          description="These items are currently checked out to this project. Treat this as the on-trailer / at-house list. Use Check In when the item physically returns from the house or stage."
         />
         <div className="mt-5 space-y-4">
           {activeAssignments.length === 0 ? (
