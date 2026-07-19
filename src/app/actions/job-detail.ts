@@ -203,11 +203,7 @@ export async function savePackRequestAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
   }
 
-  redirect(buildJobUrl(jobId, {
-    message: packRequestId ? "Pack request updated." : "Pack request added.",
-    tone: "success",
-    section: "pack-requests",
-  }));
+  redirect(`/jobs/${jobId}`);
 }
 
 export async function toggleOptionalAction(formData: FormData) {
