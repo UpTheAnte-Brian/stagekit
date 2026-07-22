@@ -78,6 +78,31 @@ function buildInventoryReturnTo(params: {
   return query.length > 0 ? `/inventory?${query}` : "/inventory";
 }
 
+function buildInventoryExportHref(params: {
+  q: string;
+  statusFilter?: InventoryItemStatus;
+  categoryFilter: string;
+  dispositionFilter?: "keep" | "dispose";
+}) {
+  const searchParams = new URLSearchParams();
+  if (params.q) {
+    searchParams.set("q", params.q);
+  }
+  if (params.statusFilter) {
+    searchParams.set("status", params.statusFilter);
+  }
+  if (params.categoryFilter) {
+    searchParams.set("category", params.categoryFilter);
+  }
+  if (params.dispositionFilter) {
+    searchParams.set("disposition", params.dispositionFilter);
+  }
+  searchParams.set("sort", "name_asc");
+  searchParams.set("includePhotos", "true");
+
+  return `/api/inventory/export?${searchParams.toString()}`;
+}
+
 async function createItemAction(formData: FormData) {
   "use server";
 
@@ -144,6 +169,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     dispositionFilter,
     page,
   });
+  const inventoryExportHref = buildInventoryExportHref({
+    q,
+    statusFilter,
+    categoryFilter,
+    dispositionFilter,
+  });
   const queryEntries = [
     ...(q ? ([["q", q]] as Array<[string, string]>) : []),
     ...(statusFilter ? ([["status", statusFilter]] as Array<[string, string]>) : []),
@@ -163,7 +194,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>
       ) : null}
 
-      <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm md:grid-cols-5" method="get">
+      <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm md:grid-cols-6" method="get">
         <datalist id="inventory-category-options">
           {inventoryCategorySuggestionValues.map((category) => (
             <option key={category} value={category} />
@@ -194,6 +225,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
         <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" type="submit">
           Apply Filters
         </button>
+        <Link
+          className="inline-flex items-center justify-center rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:border-accent/40"
+          href={inventoryExportHref}
+        >
+          Export JSON + Thumbnails
+        </Link>
       </form>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">

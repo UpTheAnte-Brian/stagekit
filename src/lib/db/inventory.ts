@@ -681,6 +681,54 @@ export async function listItemsForExport(
   };
 }
 
+export async function listAllItemsForExport(
+  params: ListItemsParams = {},
+  options: {
+    sort?: "created_at_desc" | "name_asc";
+  } = {},
+  supabaseClient?: InventorySupabaseClient,
+) {
+  const parsed = listItemsSchema.parse(params);
+  const rows = await listInventoryItemRows<Pick<
+    InventoryItemRow,
+    | "id"
+    | "sku"
+    | "item_code"
+    | "name"
+    | "brand"
+    | "category"
+    | "color"
+    | "material"
+    | "room"
+    | "dimensions"
+    | "status"
+    | "condition"
+    | "current_location_id"
+    | "marked_for_disposal"
+    | "estimated_listing_price_cents"
+    | "notes"
+    | "tags"
+  >>(
+    "id,sku,item_code,name,brand,category,color,material,room,dimensions,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,notes,tags",
+    (query) => {
+      const filtered = applyListItemFilters(query, parsed) as InventoryItemsListQuery;
+
+      if (options.sort === "name_asc") {
+        return filtered
+          .order("name", { ascending: true })
+          .order("item_code", { ascending: true })
+          .order("created_at", { ascending: false }) as InventoryItemsListQuery;
+      }
+
+      return filtered.order("created_at", { ascending: false }) as InventoryItemsListQuery;
+    },
+    supabaseClient,
+  );
+
+  const items = await attachLocationNames(rows, supabaseClient);
+  return items as InventoryExportRow[];
+}
+
 const STORAGE_SIGN_BATCH_SIZE = 100;
 const PHOTO_QUERY_BATCH_SIZE = 100;
 
