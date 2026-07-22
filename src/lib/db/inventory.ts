@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { inventoryAuditSuppressionTagByTag, inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
@@ -11,6 +12,7 @@ type InventoryItemRow = Database["public"]["Tables"]["inventory_items"]["Row"];
 type InventoryItemInsert = Database["public"]["Tables"]["inventory_items"]["Insert"];
 type InventoryItemUpdate = Database["public"]["Tables"]["inventory_items"]["Update"];
 type InventoryPhotoRow = Database["public"]["Tables"]["inventory_photos"]["Row"];
+type InventorySupabaseClient = SupabaseClient<Database>;
 
 const inventoryStatusSchema = z.enum(["available", "on_job", "packed", "maintenance", "sold", "lost"]);
 const inventoryConditionSchema = z.enum(["new", "like_new", "good", "fair", "rough"]);
@@ -94,6 +96,28 @@ export type InventoryListRow = Pick<
 export type PaginatedInventoryItems = {
   items: InventoryListRow[];
   totalCount: number;
+};
+
+export type InventoryExportRow = Pick<
+  InventoryItemRow,
+  | "id"
+  | "sku"
+  | "item_code"
+  | "name"
+  | "brand"
+  | "category"
+  | "color"
+  | "material"
+  | "room"
+  | "dimensions"
+  | "status"
+  | "condition"
+  | "marked_for_disposal"
+  | "estimated_listing_price_cents"
+  | "notes"
+  | "tags"
+> & {
+  current_location_name: string | null;
 };
 
 type InventoryItemsFilterQuery = {
@@ -225,8 +249,9 @@ function buildThumbnailStoragePath(storagePath: string, contentType?: string | n
 async function createSignedStorageUrlMap(
   storageTargets: Array<{ bucket: string; storagePath: string }>,
   expiresInSeconds = SIGNED_STORAGE_URL_TTL_SECONDS,
+  supabaseClient?: InventorySupabaseClient,
 ) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const signedUrlByBucketAndPath = new Map<string, string>();
   const pathsByBucket = new Map<string, string[]>();
 
@@ -275,7 +300,7 @@ export async function createSignedInventoryThumbnailUrl(
   bucket: string,
   storagePath: string,
   expiresInSeconds = SIGNED_STORAGE_URL_TTL_SECONDS,
-  supabaseClient?: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabaseClient?: InventorySupabaseClient,
 ) {
   const cacheStoragePath = getInventoryThumbnailSignedStorageCacheKey(storagePath);
   const cachedUrl = getCachedSignedStorageUrl(bucket, cacheStoragePath);
@@ -298,7 +323,7 @@ export async function createSignedInventoryThumbnailUrl(
 export async function createInventoryThumbnailAsset(
   bucket: string,
   storagePath: string,
-  supabaseClient?: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabaseClient?: InventorySupabaseClient,
 ) {
   const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storagePath, 5 * 60, {
@@ -331,7 +356,7 @@ export async function createInventoryThumbnailAsset(
 }
 
 async function listInventoryCoverPhotoRows(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: InventorySupabaseClient,
   itemIdBatch: string[],
 ) {
   const { data: photoBatch, error: photosError } = await supabase
@@ -367,7 +392,7 @@ async function listInventoryCoverPhotoRows(
 }
 
 async function listInventoryPhotoStorageRows(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: InventorySupabaseClient,
   itemId: string,
 ) {
   const { data: photos, error: photosError } = await supabase
@@ -401,8 +426,9 @@ async function listInventoryPhotoStorageRows(
 async function listInventoryItemRows<T>(
   selectClause: string,
   configure?: (query: InventoryItemsListQuery) => InventoryItemsListQuery,
+  supabaseClient?: InventorySupabaseClient,
 ) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const rows: T[] = [];
 
   for (let from = 0; ; from += INVENTORY_PAGE_SIZE) {
@@ -469,8 +495,8 @@ function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, par
 
 async function attachLocationNames<
   T extends Pick<InventoryItemRow, "current_location_id" | "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags">
->(rows: T[]) {
-  const supabase = await createServerSupabaseClient();
+>(rows: T[], supabaseClient?: InventorySupabaseClient): Promise<Array<T & { current_location_name: string | null }>> {
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const locationIds = [
     ...new Set(rows.map((row) => row.current_location_id).filter((value): value is string => Boolean(value))),
   ];
@@ -490,7 +516,7 @@ async function attachLocationNames<
   return rows.map((row) => ({
     ...row,
     current_location_name: row.current_location_id ? locationNamesById.get(row.current_location_id) ?? null : null,
-  })) as InventoryListRow[];
+  }));
 }
 
 export async function countItems(params: ListItemsParams = {}) {
@@ -513,9 +539,10 @@ export async function listItemsPage(
     pageSize: number;
     sort?: "created_at_desc" | "name_asc";
   },
+  supabaseClient?: InventorySupabaseClient,
 ): Promise<PaginatedInventoryItems> {
   const parsed = listItemsSchema.parse(params);
-  const supabase = await createServerSupabaseClient();
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const from = Math.max(0, (pagination.page - 1) * pagination.pageSize);
   const to = from + pagination.pageSize - 1;
 
@@ -555,6 +582,7 @@ export async function listItemsPage(
         | "tags"
       >
     >),
+    supabase,
   );
 
   return {
@@ -571,23 +599,93 @@ export async function listItemCategories() {
   return [...new Set(rows.map((row) => row.category).filter((value): value is string => Boolean(value)))];
 }
 
-export async function listItems(params: ListItemsParams = {}) {
+export async function listItems(params: ListItemsParams = {}, supabaseClient?: InventorySupabaseClient) {
   const parsed = listItemsSchema.parse(params);
   const rows = await listInventoryItemRows<Pick<
     InventoryItemRow,
     "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
-  >>("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", (query) =>
-    applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery,
+  >>(
+    "id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags",
+    (query) => applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery,
+    supabaseClient,
   );
 
-  return attachLocationNames(rows);
+  return attachLocationNames(rows, supabaseClient);
+}
+
+export async function listItemsForExport(
+  params: ListItemsParams = {},
+  pagination: {
+    page: number;
+    pageSize: number;
+    sort?: "created_at_desc" | "name_asc";
+  },
+  supabaseClient?: InventorySupabaseClient,
+): Promise<{ items: InventoryExportRow[]; totalCount: number }> {
+  const parsed = listItemsSchema.parse(params);
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
+  const from = Math.max(0, (pagination.page - 1) * pagination.pageSize);
+  const to = from + pagination.pageSize - 1;
+
+  let query = supabase
+    .from("inventory_items")
+    .select(
+      "id,sku,item_code,name,brand,category,color,material,room,dimensions,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,notes,tags",
+      {
+        count: "exact",
+      },
+    ) as unknown as InventoryItemsListQuery;
+
+  query = applyListItemFilters(query, parsed) as InventoryItemsListQuery;
+  if (pagination.sort === "name_asc") {
+    query = query
+      .order("name", { ascending: true })
+      .order("item_code", { ascending: true })
+      .order("created_at", { ascending: false }) as InventoryItemsListQuery;
+  } else {
+    query = query.order("created_at", { ascending: false }) as InventoryItemsListQuery;
+  }
+
+  const { data, error, count } = await query.range(from, to);
+  assertNoError(error, "Failed to list inventory export items");
+
+  const items = await attachLocationNames(
+    ((data ?? []) as Array<
+      Pick<
+        InventoryItemRow,
+        | "id"
+        | "sku"
+        | "item_code"
+        | "name"
+        | "brand"
+        | "category"
+        | "color"
+        | "material"
+        | "room"
+        | "dimensions"
+        | "status"
+        | "condition"
+        | "current_location_id"
+        | "marked_for_disposal"
+        | "estimated_listing_price_cents"
+        | "notes"
+        | "tags"
+      >
+    >),
+    supabase,
+  );
+
+  return {
+    items: items as InventoryExportRow[],
+    totalCount: count ?? 0,
+  };
 }
 
 const STORAGE_SIGN_BATCH_SIZE = 100;
 const PHOTO_QUERY_BATCH_SIZE = 100;
 
-export async function listItemThumbnailUrls(itemIds: string[]) {
-  const supabase = await createServerSupabaseClient();
+export async function listItemThumbnailUrls(itemIds: string[], supabaseClient?: InventorySupabaseClient) {
+  const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const thumbnailByItemId = new Map<string, string>();
 
   if (itemIds.length === 0) {
@@ -645,6 +743,8 @@ export async function listItemThumbnailUrls(itemIds: string[]) {
       bucket: target.bucket,
       storagePath: target.storagePath,
     })),
+    SIGNED_STORAGE_URL_TTL_SECONDS,
+    supabase,
   );
 
   storageTargets.forEach((target) => {
