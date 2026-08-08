@@ -302,17 +302,19 @@ async function assignToProjectAction(formData: FormData) {
 
   try {
     await assignItemToJob(jobId, itemId);
-    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Item assigned to project.", returnTo }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to assign item to project.";
     redirect(appendSearchParams(`/inventory/${itemId}`, { message: nextMessage, returnTo }));
   }
+
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Item assigned to project.", returnTo }));
 }
 
 type LocationOption = {
   id: string;
   name: string;
   kind: string;
+  source_job_id: string | null;
 };
 
 const locationKindLabels: Record<string, string> = {
@@ -320,6 +322,7 @@ const locationKindLabels: Record<string, string> = {
   unit: "Homes / Units",
   truck: "Trucks",
   client: "Client Sites",
+  project: "Active Project Houses",
   other: "Other",
 };
 
@@ -374,7 +377,7 @@ export default async function ItemDetailPage({
 
   const supabase = await createServerSupabaseClient();
   const [{ data: locations }, photos, assignableJobs, activeAssignmentResult, thumbnailByItemId] = await Promise.all([
-    supabase.from("locations").select("id,name,kind").order("kind", { ascending: true }).order("name", { ascending: true }),
+    supabase.from("locations").select("id,name,kind,source_job_id").order("kind", { ascending: true }).order("name", { ascending: true }),
     listPhotos(id),
     listAssignableJobs(),
     supabase.from("job_items").select("id,job_id,checked_out_at").eq("item_id", id).is("checked_in_at", null).maybeSingle(),
@@ -383,7 +386,12 @@ export default async function ItemDetailPage({
   if (activeAssignmentResult.error) {
     throw new Error(activeAssignmentResult.error.message);
   }
-  const locationGroups = groupLocations((locations ?? []) as LocationOption[]);
+  const activeJobIds = new Set(assignableJobs.map((job) => job.id));
+  const locationGroups = groupLocations(
+    ((locations ?? []) as LocationOption[]).filter(
+      (location) => !location.source_job_id || activeJobIds.has(location.source_job_id) || location.id === item.current_location_id,
+    ),
+  );
   const activeAssignmentJobId = activeAssignmentResult.data?.job_id ?? null;
   const { data: activeAssignmentJobData, error: activeAssignmentJobError } =
     activeAssignmentJobId == null
@@ -440,6 +448,9 @@ export default async function ItemDetailPage({
         <div>
           <p className="text-sm text-muted">Inventory Item</p>
           <h1 className="text-2xl font-semibold">{item.name}</h1>
+          <p className="mt-1 text-sm text-muted">
+            StageKit item code: <span className="font-medium text-foreground">{item.item_code}</span>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(item.status)}`}>{item.status}</span>
@@ -590,9 +601,10 @@ export default async function ItemDetailPage({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="sku">
-              SKU
+              External SKU <span className="font-normal text-muted">(optional)</span>
             </label>
             <input id="sku" name="sku" defaultValue={item.sku ?? ""} />
+            <p className="mt-1 text-xs text-muted">Use only an existing vendor, barcode, or other outside reference. Your StageKit item code is assigned automatically.</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="brand">

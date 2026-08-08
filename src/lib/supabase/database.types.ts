@@ -644,6 +644,7 @@ export type Database = {
           name: string
           notes: string | null
           postal: string | null
+          source_job_id: string | null
           state: string | null
         }
         Insert: {
@@ -661,6 +662,7 @@ export type Database = {
           name: string
           notes?: string | null
           postal?: string | null
+          source_job_id?: string | null
           state?: string | null
         }
         Update: {
@@ -678,9 +680,18 @@ export type Database = {
           name?: string
           notes?: string | null
           postal?: string | null
+          source_job_id?: string | null
           state?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "locations_source_job_id_fkey"
+            columns: ["source_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

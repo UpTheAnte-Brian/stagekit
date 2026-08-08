@@ -13,6 +13,10 @@ type InventoryItemInsert = Database["public"]["Tables"]["inventory_items"]["Inse
 type InventoryItemUpdate = Database["public"]["Tables"]["inventory_items"]["Update"];
 type InventoryPhotoRow = Database["public"]["Tables"]["inventory_photos"]["Row"];
 type InventorySupabaseClient = SupabaseClient<Database>;
+type ProjectLocationJob = Pick<
+  Database["public"]["Tables"]["jobs"]["Row"],
+  "id" | "name" | "status" | "address1" | "address2" | "address_label" | "city" | "state" | "postal" | "latitude" | "longitude" | "geocoded_at"
+>;
 
 const inventoryStatusSchema = z.enum(["available", "on_job", "packed", "maintenance", "sold", "lost"]);
 const inventoryConditionSchema = z.enum(["new", "like_new", "good", "fair", "rough"]);
@@ -70,6 +74,48 @@ const assignItemSchema = z.object({
 const checkInItemSchema = z.object({
   jobItemId: uuidSchema,
 });
+
+function projectAddressLabel(job: ProjectLocationJob) {
+  return job.address_label ?? ([job.address1, job.city, job.state, job.postal].filter(Boolean).join(", ") || null);
+}
+
+async function ensureProjectLocation(supabase: InventorySupabaseClient, jobId: string) {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("id,name,status,address1,address2,address_label,city,state,postal,latitude,longitude,geocoded_at")
+    .eq("id", jobId)
+    .single();
+  assertNoError(error, "Failed to load project");
+
+  const job = assertData(data, "Project not found") as ProjectLocationJob;
+  if (job.status !== "active") {
+    throw new Error("Only active projects can receive inventory items.");
+  }
+
+  const { data: location, error: locationError } = await supabase
+    .from("locations")
+    .upsert(
+      {
+        source_job_id: job.id,
+        name: job.name,
+        kind: "project",
+        address1: job.address1,
+        address2: job.address2,
+        city: job.city,
+        state: job.state,
+        postal: job.postal,
+        address_label: projectAddressLabel(job),
+        latitude: job.latitude,
+        longitude: job.longitude,
+        geocoded_at: job.geocoded_at,
+      },
+      { onConflict: "source_job_id" },
+    )
+    .select("id")
+    .single();
+  assertNoError(locationError, "Failed to prepare project location");
+  return assertData(location, "Failed to prepare project location");
+}
 
 export type InventoryItemStatus = z.infer<typeof inventoryStatusSchema>;
 export type InventoryItemCondition = z.infer<typeof inventoryConditionSchema>;
@@ -1029,6 +1075,8 @@ export async function assignItemToJob(jobId: string, itemId: string) {
     throw new Error(`Item is not available. Current status: ${item?.status ?? "unknown"}.`);
   }
 
+  const projectLocation = await ensureProjectLocation(supabase, parsed.jobId);
+
   const { data, error } = await supabase
     .from("job_items")
     .insert({
@@ -1042,7 +1090,7 @@ export async function assignItemToJob(jobId: string, itemId: string) {
 
   const { error: itemStatusError } = await supabase
     .from("inventory_items")
-    .update({ status: "on_job" })
+    .update({ status: "on_job", current_location_id: projectLocation.id })
     .eq("id", parsed.itemId);
   assertNoError(itemStatusError, "Failed to update item status to on_job");
 

@@ -799,6 +799,15 @@ export async function assignItemToJob(jobId: string, itemId: string) {
     throw new Error(`Item is not available. Current status: ${item.status}.`);
   }
 
+  const { data: projectLocation, error: projectLocationError } = await supabase
+    .from("locations")
+    .select("id")
+    .eq("source_job_id", jobId)
+    .single();
+  if (projectLocationError) {
+    throw new Error(`Failed to load project location: ${projectLocationError.message}`);
+  }
+
   const { error: insertError } = await supabase.from("job_items").insert({
     job_id: jobId,
     item_id: itemId,
@@ -809,7 +818,10 @@ export async function assignItemToJob(jobId: string, itemId: string) {
     throw new Error(insertError.message);
   }
 
-  const { error: updateError } = await supabase.from("inventory_items").update({ status: "on_job" }).eq("id", itemId);
+  const { error: updateError } = await supabase
+    .from("inventory_items")
+    .update({ status: "on_job", current_location_id: projectLocation.id })
+    .eq("id", itemId);
   if (updateError) {
     throw new Error(updateError.message);
   }

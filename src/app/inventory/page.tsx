@@ -260,9 +260,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Add Item</h2>
+        <p className="mt-1 text-sm text-muted">
+          StageKit assigns the item code automatically when you save. Leave the optional SKU blank unless the item already has a vendor or barcode reference.
+        </p>
         <form action={createItemAction} className="mt-3 grid gap-3 md:grid-cols-5">
           <input name="name" placeholder="Name" required />
-          <input name="sku" placeholder="SKU" />
+          <input aria-label="Optional external SKU" name="sku" placeholder="Optional SKU (vendor/barcode)" />
           <input list="inventory-category-options" name="category" placeholder="Tables / Coffee" />
           <select name="status" defaultValue="available">
             {statusOptions.map((status) => (
