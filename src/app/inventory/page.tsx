@@ -4,16 +4,19 @@ import { redirect } from "next/navigation";
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
 import { InventoryTable } from "@/components/inventory/inventory-table";
+import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { inventoryCategorySuggestionValues, sortInventoryCategories } from "@/lib/inventory-taxonomy";
 import {
   countItems,
   createItem,
   listItemCategories,
   listItemsPage,
+  updateItem,
   type InventoryItemCondition,
   type InventoryItemStatus,
 } from "@/lib/db/inventory";
 import { inventoryAuditTagConfig } from "@/lib/inventory-audit";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
 const conditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
@@ -31,6 +34,20 @@ function readString(value: FormDataEntryValue | null) {
 
 function toNullableText(value: string) {
   return value.length > 0 ? value : null;
+}
+
+function parseCurrencyToCents(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replaceAll(",", "").replaceAll("$", "");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+    return undefined;
+  }
+
+  const amount = Number.parseFloat(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : undefined;
 }
 
 function parseStatus(value: string): InventoryItemStatus | undefined {
@@ -125,6 +142,37 @@ async function createItemAction(formData: FormData) {
   redirect(`/inventory/${item.id}`);
 }
 
+async function quickUpdateItemAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const returnTo = normalizeInventoryReturnTo(readString(formData.get("return_to"))) ?? "/inventory";
+  const name = readString(formData.get("name"));
+  const estimatedListingPrice = parseCurrencyToCents(readString(formData.get("estimated_listing_price_cents")));
+
+  if (!itemId || !name) {
+    redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}message=${encodeURIComponent("Item name is required.")}`);
+  }
+
+  if (estimatedListingPrice === undefined) {
+    redirect(
+      `${returnTo}${returnTo.includes("?") ? "&" : "?"}message=${encodeURIComponent("List price must be a valid dollar amount.")}`,
+    );
+  }
+
+  await updateItem(itemId, {
+    name,
+    category: toNullableText(readString(formData.get("category"))),
+    status: parseStatus(readString(formData.get("status"))),
+    condition: parseCondition(readString(formData.get("condition"))),
+    marked_for_disposal: formData.get("marked_for_disposal") === "on",
+    estimated_listing_price_cents: estimatedListingPrice,
+    current_location_id: toNullableText(readString(formData.get("current_location_id"))),
+  });
+
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}message=${encodeURIComponent("Item updated.")}`);
+}
+
 export default async function InventoryPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const q = firstValue(params.q) ?? "";
@@ -141,7 +189,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     disposition: dispositionFilter,
   };
 
-  const [pageResult, totalInventoryCount, itemCategories, auditCounts] = await Promise.all([
+  const supabase = await createServerSupabaseClient();
+  const [pageResult, totalInventoryCount, itemCategories, auditCounts, locationResult] = await Promise.all([
     listItemsPage(filters, {
       page,
       pageSize: INVENTORY_TABLE_PAGE_SIZE,
@@ -154,7 +203,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
         count: await countItems({ auditTag: entry.tag }),
       })),
     ),
+    supabase.from("locations").select("id,name,kind").order("kind", { ascending: true }).order("name", { ascending: true }),
   ]);
+
+  if (locationResult.error) {
+    throw new Error(`Failed to load locations: ${locationResult.error.message}`);
+  }
 
   const categories = sortInventoryCategories([
     ...new Set([
@@ -196,7 +250,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm md:grid-cols-6" method="get">
         <datalist id="inventory-category-options">
-          {inventoryCategorySuggestionValues.map((category) => (
+          {categories.map((category) => (
             <option key={category} value={category} />
           ))}
         </datalist>
@@ -289,7 +343,16 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted">{showingCountLabel}</div>
-        <InventoryTable items={pageResult.items} returnTo={inventoryReturnTo} />
+        <InventoryTable
+          items={pageResult.items}
+          locationOptions={(locationResult.data ?? []).map((location) => ({
+            id: location.id,
+            name: location.name,
+            kind: location.kind,
+          }))}
+          onQuickUpdate={quickUpdateItemAction}
+          returnTo={inventoryReturnTo}
+        />
         <InventoryPagination
           basePath="/inventory"
           page={page}
