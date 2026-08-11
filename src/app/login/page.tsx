@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { FlashMessage } from "@/components/web/flash-message";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function readString(value: FormDataEntryValue | null) {
@@ -50,11 +51,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
     <section className="mx-auto mt-10 max-w-md rounded-2xl border border-border bg-surface p-6 shadow-sm">
       <h1 className="text-2xl font-semibold">StageKit</h1>
       <p className="mt-1 text-sm text-muted">Sign in or create an account to manage inventory and jobs.</p>
-      {message ? (
-        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {message}
-        </p>
-      ) : null}
+      {message ? <div className="mt-4"><FlashMessage message={message} tone="error" /></div> : null}
       <form action={authAction} className="mt-6 space-y-4">
         <input type="hidden" name="next" value={nextPath} />
         <div>

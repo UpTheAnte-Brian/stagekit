@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
 import { InventoryTable } from "@/components/inventory/inventory-table";
+import { FlashMessage } from "@/components/web/flash-message";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { inventoryCategorySuggestionValues, sortInventoryCategories } from "@/lib/inventory-taxonomy";
 import {
@@ -244,9 +245,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     <section className="space-y-6">
       <InventoryHistoryMarker />
 
-      {message ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>
-      ) : null}
+      {message ? <FlashMessage message={message} tone={message.toLowerCase().includes("updated") ? "success" : "warning"} /> : null}
 
       <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm md:grid-cols-6" method="get">
         <datalist id="inventory-category-options">

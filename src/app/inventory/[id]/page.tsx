@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
 import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
+import { FlashMessage } from "@/components/web/flash-message";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
@@ -461,9 +462,7 @@ export default async function ItemDetailPage({
         </div>
       </header>
 
-      {message ? (
-        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p>
-      ) : null}
+      {message ? <FlashMessage message={message} /> : null}
 
       {auditTags.length > 0 ? (
         <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 shadow-sm">

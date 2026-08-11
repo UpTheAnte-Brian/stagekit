@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { FlashMessage } from "@/components/web/flash-message";
 import { listJobsWithStats, type JobWithStats } from "@/lib/db/jobs";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -93,9 +94,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
 
   return (
     <section className="space-y-6">
-      {message ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>
-      ) : null}
+      {message ? <FlashMessage message={message} tone="warning" /> : null}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">

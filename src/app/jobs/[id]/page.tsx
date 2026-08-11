@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { JobExactItemPicker } from "@/components/jobs/job-exact-item-picker";
 import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
+import { FlashMessage } from "@/components/web/flash-message";
 import {
   getJobDetail,
   listPackListInventoryItems,
@@ -317,16 +318,7 @@ export default async function JobDetailPage({
         </div>
       </header>
 
-      {message ? (
-        <p
-          className={[
-            "rounded-2xl border px-4 py-3 text-sm shadow-sm",
-            tone === "error" ? "border-rose-200 bg-rose-50 text-rose-900" : "border-emerald-200 bg-emerald-50 text-emerald-900",
-          ].join(" ")}
-        >
-          {message}
-        </p>
-      ) : null}
+      {message ? <FlashMessage clearSearchParams={["tone"]} message={message} tone={tone} /> : null}
 
       <details className={`${sectionCardClass} scroll-mt-6`} id="edit-project" open={detailsOpen(activeSection, "edit-project")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
