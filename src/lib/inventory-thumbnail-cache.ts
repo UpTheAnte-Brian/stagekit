@@ -1,6 +1,12 @@
-const INVENTORY_THUMBNAIL_CACHE_STORAGE_KEY = "stagekit:inventory-thumbnails";
+const INVENTORY_THUMBNAIL_CACHE_STORAGE_KEY = "stagekit:inventory-thumbnails:v2";
+const INVENTORY_THUMBNAIL_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-const thumbnailCache = new Map<string, string>();
+type CachedThumbnail = {
+  expiresAt: number;
+  url: string;
+};
+
+const thumbnailCache = new Map<string, CachedThumbnail>();
 let didHydrateThumbnailCache = false;
 
 function canUseSessionStorage() {
@@ -20,10 +26,12 @@ function hydrateThumbnailCache() {
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Record<string, string>;
-    Object.entries(parsed).forEach(([itemId, url]) => {
-      if (itemId && url) {
-        thumbnailCache.set(itemId, url);
+    const parsed = JSON.parse(rawValue) as Record<string, CachedThumbnail>;
+    const now = Date.now();
+
+    Object.entries(parsed).forEach(([itemId, cachedThumbnail]) => {
+      if (itemId && cachedThumbnail?.url && cachedThumbnail.expiresAt > now) {
+        thumbnailCache.set(itemId, cachedThumbnail);
       }
     });
   } catch {
@@ -43,9 +51,11 @@ export function getCachedInventoryThumbnails(itemIds: string[]) {
   hydrateThumbnailCache();
 
   return itemIds.reduce<Record<string, string>>((accumulator, itemId) => {
-    const cachedUrl = thumbnailCache.get(itemId);
-    if (cachedUrl) {
-      accumulator[itemId] = cachedUrl;
+    const cachedThumbnail = thumbnailCache.get(itemId);
+    if (cachedThumbnail?.expiresAt && cachedThumbnail.expiresAt > Date.now()) {
+      accumulator[itemId] = cachedThumbnail.url;
+    } else if (cachedThumbnail) {
+      thumbnailCache.delete(itemId);
     }
     return accumulator;
   }, {});
@@ -55,12 +65,14 @@ export function primeInventoryThumbnailCache(thumbnails: Record<string, string>)
   hydrateThumbnailCache();
 
   let didChange = false;
+  const expiresAt = Date.now() + INVENTORY_THUMBNAIL_CACHE_TTL_MS;
   Object.entries(thumbnails).forEach(([itemId, url]) => {
-    if (!itemId || !url || thumbnailCache.get(itemId) === url) {
+    const cachedThumbnail = thumbnailCache.get(itemId);
+    if (!itemId || !url || (cachedThumbnail?.url === url && cachedThumbnail.expiresAt > Date.now())) {
       return;
     }
 
-    thumbnailCache.set(itemId, url);
+    thumbnailCache.set(itemId, { url, expiresAt });
     didChange = true;
   });
 
