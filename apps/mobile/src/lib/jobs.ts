@@ -130,7 +130,7 @@ async function listInventoryPhotosForItems(itemIds: string[]) {
   for (const itemIdChunk of chunkArray(itemIds, 100)) {
     const { data, error } = await supabase
       .from("inventory_photos")
-      .select("id,item_id,storage_bucket,storage_path,sort_order")
+      .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order")
       .in("item_id", itemIdChunk)
       .order("sort_order", { ascending: true });
 

@@ -9,6 +9,7 @@ const inventoryExportQuerySchema = z.object({
   status: z.enum(["available", "on_job", "packed", "maintenance", "sold", "lost"]).optional(),
   category: z.string().trim().min(1).optional(),
   disposition: z.enum(["keep", "dispose"]).optional(),
+  label: z.string().trim().min(1).max(80).optional(),
   sort: z.enum(["created_at_desc", "name_asc"]).default("name_asc"),
   includePhotos: z
     .union([z.literal("1"), z.literal("true"), z.literal("0"), z.literal("false")])
@@ -35,9 +36,10 @@ function buildExportFilename(filters: {
   status?: string;
   category?: string;
   disposition?: string;
+  label?: string;
 }) {
   const dateSegment = new Date().toISOString().slice(0, 10);
-  const descriptor = [filters.q, filters.status, filters.category, filters.disposition]
+  const descriptor = [filters.q, filters.status, filters.category, filters.disposition, filters.label]
     .filter(Boolean)
     .join("-")
     .toLowerCase()
@@ -65,6 +67,7 @@ export async function GET(request: Request) {
       status: url.searchParams.get("status") ?? undefined,
       category: url.searchParams.get("category") ?? undefined,
       disposition: url.searchParams.get("disposition") ?? undefined,
+      label: url.searchParams.get("label") ?? undefined,
       sort: url.searchParams.get("sort") ?? undefined,
       includePhotos: url.searchParams.get("includePhotos") ?? undefined,
     });
@@ -75,6 +78,7 @@ export async function GET(request: Request) {
         status: parsed.status,
         category: parsed.category,
         disposition: parsed.disposition,
+        label: parsed.label,
       },
       {
         sort: parsed.sort,
@@ -119,6 +123,7 @@ export async function GET(request: Request) {
           status: parsed.status ?? null,
           category: parsed.category ?? null,
           disposition: parsed.disposition ?? null,
+          label: parsed.label ?? null,
           sort: parsed.sort,
           includePhotos: parsed.includePhotos,
         },

@@ -11,12 +11,14 @@ import {
   countItems,
   createItem,
   listItemCategories,
+  listInventoryLabels,
   listItemsPage,
   updateItem,
   type InventoryItemCondition,
   type InventoryItemStatus,
 } from "@/lib/db/inventory";
 import { inventoryAuditTagConfig } from "@/lib/inventory-audit";
+import { formatInventoryLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
@@ -63,6 +65,10 @@ function parseDisposition(value: string): "keep" | "dispose" | undefined {
   return value === "keep" || value === "dispose" ? value : undefined;
 }
 
+function parseLabel(value: string) {
+  return value.trim().slice(0, 80);
+}
+
 function parsePage(value: string | undefined) {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -73,6 +79,7 @@ function buildInventoryReturnTo(params: {
   statusFilter?: InventoryItemStatus;
   categoryFilter: string;
   dispositionFilter?: "keep" | "dispose";
+  labelFilter: string;
   page: number;
 }) {
   const searchParams = new URLSearchParams();
@@ -88,6 +95,9 @@ function buildInventoryReturnTo(params: {
   if (params.dispositionFilter) {
     searchParams.set("disposition", params.dispositionFilter);
   }
+  if (params.labelFilter) {
+    searchParams.set("label", params.labelFilter);
+  }
   if (params.page > 1) {
     searchParams.set("page", String(params.page));
   }
@@ -101,6 +111,7 @@ function buildInventoryExportHref(params: {
   statusFilter?: InventoryItemStatus;
   categoryFilter: string;
   dispositionFilter?: "keep" | "dispose";
+  labelFilter: string;
 }) {
   const searchParams = new URLSearchParams();
   if (params.q) {
@@ -114,6 +125,9 @@ function buildInventoryExportHref(params: {
   }
   if (params.dispositionFilter) {
     searchParams.set("disposition", params.dispositionFilter);
+  }
+  if (params.labelFilter) {
+    searchParams.set("label", params.labelFilter);
   }
   searchParams.set("sort", "name_asc");
   searchParams.set("includePhotos", "true");
@@ -180,6 +194,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
   const statusFilter = parseStatus(firstValue(params.status) ?? "");
   const categoryFilter = firstValue(params.category) ?? "";
   const dispositionFilter = parseDisposition(firstValue(params.disposition) ?? "");
+  const labelFilter = parseLabel(firstValue(params.label) ?? "");
   const page = parsePage(firstValue(params.page));
   const message = firstValue(params.message);
 
@@ -188,22 +203,25 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     status: statusFilter,
     category: categoryFilter || undefined,
     disposition: dispositionFilter,
+    label: labelFilter || undefined,
   };
 
   const supabase = await createServerSupabaseClient();
-  const [pageResult, totalInventoryCount, itemCategories, auditCounts, locationResult] = await Promise.all([
+  const [pageResult, totalInventoryCount, itemCategories, itemLabels, auditCounts, measurementCount, locationResult] = await Promise.all([
     listItemsPage(filters, {
       page,
       pageSize: INVENTORY_TABLE_PAGE_SIZE,
     }),
     countItems(),
     listItemCategories(),
+    listInventoryLabels(),
     Promise.all(
       inventoryAuditTagConfig.map(async (entry) => ({
         ...entry,
         count: await countItems({ auditTag: entry.tag }),
       })),
     ),
+    countItems({ label: needsMeasurementLabel }),
     supabase.from("locations").select("id,name,kind").order("kind", { ascending: true }).order("name", { ascending: true }),
   ]);
 
@@ -222,6 +240,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     statusFilter,
     categoryFilter,
     dispositionFilter,
+    labelFilter,
     page,
   });
   const inventoryExportHref = buildInventoryExportHref({
@@ -229,12 +248,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
     statusFilter,
     categoryFilter,
     dispositionFilter,
+    labelFilter,
   });
   const queryEntries = [
     ...(q ? ([["q", q]] as Array<[string, string]>) : []),
     ...(statusFilter ? ([["status", statusFilter]] as Array<[string, string]>) : []),
     ...(categoryFilter ? ([["category", categoryFilter]] as Array<[string, string]>) : []),
     ...(dispositionFilter ? ([["disposition", dispositionFilter]] as Array<[string, string]>) : []),
+    ...(labelFilter ? ([["label", labelFilter]] as Array<[string, string]>) : []),
   ];
   const showingCountLabel =
     pageResult.totalCount === totalInventoryCount
@@ -247,7 +268,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
 
       {message ? <FlashMessage message={message} tone={message.toLowerCase().includes("updated") ? "success" : "warning"} /> : null}
 
-      <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm md:grid-cols-6" method="get">
+      <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm lg:grid-cols-7" method="get">
         <datalist id="inventory-category-options">
           {categories.map((category) => (
             <option key={category} value={category} />
@@ -275,6 +296,14 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
           <option value="keep">Keep in inventory</option>
           <option value="dispose">Marked for disposal</option>
         </select>
+        <select name="label" defaultValue={labelFilter}>
+          <option value="">All labels</option>
+          {itemLabels.map((label) => (
+            <option key={label} value={label}>
+              {formatInventoryLabel(label)}
+            </option>
+          ))}
+        </select>
         <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" type="submit">
           Apply Filters
         </button>
@@ -285,6 +314,21 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
           Export JSON + Thumbnails
         </Link>
       </form>
+
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Measurement Queue</h2>
+            <p className="text-sm text-muted">Create labels on any item, starting with a one-click “Needs measurement” marker.</p>
+          </div>
+          <Link
+            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:border-amber-400"
+            href={`/inventory?label=${encodeURIComponent(needsMeasurementLabel)}`}
+          >
+            Needs measurement ({measurementCount})
+          </Link>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

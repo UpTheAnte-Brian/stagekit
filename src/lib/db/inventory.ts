@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { inventoryAuditSuppressionTagByTag, inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
+import { isInventoryUserLabel, normalizeInventoryLabel } from "@/lib/inventory-labels";
 import { canonicalizeInventoryCategory } from "@/lib/inventory-taxonomy";
 import type { Database } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -30,7 +31,17 @@ const listItemsSchema = z.object({
   category: z.string().trim().min(1).optional(),
   disposition: z.enum(["keep", "dispose"]).optional(),
   auditTag: z.enum([...inventoryAuditTagValues, "all"]).optional(),
+  label: z.string().trim().min(1).max(80).optional(),
 });
+
+const inventoryLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .transform(normalizeInventoryLabel)
+  .refine((value) => value.length > 0, "Label must include a letter or number.")
+  .refine(isInventoryUserLabel, "This label name is reserved.");
 
 const createItemSchema = z.object({
   sku: z.string().trim().min(1).max(120).nullable().optional(),
@@ -64,6 +75,11 @@ const addPhotoRowSchema = z.object({
 const removeAuditTagSchema = z.object({
   itemId: uuidSchema,
   tag: z.enum(inventoryAuditTagValues),
+});
+const updateInventoryLabelSchema = z.object({
+  itemId: uuidSchema,
+  label: inventoryLabelSchema,
+  action: z.enum(["add", "remove"]),
 });
 
 const assignItemSchema = z.object({
@@ -536,6 +552,10 @@ function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, par
     next = next.contains("tags", [parsed.auditTag]) as T;
   }
 
+  if (parsed.label) {
+    next = next.contains("tags", [parsed.label]) as T;
+  }
+
   return next;
 }
 
@@ -643,6 +663,13 @@ export async function listItemCategories() {
   );
 
   return [...new Set(rows.map((row) => row.category).filter((value): value is string => Boolean(value)))];
+}
+
+export async function listInventoryLabels() {
+  const rows = await listInventoryItemRows<Pick<InventoryItemRow, "tags">>("tags");
+  return [...new Set(rows.flatMap((row) => row.tags ?? []).filter(isInventoryUserLabel))].sort((left, right) =>
+    left.localeCompare(right),
+  );
 }
 
 export async function listItems(params: ListItemsParams = {}, supabaseClient?: InventorySupabaseClient) {
@@ -946,6 +973,26 @@ export async function removeInventoryAuditTag(itemId: string, tag: InventoryAudi
     .single();
   assertNoError(error, "Failed to remove inventory audit tag");
   return assertData(data, "Failed to remove inventory audit tag");
+}
+
+export async function updateInventoryItemLabel(itemId: string, label: string, action: "add" | "remove") {
+  const parsed = updateInventoryLabelSchema.parse({ itemId, label, action });
+  const item = await getItem(parsed.itemId);
+  if (!item) throw new Error("Inventory item not found.");
+
+  const existingTags = Array.isArray(item.tags) ? item.tags : [];
+  const nextTags =
+    parsed.action === "add"
+      ? [...new Set([...existingTags, parsed.label])]
+      : existingTags.filter((existingTag) => existingTag !== parsed.label);
+  nextTags.sort((left, right) => left.localeCompare(right));
+
+  if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) return item;
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.from("inventory_items").update({ tags: nextTags }).eq("id", parsed.itemId).select("*").single();
+  assertNoError(error, "Failed to update inventory label");
+  return assertData(data, "Failed to update inventory label");
 }
 
 export async function listPhotos(itemId: string) {

@@ -8,6 +8,7 @@ import { FlashMessage } from "@/components/web/flash-message";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
+import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
 import { listAssignableJobs } from "@/lib/db/jobs";
 import {
   addPhotoRow,
@@ -18,6 +19,7 @@ import {
   listItemThumbnailUrls,
   listPhotos,
   removeInventoryAuditTag,
+  updateInventoryItemLabel,
   updateItem,
   type InventoryItemCondition,
   type InventoryItemStatus,
@@ -286,6 +288,32 @@ async function removeAuditTagAction(formData: FormData) {
   redirect(appendSearchParams(`/inventory/${itemId}`, { message: `${auditTagLabel(tag)} cleared.`, returnTo }));
 }
 
+async function updateLabelAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const returnTo = readReturnTo(formData);
+  const label = readString(formData.get("label"));
+  const action = readString(formData.get("action"));
+
+  if (!itemId) {
+    redirect(`/inventory?message=${encodeURIComponent("Invalid item id.")}`);
+  }
+
+  if (action !== "add" && action !== "remove") {
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Invalid label action.", returnTo }));
+  }
+
+  try {
+    await updateInventoryItemLabel(itemId, label, action);
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Unable to update label.";
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: nextMessage, returnTo }));
+  }
+
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: action === "add" ? "Label added." : "Label removed.", returnTo }));
+}
+
 async function assignToProjectAction(formData: FormData) {
   "use server";
 
@@ -441,6 +469,8 @@ export default async function ItemDetailPage({
   const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
   const inventoryThumbnailUrl = thumbnailByItemId.get(id) ?? null;
   const auditTags = (item.tags ?? []).filter((tag): tag is InventoryAuditTag => isInventoryAuditTag(tag));
+  const itemLabels = (item.tags ?? []).filter(isInventoryUserLabel);
+  const needsMeasurement = itemLabels.includes(needsMeasurementLabel);
 
   return (
     <section className="space-y-6">
@@ -498,6 +528,58 @@ export default async function ItemDetailPage({
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Labels</h2>
+            <p className="mt-1 text-sm text-muted">Use labels to make a follow-up list without changing this item’s status.</p>
+          </div>
+          <form action={updateLabelAction}>
+            <input name="item_id" type="hidden" value={item.id} />
+            <input name="return_to" type="hidden" value={returnTo ?? ""} />
+            <input name="label" type="hidden" value={needsMeasurementLabel} />
+            <input name="action" type="hidden" value={needsMeasurement ? "remove" : "add"} />
+            <button
+              className={[
+                "rounded-lg px-4 py-2 text-sm font-medium",
+                needsMeasurement
+                  ? "border border-amber-300 bg-amber-50 text-amber-900"
+                  : "bg-amber-500 text-white hover:bg-amber-600",
+              ].join(" ")}
+              type="submit"
+            >
+              {needsMeasurement ? "Remove Needs Measurement" : "Mark Needs Measurement"}
+            </button>
+          </form>
+        </div>
+        {itemLabels.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {itemLabels.map((label) => (
+              <form action={updateLabelAction} className="inline-flex" key={label}>
+                <input name="item_id" type="hidden" value={item.id} />
+                <input name="return_to" type="hidden" value={returnTo ?? ""} />
+                <input name="label" type="hidden" value={label} />
+                <input name="action" type="hidden" value="remove" />
+                <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800" title={`Remove ${formatInventoryLabel(label)}`} type="submit">
+                  {formatInventoryLabel(label)} <span aria-hidden="true">×</span>
+                </button>
+              </form>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-muted">No labels yet.</p>
+        )}
+        <form action={updateLabelAction} className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input name="item_id" type="hidden" value={item.id} />
+          <input name="return_to" type="hidden" value={returnTo ?? ""} />
+          <input name="action" type="hidden" value="add" />
+          <input aria-label="New label" className="sm:max-w-xs" name="label" placeholder="Create a label (for example, Needs repair)" required />
+          <button className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:border-accent/40" type="submit">
+            Add Label
+          </button>
+        </form>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">

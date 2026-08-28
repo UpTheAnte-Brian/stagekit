@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "cfc5921e-89f2-4984-8885-9fc9e1721797"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.bwjohnson16.stagekit",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

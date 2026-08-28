@@ -19,6 +19,7 @@ export type InventoryPhotoRow = {
   item_id: string;
   storage_bucket: string;
   storage_path: string;
+  thumbnail_storage_path: string | null;
   sort_order: number;
 };
 
@@ -138,86 +139,78 @@ export async function createSignedPhotoUrlMap(
 
   const supabase = getSupabaseClient();
   const signedUrlByKey = new Map<string, string>();
-  const photosByBucket = new Map<string, InventoryPhotoRow[]>();
+  const targets = photos.map((photo) => ({
+    bucket: photo.storage_bucket,
+    key: getPhotoStorageKey(photo.storage_bucket, photo.storage_path),
+    storagePath: transform && photo.thumbnail_storage_path ? photo.thumbnail_storage_path : photo.storage_path,
+    transform: transform && !photo.thumbnail_storage_path ? transform : undefined,
+  }));
+  const transformedTargets = targets.filter((target) => target.transform);
+  const directTargets = targets.filter((target) => !target.transform);
+  let didUpdateCache = false;
 
-  for (const photo of photos) {
-    const bucketPhotos = photosByBucket.get(photo.storage_bucket) ?? [];
-    bucketPhotos.push(photo);
-    photosByBucket.set(photo.storage_bucket, bucketPhotos);
-  }
-
-  if (transform) {
-    try {
-      const uniquePhotos = [...photosByBucket.entries()].flatMap(([bucket, bucketPhotos]) =>
-        [...new Set(bucketPhotos.map((photo) => photo.storage_path))].map((storagePath) => ({
-          bucket,
-          storagePath,
-        })),
-      );
-      const uncachedPhotos = uniquePhotos.filter((photo) => {
-        const cachedUrl = getCachedSignedPhotoUrl(photo.bucket, photo.storagePath, transform);
+  try {
+    for (const targetChunk of chunkArray(transformedTargets, 20)) {
+      const uncachedTargets = targetChunk.filter((target) => {
+        const cachedUrl = getCachedSignedPhotoUrl(target.bucket, target.storagePath, target.transform);
         if (cachedUrl) {
-          signedUrlByKey.set(getPhotoStorageKey(photo.bucket, photo.storagePath), cachedUrl);
+          signedUrlByKey.set(target.key, cachedUrl);
           return false;
         }
 
         return true;
       });
 
-      for (const photoChunk of chunkArray(uncachedPhotos, 20)) {
-        const signedUrlResults = await Promise.all(
-          photoChunk.map(async (photo) => {
-            const { data, error } = await supabase.storage.from(photo.bucket).createSignedUrl(photo.storagePath, expiresInSeconds, {
-              transform,
-            });
+      const signedUrlResults = await Promise.all(
+        uncachedTargets.map(async (target) => {
+          const { data, error } = await supabase.storage.from(target.bucket).createSignedUrl(target.storagePath, expiresInSeconds, {
+            transform: target.transform,
+          });
 
-            if (error) {
-              throw new Error(error.message);
-            }
-
-            return {
-              ...photo,
-              signedUrl: data.signedUrl,
-            };
-          }),
-        );
-
-        for (const entry of signedUrlResults) {
-          if (entry.signedUrl) {
-            setCachedSignedPhotoUrl(entry.bucket, entry.storagePath, entry.signedUrl, expiresInSeconds, transform);
-            signedUrlByKey.set(getPhotoStorageKey(entry.bucket, entry.storagePath), entry.signedUrl);
+          if (error) {
+            throw new Error(error.message);
           }
+
+          return { ...target, signedUrl: data.signedUrl };
+        }),
+      );
+
+      for (const entry of signedUrlResults) {
+        if (entry.signedUrl) {
+          setCachedSignedPhotoUrl(entry.bucket, entry.storagePath, entry.signedUrl, expiresInSeconds, entry.transform);
+          signedUrlByKey.set(entry.key, entry.signedUrl);
+          didUpdateCache = true;
         }
       }
-
-      if (uncachedPhotos.length > 0) {
-        void persistSignedPhotoUrlCache();
-      }
-
-      return signedUrlByKey;
-    } catch (error) {
-      console.warn("Falling back to untransformed photo URLs.", error);
-      return createSignedPhotoUrlMap(photos, undefined, expiresInSeconds);
     }
+  } catch (error) {
+    console.warn("Falling back to untransformed photo URLs.", error);
+    return createSignedPhotoUrlMap(photos, undefined, expiresInSeconds);
   }
 
-  let didUpdateCache = false;
+  const directTargetsByBucket = new Map<string, typeof directTargets>();
+  for (const target of directTargets) {
+    const bucketTargets = directTargetsByBucket.get(target.bucket) ?? [];
+    bucketTargets.push(target);
+    directTargetsByBucket.set(target.bucket, bucketTargets);
+  }
 
-  for (const [bucket, bucketPhotos] of photosByBucket.entries()) {
-    const uniquePaths = [...new Set(bucketPhotos.map((photo) => photo.storage_path))];
-    const uncachedPaths = uniquePaths.filter((storagePath) => {
-      const cachedUrl = getCachedSignedPhotoUrl(bucket, storagePath);
+  for (const [bucket, bucketTargets] of directTargetsByBucket.entries()) {
+    const targetsByPath = new Map<string, typeof directTargets>();
+    for (const target of bucketTargets) {
+      const cachedUrl = getCachedSignedPhotoUrl(bucket, target.storagePath);
       if (cachedUrl) {
-        signedUrlByKey.set(getPhotoStorageKey(bucket, storagePath), cachedUrl);
-        return false;
+        signedUrlByKey.set(target.key, cachedUrl);
+        continue;
       }
 
-      return true;
-    });
+      const pathTargets = targetsByPath.get(target.storagePath) ?? [];
+      pathTargets.push(target);
+      targetsByPath.set(target.storagePath, pathTargets);
+    }
 
-    for (const pathChunk of chunkArray(uncachedPaths, 100)) {
+    for (const pathChunk of chunkArray([...targetsByPath.keys()], 100)) {
       const { data, error } = await supabase.storage.from(bucket).createSignedUrls(pathChunk, expiresInSeconds);
-
       if (error) {
         throw new Error(error.message);
       }
@@ -228,16 +221,15 @@ export async function createSignedPhotoUrlMap(
         }
 
         setCachedSignedPhotoUrl(bucket, entry.path, entry.signedUrl, expiresInSeconds);
-        signedUrlByKey.set(getPhotoStorageKey(bucket, entry.path), entry.signedUrl);
+        for (const target of targetsByPath.get(entry.path) ?? []) {
+          signedUrlByKey.set(target.key, entry.signedUrl);
+        }
+        didUpdateCache = true;
       }
     }
-
-    didUpdateCache = didUpdateCache || uncachedPaths.length > 0;
   }
 
-  if (didUpdateCache) {
-    void persistSignedPhotoUrlCache();
-  }
+  if (didUpdateCache) void persistSignedPhotoUrlCache();
 
   return signedUrlByKey;
 }

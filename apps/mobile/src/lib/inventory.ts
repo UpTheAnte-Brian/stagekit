@@ -92,7 +92,7 @@ async function listInventoryPhotosForItems(itemIds: string[]) {
   for (const itemIdChunk of chunkArray(itemIds, 100)) {
     const { data, error } = await supabase
       .from("inventory_photos")
-      .select("id,item_id,storage_bucket,storage_path,sort_order")
+      .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order")
       .in("item_id", itemIdChunk)
       .order("sort_order", { ascending: true });
 
@@ -497,7 +497,7 @@ export async function getInventoryItemContext(itemId: string) {
   const [locationsResult, jobsResult, photosResult, activeAssignmentResult, packListResult] = await Promise.all([
     supabase.from("locations").select("id,name,kind").order("name", { ascending: true }),
     supabase.from("jobs").select("id,name").order("created_at", { ascending: false }),
-    supabase.from("inventory_photos").select("id,item_id,storage_bucket,storage_path,sort_order").eq("item_id", itemId).order("sort_order", { ascending: true }),
+    supabase.from("inventory_photos").select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order").eq("item_id", itemId).order("sort_order", { ascending: true }),
     supabase
       .from("job_items")
       .select("job_id,checked_out_at")
@@ -583,6 +583,51 @@ function buildPhotoId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function getThumbnailExtension(contentType: string | null) {
+  if (contentType?.includes("png")) return "png";
+  if (contentType?.includes("webp")) return "webp";
+  return "jpg";
+}
+
+function buildThumbnailStoragePath(storagePath: string, contentType: string | null) {
+  const pathParts = storagePath.split("/");
+  const fileName = pathParts.pop() ?? "photo.jpg";
+  const fileNameWithoutExtension = fileName.replace(/\.[^.]+$/, "");
+
+  return `${pathParts.join("/")}/thumbnails/${fileNameWithoutExtension}.${getThumbnailExtension(contentType)}`;
+}
+
+async function createInventoryThumbnailAsset(storagePath: string) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.storage.from("inventory").createSignedUrl(storagePath, 5 * 60, {
+    transform: THUMBNAIL_TRANSFORM,
+  });
+
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message ?? "Failed to create a thumbnail URL.");
+  }
+
+  const response = await fetch(data.signedUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download the thumbnail (${response.status}).`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  const thumbnailStoragePath = buildThumbnailStoragePath(storagePath, contentType);
+  const thumbnailBuffer = await response.arrayBuffer();
+  const { error: uploadError } = await supabase.storage.from("inventory").upload(thumbnailStoragePath, thumbnailBuffer, {
+    cacheControl: "31536000",
+    contentType: contentType ?? "image/jpeg",
+    upsert: true,
+  });
+
+  if (uploadError) {
+    throw new Error(uploadError.message);
+  }
+
+  return thumbnailStoragePath;
+}
+
 async function uploadInventoryPhotos(itemId: string, imageUris: string[]) {
   if (imageUris.length === 0) {
     return;
@@ -610,10 +655,18 @@ async function uploadInventoryPhotos(itemId: string, imageUris: string[]) {
       throw new Error(uploadError.message);
     }
 
+    let thumbnailStoragePath: string | null = null;
+    try {
+      thumbnailStoragePath = await createInventoryThumbnailAsset(storagePath);
+    } catch (error) {
+      console.warn("Failed to create inventory thumbnail during mobile upload.", error);
+    }
+
     const { error: photoError } = await supabase.from("inventory_photos").insert({
       item_id: itemId,
       storage_bucket: "inventory",
       storage_path: storagePath,
+      thumbnail_storage_path: thumbnailStoragePath,
       sort_order: nextSortOrder,
     });
     if (photoError) {
@@ -782,7 +835,7 @@ export async function deleteInventoryPhoto(itemId: string, photoId: string) {
   const supabase = getSupabaseClient();
   const { data: photo, error: loadError } = await supabase
     .from("inventory_photos")
-    .select("id,item_id,storage_bucket,storage_path,sort_order")
+    .select("id,item_id,storage_bucket,storage_path,thumbnail_storage_path,sort_order")
     .eq("id", photoId)
     .eq("item_id", itemId)
     .single();
@@ -791,7 +844,8 @@ export async function deleteInventoryPhoto(itemId: string, photoId: string) {
     throw new Error(loadError.message);
   }
 
-  const { error: storageError } = await supabase.storage.from(photo.storage_bucket).remove([photo.storage_path]);
+  const storagePaths = [photo.storage_path, photo.thumbnail_storage_path].filter((path): path is string => Boolean(path));
+  const { error: storageError } = await supabase.storage.from(photo.storage_bucket).remove(storagePaths);
   if (storageError) {
     throw new Error(storageError.message);
   }
@@ -823,7 +877,7 @@ export async function deleteInventoryItem(itemId: string) {
   const supabase = getSupabaseClient();
   const { data: photos, error: photosError } = await supabase
     .from("inventory_photos")
-    .select("id,storage_bucket,storage_path")
+    .select("id,storage_bucket,storage_path,thumbnail_storage_path")
     .eq("item_id", itemId);
 
   if (photosError) {
@@ -834,6 +888,9 @@ export async function deleteInventoryItem(itemId: string) {
   for (const photo of photos ?? []) {
     const bucketPaths = pathsByBucket.get(photo.storage_bucket) ?? [];
     bucketPaths.push(photo.storage_path);
+    if (photo.thumbnail_storage_path) {
+      bucketPaths.push(photo.thumbnail_storage_path);
+    }
     pathsByBucket.set(photo.storage_bucket, bucketPaths);
   }
 

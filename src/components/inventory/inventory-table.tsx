@@ -5,6 +5,7 @@ import { Fragment, useEffect, useState } from "react";
 
 import type { InventoryItemCondition, InventoryItemStatus, InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
+import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
 import { getCachedInventoryThumbnails, primeInventoryThumbnailCache } from "@/lib/inventory-thumbnail-cache";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -46,7 +47,7 @@ function tagLabel(tag: string) {
   if (tag === "audit-unreadable-photo") return "Unreadable Photo";
   if (tag === "audit-bad-image") return "Bad Image";
   if (tag === "audit-duplicate-candidate") return "Duplicate Candidate";
-  return tag;
+  return formatInventoryLabel(tag);
 }
 
 function tagClass(tag: string) {
@@ -60,6 +61,10 @@ function tagClass(tag: string) {
 
   if (tag === "audit-duplicate-candidate") {
     return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+
+  if (tag === needsMeasurementLabel) {
+    return "border-amber-200 bg-amber-50 text-amber-900";
   }
 
   return "border-slate-200 bg-slate-50 text-slate-700";
@@ -188,6 +193,7 @@ export function InventoryTable({
         ) : (
           items.map((item) => {
             const auditTags = (item.tags ?? []).filter((tag) => isInventoryAuditTag(tag));
+            const itemLabels = (item.tags ?? []).filter(isInventoryUserLabel);
             const thumbnailUrl = thumbnailByItemId[item.id];
             const isEditing = editingItemId === item.id;
 
@@ -219,6 +225,15 @@ export function InventoryTable({
                       {item.name}
                     </Link>
                     <div className="mt-1 text-xs text-muted">{item.item_code}</div>
+                    {itemLabels.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {itemLabels.map((label) => (
+                          <span key={label} className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${tagClass(label)}`}>
+                            {tagLabel(label)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </td>
                   <td>{item.category ?? "—"}</td>
                   {showAuditTags ? (
