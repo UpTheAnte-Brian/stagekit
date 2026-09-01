@@ -145,6 +145,7 @@ export type InventoryListRow = Pick<
   | "item_code"
   | "name"
   | "category"
+  | "dimensions"
   | "status"
   | "condition"
   | "current_location_id"
@@ -560,7 +561,7 @@ function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, par
 }
 
 async function attachLocationNames<
-  T extends Pick<InventoryItemRow, "current_location_id" | "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags">
+  T extends Pick<InventoryItemRow, "current_location_id" | "id" | "sku" | "item_code" | "name" | "category" | "dimensions" | "status" | "condition" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags">
 >(rows: T[], supabaseClient?: InventorySupabaseClient): Promise<Array<T & { current_location_name: string | null }>> {
   const supabase = supabaseClient ?? (await createServerSupabaseClient());
   const locationIds = [
@@ -614,7 +615,7 @@ export async function listItemsPage(
 
   let query = supabase
     .from("inventory_items")
-    .select("id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", {
+    .select("id,sku,item_code,name,category,dimensions,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags", {
       count: "exact",
     }) as unknown as InventoryItemsListQuery;
 
@@ -640,6 +641,7 @@ export async function listItemsPage(
         | "item_code"
         | "name"
         | "category"
+        | "dimensions"
         | "status"
         | "condition"
         | "current_location_id"
@@ -676,9 +678,9 @@ export async function listItems(params: ListItemsParams = {}, supabaseClient?: I
   const parsed = listItemsSchema.parse(params);
   const rows = await listInventoryItemRows<Pick<
     InventoryItemRow,
-    "id" | "sku" | "item_code" | "name" | "category" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
+    "id" | "sku" | "item_code" | "name" | "category" | "dimensions" | "status" | "condition" | "current_location_id" | "marked_for_disposal" | "estimated_listing_price_cents" | "tags"
   >>(
-    "id,sku,item_code,name,category,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags",
+    "id,sku,item_code,name,category,dimensions,status,condition,current_location_id,marked_for_disposal,estimated_listing_price_cents,tags",
     (query) => applyListItemFilters(query, parsed).order("created_at", { ascending: false }) as InventoryItemsListQuery,
     supabaseClient,
   );

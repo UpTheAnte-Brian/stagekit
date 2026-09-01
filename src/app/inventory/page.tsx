@@ -178,6 +178,7 @@ async function quickUpdateItemAction(formData: FormData) {
   await updateItem(itemId, {
     name,
     category: toNullableText(readString(formData.get("category"))),
+    dimensions: toNullableText(readString(formData.get("dimensions"))),
     status: parseStatus(readString(formData.get("status"))),
     condition: parseCondition(readString(formData.get("condition"))),
     marked_for_disposal: formData.get("marked_for_disposal") === "on",

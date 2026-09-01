@@ -170,11 +170,11 @@ export function InventoryTable({
           <th>Photo</th>
           <th>Name</th>
           <th>Category</th>
+          <th>Dimensions</th>
           {showAuditTags ? <th>Audit Tags</th> : null}
           <th>Status</th>
           <th>Disposition</th>
           <th>List Price</th>
-          <th>Condition</th>
           <th>Current Location</th>
           {canQuickEdit ? (
             <th>
@@ -236,6 +236,7 @@ export function InventoryTable({
                     ) : null}
                   </td>
                   <td>{item.category ?? "—"}</td>
+                  <td className="text-sm text-muted">{item.dimensions ?? "—"}</td>
                   {showAuditTags ? (
                     <td>
                       {hasAnyInventoryAuditTag(item.tags) ? (
@@ -254,7 +255,6 @@ export function InventoryTable({
                   <td>{item.status}</td>
                   <td>{item.marked_for_disposal ? "Dispose" : "Keep"}</td>
                   <td>{formatCurrency(item.estimated_listing_price_cents)}</td>
-                  <td>{item.condition}</td>
                   <td>{item.current_location_name ?? "—"}</td>
                   {canQuickEdit ? (
                     <td>
@@ -292,6 +292,10 @@ export function InventoryTable({
                           <label className="text-sm font-medium text-foreground">
                             Category
                             <input className="mt-1" defaultValue={item.category ?? ""} list="inventory-category-options" name="category" />
+                          </label>
+                          <label className="text-sm font-medium text-foreground">
+                            Dimensions
+                            <input className="mt-1" defaultValue={item.dimensions ?? ""} name="dimensions" placeholder={'48"W × 16"D × 29"H'} />
                           </label>
                           <label className="text-sm font-medium text-foreground">
                             Status

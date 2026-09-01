@@ -741,9 +741,9 @@ export default async function ItemDetailPage({
             </label>
             <input id="dimensions" name="dimensions" defaultValue={item.dimensions ?? ""} />
           </div>
-          <label className="flex items-start gap-3 rounded-lg border border-border bg-slate-50 px-3 py-3 text-sm font-medium text-slate-800">
-            <input className="mt-0.5 h-4 w-4 shrink-0" defaultChecked={item.marked_for_disposal} name="marked_for_disposal" type="checkbox" />
-            <span>Mark this item for disposal</span>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-slate-700">
+            <input className="h-4 w-4 shrink-0" defaultChecked={item.marked_for_disposal} name="marked_for_disposal" type="checkbox" />
+            Mark for disposal
           </label>
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="estimated_listing_price_cents">
