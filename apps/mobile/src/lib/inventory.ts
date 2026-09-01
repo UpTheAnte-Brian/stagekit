@@ -175,6 +175,10 @@ function cleanInventorySearch(value: string | null | undefined) {
   return (value ?? "").trim().replace(/[%_,()]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function splitInventorySearchTerms(value: string) {
+  return [...new Set(value.split(/[\s,]+/).map((term) => term.trim()).filter(Boolean))];
+}
+
 async function getLocationIdsByName(locationName: string | null | undefined) {
   const cleanedLocationName = (locationName ?? "").trim();
 
@@ -196,20 +200,22 @@ function applyInventoryListFilters(query: InventoryItemsQuery, filters: Inventor
   const cleanedSearch = cleanInventorySearch(filters?.search);
 
   if (cleanedSearch) {
-    const pattern = `%${cleanedSearch}%`;
-    nextQuery = nextQuery.or(
-      [
-        `name.ilike.${pattern}`,
-        `sku.ilike.${pattern}`,
-        `brand.ilike.${pattern}`,
-        `category.ilike.${pattern}`,
-        `color.ilike.${pattern}`,
-        `room.ilike.${pattern}`,
-        `item_code.ilike.${pattern}`,
-        `dimensions.ilike.${pattern}`,
-        `notes.ilike.${pattern}`,
-      ].join(","),
-    );
+    for (const term of splitInventorySearchTerms(cleanedSearch)) {
+      const pattern = `%${term}%`;
+      nextQuery = nextQuery.or(
+        [
+          `name.ilike.${pattern}`,
+          `sku.ilike.${pattern}`,
+          `brand.ilike.${pattern}`,
+          `category.ilike.${pattern}`,
+          `color.ilike.${pattern}`,
+          `room.ilike.${pattern}`,
+          `item_code.ilike.${pattern}`,
+          `dimensions.ilike.${pattern}`,
+          `notes.ilike.${pattern}`,
+        ].join(","),
+      );
+    }
   }
 
   if (filters?.color) {

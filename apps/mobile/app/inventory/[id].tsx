@@ -296,6 +296,46 @@ export default function InventoryItemScreen() {
     }
   }
 
+  async function handleTakePhoto() {
+    if (!itemId) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setMessage("Camera permission is required to take a photo.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      cameraType: ImagePicker.CameraType.back,
+      mediaTypes: ["images"],
+      quality: 0.75,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const imageUri = result.assets[0]?.uri;
+    if (!imageUri) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      await addInventoryItemPhotos(itemId, [imageUri]);
+      await reloadItemContext();
+      setMessage("Photo added.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to add photo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleMakeCover(photoId: string) {
     if (!itemId) {
       return;
@@ -411,7 +451,8 @@ export default function InventoryItemScreen() {
             ) : (
               <Text style={{ color: colors.muted }}>No photos attached yet.</Text>
             )}
-            <SecondaryButton disabled={saving} label={saving ? "Working..." : "Add Photos"} onPress={() => void handleAddPhotos()} />
+            <SecondaryButton disabled={saving} label={saving ? "Working..." : "Take Photo"} onPress={() => void handleTakePhoto()} />
+            <SecondaryButton disabled={saving} label="Choose from Library" onPress={() => void handleAddPhotos()} />
           </Card>
           <Card>
             <Field label="Item Name" onChangeText={setName} value={name} />
