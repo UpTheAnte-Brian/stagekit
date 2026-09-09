@@ -337,7 +337,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             <h2 className="text-lg font-semibold">Audit Queue</h2>
             <p className="text-sm text-muted">Open the filtered review screen for duplicate candidates, bad images, and unreadable-photo items.</p>
           </div>
-          <Link className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white" href="/inventory/audit">
+          <Link
+            className="inline-flex items-center justify-center rounded-lg bg-[#173f97] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition-colors hover:bg-[#12347e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173f97]"
+            href="/inventory/audit"
+          >
             Open Audit Queue
           </Link>
         </div>

@@ -223,6 +223,88 @@ export type Database = {
           },
         ]
       }
+      job_consult_media: {
+        Row: {
+          consult_id: string
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_size_bytes: number | null
+          id: string
+          storage_bucket: string
+          storage_path: string
+        }
+        Insert: {
+          consult_id: string
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_size_bytes?: number | null
+          id?: string
+          storage_bucket?: string
+          storage_path: string
+        }
+        Update: {
+          consult_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_size_bytes?: number | null
+          id?: string
+          storage_bucket?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_consult_media_consult_id_fkey"
+            columns: ["consult_id"]
+            isOneToOne: false
+            referencedRelation: "job_consults"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_consults: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          notes: string | null
+          occurred_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          notes?: string | null
+          occurred_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          notes?: string | null
+          occurred_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_consults_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_items: {
         Row: {
           checked_in_at: string | null

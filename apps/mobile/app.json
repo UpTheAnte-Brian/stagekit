@@ -15,7 +15,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker"
+      "expo-image-picker",
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Allow StageKit to save inventory photos to your library."
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

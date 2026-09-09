@@ -8,6 +8,8 @@ type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
 type InventoryItemRow = Database["public"]["Tables"]["inventory_items"]["Row"];
 type LocationRow = Database["public"]["Tables"]["locations"]["Row"];
 type JobPackRequestRow = Database["public"]["Tables"]["job_pack_requests"]["Row"];
+type JobConsultRow = Database["public"]["Tables"]["job_consults"]["Row"];
+type JobConsultMediaRow = Database["public"]["Tables"]["job_consult_media"]["Row"];
 type SceneTemplateRow = Database["public"]["Tables"]["scene_templates"]["Row"];
 type SceneTemplateItemRow = Database["public"]["Tables"]["scene_template_items"]["Row"];
 
@@ -24,6 +26,8 @@ const SCENE_SCHEMA_TOKENS = [
   "scene_application_id",
   "scene_template_item_id",
 ];
+
+const CONSULT_SCHEMA_TOKENS = ["job_consults", "job_consult_media"];
 
 const SCENE_FEATURE_UNAVAILABLE_MESSAGE =
   "Scene templates are not available in this database yet. Apply the latest Supabase migration and reload.";
@@ -42,6 +46,25 @@ function isMissingSceneSchemaError(error: unknown) {
   const haystack = `${value.code ?? ""} ${value.message ?? ""} ${value.details ?? ""}`.toLowerCase();
 
   return SCENE_SCHEMA_TOKENS.some((token) => haystack.includes(token));
+}
+
+function isMissingConsultSchemaError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const value = error as PostgrestLikeError;
+  const haystack = `${value.code ?? ""} ${value.message ?? ""} ${value.details ?? ""}`.toLowerCase();
+  return CONSULT_SCHEMA_TOKENS.some((token) => haystack.includes(token));
+}
+
+function toConsultSchemaAwareError(error: unknown) {
+  if (isMissingConsultSchemaError(error)) {
+    return new Error("On-site consults are not available in this database yet. Apply the latest Supabase migration and reload.");
+  }
+  if (error instanceof Error) return error;
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return new Error(error.message);
+  return new Error("Unknown error");
 }
 
 function toSceneSchemaAwareError(error: unknown) {
@@ -238,6 +261,18 @@ export type JobSceneApplication = {
   fulfilled_request_count: number;
 };
 
+export type JobConsultMedia = Pick<
+  JobConsultMediaRow,
+  "id" | "file_name" | "content_type" | "file_size_bytes" | "created_at"
+> & {
+  url: string | null;
+  is_video: boolean;
+};
+
+export type JobConsult = Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at"> & {
+  media: JobConsultMedia[];
+};
+
 export type InventoryPackCandidate = Pick<
   InventoryItemRow,
   "id" | "name" | "category" | "status" | "item_code" | "room" | "color" | "source_job_id" | "current_location_id"
@@ -346,6 +381,157 @@ export async function updateJobStatus(jobId: string, status: "active" | "complet
   }
 }
 
+async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, jobId: string): Promise<JobConsult[]> {
+  const { data: consultRows, error: consultError } = await supabase
+    .from("job_consults")
+    .select("id,title,occurred_at,notes,created_at,updated_at")
+    .eq("job_id", jobId)
+    .order("occurred_at", { ascending: false });
+
+  if (consultError) {
+    if (isMissingConsultSchemaError(consultError)) {
+      return [];
+    }
+    throw new Error(consultError.message);
+  }
+
+  const consults = (consultRows ?? []) as Array<Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at">>;
+  if (consults.length === 0) {
+    return [];
+  }
+
+  const consultIds = consults.map((consult) => consult.id);
+  const { data: mediaRows, error: mediaError } = await supabase
+    .from("job_consult_media")
+    .select("id,consult_id,storage_bucket,storage_path,file_name,content_type,file_size_bytes,created_at")
+    .in("consult_id", consultIds)
+    .order("created_at", { ascending: true });
+
+  if (mediaError) {
+    throw new Error(mediaError.message);
+  }
+
+  const urlsByMediaId = new Map<string, string>();
+  for (const media of (mediaRows ?? []) as Array<Pick<JobConsultMediaRow, "id" | "storage_bucket" | "storage_path">>) {
+    const { data, error } = await supabase.storage.from(media.storage_bucket).createSignedUrl(media.storage_path, 60 * 60);
+    if (!error && data?.signedUrl) {
+      urlsByMediaId.set(media.id, data.signedUrl);
+    }
+  }
+
+  const mediaByConsultId = new Map<string, JobConsultMedia[]>();
+  for (const media of (mediaRows ?? []) as Array<JobConsultMediaRow>) {
+    const mediaForConsult = mediaByConsultId.get(media.consult_id) ?? [];
+    mediaForConsult.push({
+      id: media.id,
+      file_name: media.file_name,
+      content_type: media.content_type,
+      file_size_bytes: media.file_size_bytes,
+      created_at: media.created_at,
+      url: urlsByMediaId.get(media.id) ?? null,
+      is_video: media.content_type?.startsWith("video/") ?? false,
+    });
+    mediaByConsultId.set(media.consult_id, mediaForConsult);
+  }
+
+  return consults.map((consult) => ({ ...consult, media: mediaByConsultId.get(consult.id) ?? [] }));
+}
+
+export async function createJobConsult({
+  jobId,
+  title,
+  occurredAt,
+  notes,
+}: {
+  jobId: string;
+  title: string;
+  occurredAt: string;
+  notes: string;
+}) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("job_consults")
+    .insert({
+      job_id: jobId,
+      title: title.trim() || "On-site consult",
+      occurred_at: occurredAt || new Date().toISOString(),
+      notes: notes.trim() || null,
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw toConsultSchemaAwareError(error);
+  }
+  return data.id;
+}
+
+export async function updateJobConsult({ consultId, title, occurredAt, notes }: { consultId: string; title: string; occurredAt: string; notes: string }) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("job_consults")
+    .update({
+      title: title.trim() || "On-site consult",
+      occurred_at: occurredAt || new Date().toISOString(),
+      notes: notes.trim() || null,
+    })
+    .eq("id", consultId);
+
+  if (error) {
+    throw toConsultSchemaAwareError(error);
+  }
+}
+
+export async function addJobConsultMedia({
+  consultId,
+  storagePath,
+  fileName,
+  contentType,
+  fileSizeBytes,
+}: {
+  consultId: string;
+  storagePath: string;
+  fileName: string;
+  contentType: string | null;
+  fileSizeBytes: number;
+}) {
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("job_consult_media").insert({
+    consult_id: consultId,
+    storage_path: storagePath,
+    file_name: fileName,
+    content_type: contentType,
+    file_size_bytes: fileSizeBytes,
+  });
+  if (error) {
+    throw toConsultSchemaAwareError(error);
+  }
+}
+
+export async function deleteJobConsultMedia(mediaId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("job_consult_media")
+    .select("storage_bucket,storage_path")
+    .eq("id", mediaId)
+    .single();
+  if (error) {
+    throw new Error(error.message);
+  }
+  const { error: deleteError } = await supabase.from("job_consult_media").delete().eq("id", mediaId);
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+  const { error: storageError } = await supabase.storage.from(data.storage_bucket).remove([data.storage_path]);
+  if (storageError) {
+    throw new Error(storageError.message);
+  }
+}
+
 export async function getJobDetail(jobId: string) {
   const supabase = await createServerSupabaseClient();
   const { data: job, error: jobError } = await supabase
@@ -363,11 +549,13 @@ export async function getJobDetail(jobId: string) {
     packRequests,
     { data: pickedItems, error: pickedItemsError },
     sceneApplications,
+    consults,
   ] = await Promise.all([
     supabase.from("job_items").select("id,item_id,checked_out_at,checked_in_at").eq("job_id", jobId).order("checked_out_at", { ascending: false }),
     listJobPackRequestsCompat(supabase, jobId),
     supabase.from("job_pick_items").select("id,job_id,pack_request_id,item_id,notes,created_at").eq("job_id", jobId).order("created_at", { ascending: false }),
     listJobSceneApplicationsCompat(supabase, jobId),
+    listJobConsultsCompat(supabase, jobId),
   ]);
 
   if (jobItemsError) {
@@ -551,6 +739,7 @@ export async function getJobDetail(jobId: string) {
     packRequests: packRequestList,
     pickedItems: exactPickList,
     sceneApplications: appliedScenes,
+    consults,
   };
 }
 

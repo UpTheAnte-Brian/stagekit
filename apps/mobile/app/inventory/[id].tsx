@@ -1,8 +1,10 @@
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Image as CachedImage } from "expo-image";
+import * as FileSystem from "expo-file-system/legacy";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library";
 
 import { CategoryPicker } from "../../src/components/category-picker";
 import { AppScreen, Card, Field, Hero, LoadingState, Message, PrimaryButton, SecondaryButton } from "../../src/components/ui";
@@ -373,6 +375,56 @@ export default function InventoryItemScreen() {
     }
   }
 
+  async function handleSavePhotosToLibrary() {
+    if (photos.length === 0) {
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      setMessage("Saving photos is available in the StageKit mobile app.");
+      return;
+    }
+
+    const cacheDirectory = FileSystem.cacheDirectory;
+    if (!cacheDirectory) {
+      setMessage("Could not prepare photos to save.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
+      if (!permission.granted) {
+        setMessage("Photo library permission is required to save photos.");
+        return;
+      }
+
+      const downloadPrefix = `stagekit-${itemId}-${Date.now()}`;
+      let savedCount = 0;
+
+      for (const [index, photo] of photos.entries()) {
+        const fileExtension = photo.storage_path.match(/\.([a-z0-9]+)$/i)?.[1] ?? "jpg";
+        const localUri = `${cacheDirectory}${downloadPrefix}-${index}.${fileExtension}`;
+
+        try {
+          const download = await FileSystem.downloadAsync(photo.url, localUri);
+          await MediaLibrary.saveToLibraryAsync(download.uri);
+          savedCount += 1;
+        } finally {
+          await FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => undefined);
+        }
+      }
+
+      setMessage(`Saved ${savedCount} photo${savedCount === 1 ? "" : "s"} to Photos.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to save photos.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDeleteItem() {
     if (!itemId) {
       return;
@@ -447,6 +499,11 @@ export default function InventoryItemScreen() {
                     <SecondaryButton disabled={saving} label="Delete Photo" onPress={() => void handleDeletePhoto(photos[0].id)} />
                   </View>
                 ) : null}
+                <SecondaryButton
+                  disabled={saving}
+                  label={saving ? "Working..." : `Save ${photos.length === 1 ? "Photo" : "All Photos"} to Photos`}
+                  onPress={() => void handleSavePhotosToLibrary()}
+                />
               </>
             ) : (
               <Text style={{ color: colors.muted }}>No photos attached yet.</Text>

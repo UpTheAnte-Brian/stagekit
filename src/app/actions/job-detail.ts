@@ -4,15 +4,19 @@ import { redirect } from "next/navigation";
 
 import {
   applySceneTemplateToJob,
+  addJobConsultMedia,
+  createJobConsult,
   createJobPickItem,
   createPackRequest,
   createSceneTemplateFromJobRoom,
   deleteJobPickItem,
+  deleteJobConsultMedia,
   deletePackRequest,
   deleteSceneApplication,
   linkRequestedItemToPackRequest,
   togglePackRequestOptional,
   updateJob,
+  updateJobConsult,
   updateJobStatus,
   updatePackRequest,
   updatePackRequestStatus,
@@ -22,6 +26,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
 const inventoryConditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
+const MAX_CONSULT_MEDIA_BYTES = 50 * 1024 * 1024;
 
 function readString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -128,6 +133,100 @@ export async function updateJobAction(formData: FormData) {
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to update project.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "edit-project" }));
+  }
+}
+
+export async function saveJobConsultAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const consultId = readString(formData.get("consult_id"));
+  const section = "on-site-consults";
+  const title = readString(formData.get("title"));
+  const occurredAt = readString(formData.get("occurred_at"));
+  const notes = readString(formData.get("notes"));
+
+  try {
+    if (consultId) {
+      await updateJobConsult({ consultId, title, occurredAt, notes });
+      redirect(buildJobUrl(jobId, { message: "On-site consult updated.", tone: "success", section }));
+    }
+    const createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes });
+    redirect(buildJobUrl(jobId, { message: "On-site consult saved. Add photos or video when you are ready.", tone: "success", section, editRequestId: createdConsultId }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to save on-site consult.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+  }
+}
+
+export async function uploadJobConsultMediaAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const consultId = readString(formData.get("consult_id"));
+  const section = "on-site-consults";
+  if (!consultId) {
+    redirect(buildJobUrl(jobId, { message: "Save the consult before adding media.", tone: "error", section }));
+  }
+
+  const files = formData
+    .getAll("media")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  if (files.length === 0) {
+    redirect(buildJobUrl(jobId, { message: "Select at least one photo or video.", tone: "error", section }));
+  }
+  const invalidFile = files.find((file) => !(file.type.startsWith("image/") || file.type.startsWith("video/")));
+  if (invalidFile) {
+    redirect(buildJobUrl(jobId, { message: `${invalidFile.name} is not a photo or video.`, tone: "error", section }));
+  }
+  const oversizedFile = files.find((file) => file.size > MAX_CONSULT_MEDIA_BYTES);
+  if (oversizedFile) {
+    redirect(buildJobUrl(jobId, { message: `${oversizedFile.name} must be 50MB or smaller.`, tone: "error", section }));
+  }
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    for (const file of files) {
+      const extension = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (file.type.startsWith("video/") ? "mp4" : "jpg");
+      const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, await file.arrayBuffer(), {
+        cacheControl: "31536000",
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+      try {
+        await addJobConsultMedia({
+          consultId,
+          storagePath,
+          fileName: file.name,
+          contentType: file.type || null,
+          fileSizeBytes: file.size,
+        });
+      } catch (error) {
+        await supabase.storage.from("job-consults").remove([storagePath]);
+        throw error;
+      }
+    }
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to upload consult media.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+  }
+
+  redirect(buildJobUrl(jobId, { message: files.length === 1 ? "Consult media uploaded." : `${files.length} consult files uploaded.`, tone: "success", section }));
+}
+
+export async function deleteJobConsultMediaAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const mediaId = readString(formData.get("media_id"));
+  const section = "on-site-consults";
+  if (!mediaId) {
+    redirect(buildJobUrl(jobId, { message: "Consult media is required.", tone: "error", section }));
+  }
+  try {
+    await deleteJobConsultMedia(mediaId);
+    redirect(buildJobUrl(jobId, { message: "Consult media removed.", tone: "success", section }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to remove consult media.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
   }
 }
 

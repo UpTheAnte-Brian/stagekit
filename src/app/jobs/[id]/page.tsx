@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { JobExactItemPicker } from "@/components/jobs/job-exact-item-picker";
 import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
+import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { FlashMessage } from "@/components/web/flash-message";
 import {
   getJobDetail,
@@ -21,10 +22,13 @@ import {
   deletePackRequestAction,
   deletePickedItemAction,
   deleteSceneApplicationAction,
+  deleteJobConsultMediaAction,
   logPickedItemAction,
   quickSelectAction,
   savePackRequestAction,
+  saveJobConsultAction,
   toggleOptionalAction,
+  uploadJobConsultMediaAction,
   updateJobAction,
 } from "@/app/actions/job-detail";
 
@@ -79,6 +83,13 @@ function formatTimestamp(value: string | null) {
   }
 
   return date.toLocaleString();
+}
+
+function formatDateTimeLocal(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
 }
 
 function formatStatus(value: string) {
@@ -217,7 +228,7 @@ export default async function JobDetailPage({
   const editRequestId = firstValue(search.edit_request) ?? null;
   const pickRequestId = firstValue(search.pick_request) ?? null;
 
-  const [{ job, assignments, packRequests, pickedItems, sceneApplications }, packCandidates, sceneTemplates] = await Promise.all([
+  const [{ job, assignments, packRequests, pickedItems, sceneApplications, consults }, packCandidates, sceneTemplates] = await Promise.all([
     getJobDetail(id).catch((error) => {
       if (error instanceof Error && /0 rows|No rows/i.test(error.message)) {
         notFound();
@@ -308,6 +319,9 @@ export default async function JobDetailPage({
             <p className="mt-4 text-lg text-[#d8e6dd]">{projectSubtitle || "Project detail"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link className={headerButtonClass} href={buildJobUrl(id, { section: "on-site-consults" })}>
+              On-Site Consult
+            </Link>
             <Link className={headerButtonClass} href={buildJobUrl(id, { section: "edit-project" })}>
               Edit Details
             </Link>
@@ -401,6 +415,105 @@ export default async function JobDetailPage({
           {sceneApplications.length} applied scene{sceneApplications.length === 1 ? "" : "s"} are currently feeding this room-by-room pack list.
         </p>
       </section>
+
+      <details className={`${sectionCardClass} scroll-mt-6`} id="on-site-consults" open={detailsOpen(activeSection, "on-site-consults", consults.length === 0)}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <SectionHeader
+            title="On-Site Consult"
+            description="Capture the first walkthrough—raw notes, room measurements, photos, and video—before turning ideas into pack requests."
+            right={<span className={secondaryButtonClass}>{consults.length === 0 ? "Start" : `${consults.length} saved`}</span>}
+          />
+        </summary>
+
+        <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
+          <input name="job_id" type="hidden" value={id} />
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Consult name</label>
+            <input defaultValue="On-site consult" name="title" placeholder="Initial on-site consult" />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-[#33413b]">When</label>
+            <input name="occurred_at" type="datetime-local" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Walkthrough notes</label>
+            <textarea name="notes" placeholder={"Fireplace room\n12’ or 9’ (in front of fireplace) by 13’\n\nSun room\n11’\n\nBed 1 — 11’ x 10.5’"} />
+            <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. This is the record you will use when building the pack list.</p>
+          </div>
+          <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+            <button className={primaryButtonClass} type="submit">Save On-Site Consult</button>
+            <Link className={secondaryButtonClass} href="#add-pack-list">Go to Pack Requests</Link>
+          </div>
+        </form>
+
+        {consults.length > 0 ? (
+          <div className="mt-7 space-y-5 border-t border-[#ecdcc7] pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-[#20322a]">Saved Consults</h3>
+              <Link className={secondaryButtonClass} href="#add-pack-list">Create Pack Requests</Link>
+            </div>
+            {consults.map((consult) => (
+              <article key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-lg font-semibold text-[#20322a]">{consult.title}</h4>
+                    <p className={`${mutedTextClass} mt-1`}>{formatTimestamp(consult.occurred_at)}</p>
+                  </div>
+                  <span className="rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]">{consult.media.length} file{consult.media.length === 1 ? "" : "s"}</span>
+                </div>
+                {consult.notes ? <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#4e584f]">{consult.notes}</p> : <p className={`${mutedTextClass} mt-4`}>No written notes saved.</p>}
+                <details className="mt-4 rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-[#33413b]">Edit consult notes</summary>
+                  <form action={saveJobConsultAction} className="mt-4 grid gap-3 md:grid-cols-2">
+                    <input name="job_id" type="hidden" value={id} />
+                    <input name="consult_id" type="hidden" value={consult.id} />
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">Consult name</label>
+                      <input defaultValue={consult.title} name="title" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">When</label>
+                      <input defaultValue={formatDateTimeLocal(consult.occurred_at)} name="occurred_at" type="datetime-local" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">Walkthrough notes</label>
+                      <textarea defaultValue={consult.notes ?? ""} name="notes" />
+                    </div>
+                    <div className="md:col-span-2"><button className={secondaryButtonClass} type="submit">Save changes</button></div>
+                  </form>
+                </details>
+                {consult.media.length > 0 ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {consult.media.map((media) => (
+                      <div key={media.id} className="overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#fffaf4]">
+                        {media.url ? (
+                          media.is_video ? (
+                            <video className="h-44 w-full bg-[#20322a] object-cover" controls preload="metadata" src={media.url} />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img alt={media.file_name} className="h-44 w-full object-cover" loading="lazy" src={media.url} />
+                          )
+                        ) : (
+                          <div className="flex h-44 items-center justify-center text-sm text-[#6f756c]">Preview unavailable</div>
+                        )}
+                        <div className="flex items-center justify-between gap-3 p-3">
+                          <p className="min-w-0 truncate text-sm font-medium text-[#33413b]">{media.file_name}</p>
+                          <form action={deleteJobConsultMediaAction}>
+                            <input name="job_id" type="hidden" value={id} />
+                            <input name="media_id" type="hidden" value={media.id} />
+                            <button className="text-xs font-semibold text-[#a7502d] hover:underline" type="submit">Remove</button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <ConsultMediaUploadForm action={uploadJobConsultMediaAction} consultId={consult.id} jobId={id} />
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </details>
 
       <details className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", job.status === "archived")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
