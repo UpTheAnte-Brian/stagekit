@@ -29,7 +29,7 @@ import {
   savePackRequestAction,
   saveJobConsultAction,
   toggleOptionalAction,
-  uploadJobConsultMediaAction,
+  registerJobConsultMediaAction,
   updateJobAction,
 } from "@/app/actions/job-detail";
 
@@ -426,7 +426,7 @@ export default async function JobDetailPage({
       <section className={`${sectionCardClass} scroll-mt-6`} id="on-site-consults">
         <SectionHeader
           title="1. Capture On-Site Visit"
-          description="Put your raw notes, room measurements, photos, and video in one place. Add everything from today before saving."
+          description="Save raw notes and room measurements first. Then add today’s photos and larger walkthrough videos directly to the saved visit."
         />
 
         <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
@@ -442,12 +442,7 @@ export default async function JobDetailPage({
             <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
           </div>
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Today&apos;s photos & video</label>
-            <input accept="image/*,video/*,.heic,.heif" multiple name="media" type="file" />
-            <p className={`${mutedTextClass} mt-2`}>Choose the photos and videos from this visit now. They will save with these notes; you can add more later.</p>
-          </div>
-          <div className="md:col-span-2">
-            <button className={primaryButtonClass} type="submit">Save Visit Notes & Media</button>
+            <button className={primaryButtonClass} type="submit">Save Visit Notes</button>
           </div>
         </form>
 
@@ -490,7 +485,7 @@ export default async function JobDetailPage({
                 {consult.media.length > 0 ? (
                   <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
                 ) : null}
-                <ConsultMediaUploadForm action={uploadJobConsultMediaAction} consultId={consult.id} jobId={id} />
+                <ConsultMediaUploadForm action={registerJobConsultMediaAction} consultId={consult.id} jobId={id} />
               </article>
             ))}
           </div>

@@ -26,7 +26,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
 const inventoryConditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
-const MAX_CONSULT_MEDIA_BYTES = 50 * 1024 * 1024;
+const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
 
 function readString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -62,7 +62,7 @@ function validateConsultMediaFiles(files: File[]) {
   }
   const oversizedFile = files.find((file) => file.size > MAX_CONSULT_MEDIA_BYTES);
   if (oversizedFile) {
-    throw new Error(`${oversizedFile.name} must be 50MB or smaller.`);
+    throw new Error(`${oversizedFile.name} must be 1GB or smaller.`);
   }
 }
 
@@ -233,6 +233,25 @@ export async function uploadJobConsultMediaAction(formData: FormData) {
   }
 
   redirect(buildJobUrl(jobId, { message: files.length === 1 ? "Consult media uploaded." : `${files.length} consult files uploaded.`, tone: "success", section }));
+}
+
+export async function registerJobConsultMediaAction(formData: FormData) {
+  readJobId(formData);
+  const consultId = readString(formData.get("consult_id"));
+  const storagePath = readString(formData.get("storage_path"));
+  const fileName = readString(formData.get("file_name"));
+  const contentType = readString(formData.get("content_type"));
+  const fileSizeBytes = Number.parseInt(readString(formData.get("file_size_bytes")), 10);
+
+  if (!consultId || !storagePath || !fileName || !Number.isFinite(fileSizeBytes) || fileSizeBytes < 1 || fileSizeBytes > MAX_CONSULT_MEDIA_BYTES) {
+    throw new Error("The uploaded media details are invalid.");
+  }
+
+  try {
+    await addJobConsultMedia({ consultId, storagePath, fileName, contentType: contentType || null, fileSizeBytes });
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Failed to save consult media.");
+  }
 }
 
 export async function deleteJobConsultMediaAction(formData: FormData) {

@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+
+const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
 
 type ConsultMediaUploadFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -10,6 +14,7 @@ type ConsultMediaUploadFormProps = {
 };
 
 type SelectedMedia = {
+  file: File;
   isVideo: boolean;
   name: string;
   url: string;
@@ -19,28 +24,36 @@ function isConsultMedia(file: File) {
   return file.type.startsWith("image/") || file.type.startsWith("video/") || /\.(avif|gif|heic|heif|jpe?g|mov|mp4|m4v|png|webm)$/i.test(file.name);
 }
 
-function UploadButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button className="rounded-xl border border-[#e3d0ba] bg-white px-3 py-2 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] disabled:cursor-not-allowed disabled:opacity-60" disabled={pending} type="submit">
-      {pending ? "Uploading…" : "Add media"}
-    </button>
-  );
+function mediaContentType(file: File) {
+  if (file.type) return file.type;
+  if (/\.(mov|mp4|m4v)$/i.test(file.name)) return "video/mp4";
+  if (/\.webm$/i.test(file.name)) return "video/webm";
+  if (/\.png$/i.test(file.name)) return "image/png";
+  if (/\.gif$/i.test(file.name)) return "image/gif";
+  return "image/jpeg";
 }
 
 export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMediaUploadFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia[]>([]);
 
-  useEffect(() => {
-    return () => selectedMedia.forEach((media) => URL.revokeObjectURL(media.url));
-  }, [selectedMedia]);
+  useEffect(() => () => selectedMedia.forEach((media) => URL.revokeObjectURL(media.url)), [selectedMedia]);
 
   const syncFiles = (files: FileList | null) => {
     const media = Array.from(files ?? []).filter(isConsultMedia);
+    const oversizedFile = media.find((file) => file.size > MAX_CONSULT_MEDIA_BYTES);
+    if (oversizedFile) {
+      setMessage(`${oversizedFile.name} is larger than 1GB.`);
+      return [];
+    }
+    setMessage(null);
     setSelectedMedia(media.map((file) => ({
+      file,
       isVideo: file.type.startsWith("video/") || /\.(mov|mp4|m4v|webm)$/i.test(file.name),
       name: file.name,
       url: URL.createObjectURL(file),
@@ -59,15 +72,58 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
     event.preventDefault();
     setIsDragActive(false);
     const files = syncFiles(event.dataTransfer.files);
-    if (files.length === 0) return;
-    assignFiles(files);
-    formRef.current?.requestSubmit();
+    if (files.length > 0) assignFiles(files);
   };
 
+  const handleUpload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (selectedMedia.length === 0 || isUploading) return;
+
+    setIsUploading(true);
+    setMessage(null);
+    const supabase = createBrowserSupabaseClient();
+
+    try {
+      for (const media of selectedMedia) {
+        const contentType = mediaContentType(media.file);
+        const extension = media.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
+        const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, media.file, {
+          cacheControl: "31536000",
+          contentType,
+          upsert: false,
+        });
+        if (uploadError) throw new Error(uploadError.message);
+
+        try {
+          const metadata = new FormData();
+          metadata.set("job_id", jobId);
+          metadata.set("consult_id", consultId);
+          metadata.set("storage_path", storagePath);
+          metadata.set("file_name", media.name);
+          metadata.set("content_type", contentType);
+          metadata.set("file_size_bytes", String(media.file.size));
+          await action(metadata);
+        } catch (error) {
+          await supabase.storage.from("job-consults").remove([storagePath]);
+          throw error;
+        }
+      }
+
+      setSelectedMedia([]);
+      if (inputRef.current) inputRef.current.value = "";
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const buttonLabel = isUploading ? "Uploading…" : selectedMedia.length === 0 ? "Choose media to upload" : selectedMedia.length === 1 ? "Upload 1 file" : `Upload ${selectedMedia.length} files`;
+
   return (
-    <form action={action} className="mt-4" ref={formRef}>
-      <input name="job_id" type="hidden" value={jobId} />
-      <input name="consult_id" type="hidden" value={consultId} />
+    <form className="mt-4" onSubmit={handleUpload} ref={formRef}>
       <label
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-5 text-center transition ${
           isDragActive ? "border-[#c96f3d] bg-[#fff3e7]" : "border-[#ecdcc7] bg-[#fffaf4] hover:border-[#c96f3d]"
@@ -87,22 +143,19 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
           className="sr-only"
           id={`consult-media-${consultId}`}
           multiple
-          name="media"
           onChange={(event: ChangeEvent<HTMLInputElement>) => syncFiles(event.target.files)}
           ref={inputRef}
           type="file"
         />
         <span className="text-sm font-semibold text-[#33413b]">Drop photos or video here, or choose files</span>
-        <span className="mt-1 text-xs text-[#6f756c]">Photos and video up to 50MB each. Dropped files upload right away.</span>
+        <span className="mt-1 text-xs text-[#6f756c]">Photos and videos up to 1GB each upload directly from this browser.</span>
         {selectedMedia.length > 0 ? <span className="mt-2 text-xs text-[#4e584f]">{selectedMedia.length === 1 ? selectedMedia[0].name : `${selectedMedia.length} files selected`}</span> : null}
       </label>
       {selectedMedia.length > 0 ? (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {selectedMedia.map((media) => (
             <a key={media.url} className="group relative h-28 overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#20322a]" href={media.url} rel="noreferrer" target="_blank">
-              {media.isVideo ? (
-                <video className="h-full w-full object-cover" muted preload="metadata" src={media.url} />
-              ) : (
+              {media.isVideo ? <video className="h-full w-full object-cover" muted preload="metadata" src={media.url} /> : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img alt={media.name} className="h-full w-full object-cover transition group-hover:scale-[1.03]" src={media.url} />
               )}
@@ -111,7 +164,10 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
           ))}
         </div>
       ) : null}
-      <div className="mt-3"><UploadButton /></div>
+      {message ? <p className="mt-3 text-sm font-medium text-[#a7502d]">{message}</p> : null}
+      <div className="mt-3">
+        <button className="rounded-xl border border-[#e3d0ba] bg-white px-3 py-2 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] disabled:cursor-not-allowed disabled:opacity-50" disabled={isUploading || selectedMedia.length === 0} type="submit">{buttonLabel}</button>
+      </div>
     </form>
   );
 }

@@ -50,6 +50,11 @@ insert into storage.buckets (id, name, public)
 values ('job-consults', 'job-consults', false)
 on conflict (id) do nothing;
 
+-- Videos upload directly from the browser, so permit practical walkthrough clips.
+update storage.buckets
+set file_size_limit = 1073741824
+where id = 'job-consults';
+
 drop policy if exists "job_consults_bucket_read_auth" on storage.objects;
 create policy "job_consults_bucket_read_auth"
 on storage.objects for select
