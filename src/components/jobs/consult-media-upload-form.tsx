@@ -1,12 +1,18 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useFormStatus } from "react-dom";
 
 type ConsultMediaUploadFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   consultId: string;
   jobId: string;
+};
+
+type SelectedMedia = {
+  isVideo: boolean;
+  name: string;
+  url: string;
 };
 
 function isConsultMedia(file: File) {
@@ -26,11 +32,19 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<SelectedMedia[]>([]);
+
+  useEffect(() => {
+    return () => selectedMedia.forEach((media) => URL.revokeObjectURL(media.url));
+  }, [selectedMedia]);
 
   const syncFiles = (files: FileList | null) => {
     const media = Array.from(files ?? []).filter(isConsultMedia);
-    setSelectedFiles(media.map((file) => file.name));
+    setSelectedMedia(media.map((file) => ({
+      isVideo: file.type.startsWith("video/") || /\.(mov|mp4|m4v|webm)$/i.test(file.name),
+      name: file.name,
+      url: URL.createObjectURL(file),
+    })));
     return media;
   };
 
@@ -80,8 +94,23 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
         />
         <span className="text-sm font-semibold text-[#33413b]">Drop photos or video here, or choose files</span>
         <span className="mt-1 text-xs text-[#6f756c]">Photos and video up to 50MB each. Dropped files upload right away.</span>
-        {selectedFiles.length > 0 ? <span className="mt-2 text-xs text-[#4e584f]">{selectedFiles.length === 1 ? selectedFiles[0] : `${selectedFiles.length} files selected`}</span> : null}
+        {selectedMedia.length > 0 ? <span className="mt-2 text-xs text-[#4e584f]">{selectedMedia.length === 1 ? selectedMedia[0].name : `${selectedMedia.length} files selected`}</span> : null}
       </label>
+      {selectedMedia.length > 0 ? (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {selectedMedia.map((media) => (
+            <a key={media.url} className="group relative h-28 overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#20322a]" href={media.url} rel="noreferrer" target="_blank">
+              {media.isVideo ? (
+                <video className="h-full w-full object-cover" muted preload="metadata" src={media.url} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img alt={media.name} className="h-full w-full object-cover transition group-hover:scale-[1.03]" src={media.url} />
+              )}
+              <span className="absolute bottom-1 right-1 rounded bg-[#16382d]/85 px-1.5 py-0.5 text-[10px] font-semibold text-white">Preview</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
       <div className="mt-3"><UploadButton /></div>
     </form>
   );

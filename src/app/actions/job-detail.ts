@@ -36,6 +36,59 @@ function readBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true" || value === "1";
 }
 
+function readConsultMediaFiles(formData: FormData) {
+  return formData
+    .getAll("media")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+}
+
+function isConsultMediaFile(file: File) {
+  return file.type.startsWith("image/") || file.type.startsWith("video/") || /\.(avif|gif|heic|heif|jpe?g|mov|mp4|m4v|png|webm)$/i.test(file.name);
+}
+
+function consultMediaContentType(file: File) {
+  if (file.type) return file.type;
+  if (/\.(mov|mp4|m4v)$/i.test(file.name)) return "video/mp4";
+  if (/\.webm$/i.test(file.name)) return "video/webm";
+  if (/\.png$/i.test(file.name)) return "image/png";
+  if (/\.gif$/i.test(file.name)) return "image/gif";
+  return "image/jpeg";
+}
+
+function validateConsultMediaFiles(files: File[]) {
+  const invalidFile = files.find((file) => !isConsultMediaFile(file));
+  if (invalidFile) {
+    throw new Error(`${invalidFile.name} is not a photo or video.`);
+  }
+  const oversizedFile = files.find((file) => file.size > MAX_CONSULT_MEDIA_BYTES);
+  if (oversizedFile) {
+    throw new Error(`${oversizedFile.name} must be 50MB or smaller.`);
+  }
+}
+
+async function uploadConsultMediaFiles(jobId: string, consultId: string, files: File[]) {
+  if (files.length === 0) return;
+  validateConsultMediaFiles(files);
+  const supabase = await createServerSupabaseClient();
+  for (const file of files) {
+    const contentType = consultMediaContentType(file);
+    const extension = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
+    const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, await file.arrayBuffer(), {
+      cacheControl: "31536000",
+      contentType,
+      upsert: false,
+    });
+    if (uploadError) throw new Error(uploadError.message);
+    try {
+      await addJobConsultMedia({ consultId, storagePath, fileName: file.name, contentType, fileSizeBytes: file.size });
+    } catch (error) {
+      await supabase.storage.from("job-consults").remove([storagePath]);
+      throw error;
+    }
+  }
+}
+
 function parseInventoryCondition(value: string) {
   return inventoryConditionOptions.includes(value as InventoryItemCondition) ? (value as InventoryItemCondition) : "good";
 }
@@ -143,6 +196,7 @@ export async function saveJobConsultAction(formData: FormData) {
   const title = readString(formData.get("title"));
   const occurredAt = readString(formData.get("occurred_at"));
   const notes = readString(formData.get("notes"));
+  const files = readConsultMediaFiles(formData);
 
   try {
     if (consultId) {
@@ -150,7 +204,9 @@ export async function saveJobConsultAction(formData: FormData) {
       redirect(buildJobUrl(jobId, { message: "On-site consult updated.", tone: "success", section }));
     }
     const createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes });
-    redirect(buildJobUrl(jobId, { message: "On-site consult saved. Add photos or video when you are ready.", tone: "success", section, editRequestId: createdConsultId }));
+    await uploadConsultMediaFiles(jobId, createdConsultId, files);
+    const fileMessage = files.length === 0 ? "" : ` with ${files.length} media file${files.length === 1 ? "" : "s"}`;
+    redirect(buildJobUrl(jobId, { message: `On-site consult saved${fileMessage}.`, tone: "success", section, editRequestId: createdConsultId }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to save on-site consult.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
@@ -165,47 +221,12 @@ export async function uploadJobConsultMediaAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: "Save the consult before adding media.", tone: "error", section }));
   }
 
-  const files = formData
-    .getAll("media")
-    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const files = readConsultMediaFiles(formData);
   if (files.length === 0) {
     redirect(buildJobUrl(jobId, { message: "Select at least one photo or video.", tone: "error", section }));
   }
-  const invalidFile = files.find((file) => !(file.type.startsWith("image/") || file.type.startsWith("video/")));
-  if (invalidFile) {
-    redirect(buildJobUrl(jobId, { message: `${invalidFile.name} is not a photo or video.`, tone: "error", section }));
-  }
-  const oversizedFile = files.find((file) => file.size > MAX_CONSULT_MEDIA_BYTES);
-  if (oversizedFile) {
-    redirect(buildJobUrl(jobId, { message: `${oversizedFile.name} must be 50MB or smaller.`, tone: "error", section }));
-  }
-
   try {
-    const supabase = await createServerSupabaseClient();
-    for (const file of files) {
-      const extension = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (file.type.startsWith("video/") ? "mp4" : "jpg");
-      const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
-      const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, await file.arrayBuffer(), {
-        cacheControl: "31536000",
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-      try {
-        await addJobConsultMedia({
-          consultId,
-          storagePath,
-          fileName: file.name,
-          contentType: file.type || null,
-          fileSizeBytes: file.size,
-        });
-      } catch (error) {
-        await supabase.storage.from("job-consults").remove([storagePath]);
-        throw error;
-      }
-    }
+    await uploadConsultMediaFiles(jobId, consultId, files);
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to upload consult media.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));

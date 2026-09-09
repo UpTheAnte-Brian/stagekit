@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { JobExactItemPicker } from "@/components/jobs/job-exact-item-picker";
 import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
+import { ConsultMediaGallery } from "@/components/jobs/consult-media-gallery";
 import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { FlashMessage } from "@/components/web/flash-message";
 import {
@@ -403,34 +404,34 @@ export default async function JobDetailPage({
 
       <section className={sectionCardClass}>
         <SectionHeader
-          title="Pack List"
-          description="Pack requests describe intent. Reference items are examples. Picked items are candidate exact pieces. Checked-out items are the pieces physically committed to this project."
+          title="Project flow"
+          description="Work the project in this order. The later steps stay out of the way until you need them."
         />
         <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <MetricCard label="Requests Total" value={String(openPackRequests.length)} />
-          <MetricCard label="Fully Covered" value={String(fulfilledRequestCount)} />
-          <MetricCard label="Exact Items Logged" value={String(pickedItems.length)} />
+          <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">1. Capture the visit</p>
+            <p className="mt-2 text-sm font-semibold text-[#20322a]">{consults.length === 0 ? "Add your notes and today’s photos." : `${consults.length} visit record${consults.length === 1 ? "" : "s"} saved.`}</p>
+          </div>
+          <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">2. Build the pack list</p>
+            <p className="mt-2 text-sm font-semibold text-[#20322a]">{openPackRequests.length} request{openPackRequests.length === 1 ? "" : "s"} • {fulfilledRequestCount} covered</p>
+          </div>
+          <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">3. Pull & deliver</p>
+            <p className="mt-2 text-sm font-semibold text-[#20322a]">{pickedItems.length} picked • {activeAssignments.length} checked out</p>
+          </div>
         </div>
-        <p className={`${mutedTextClass} mt-4`}>
-          {sceneApplications.length} applied scene{sceneApplications.length === 1 ? "" : "s"} are currently feeding this room-by-room pack list.
-        </p>
       </section>
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="on-site-consults" open={detailsOpen(activeSection, "on-site-consults", consults.length === 0)}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-          <SectionHeader
-            title="On-Site Consult"
-            description="Capture the first walkthrough—raw notes, room measurements, photos, and video—before turning ideas into pack requests."
-            right={<span className={secondaryButtonClass}>{consults.length === 0 ? "Start" : `${consults.length} saved`}</span>}
-          />
-        </summary>
+      <section className={`${sectionCardClass} scroll-mt-6`} id="on-site-consults">
+        <SectionHeader
+          title="1. Capture On-Site Visit"
+          description="Put your raw notes, room measurements, photos, and video in one place. Add everything from today before saving."
+        />
 
         <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
           <input name="job_id" type="hidden" value={id} />
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Consult name</label>
-            <input defaultValue="On-site consult" name="title" placeholder="Initial on-site consult" />
-          </div>
+          <input name="title" type="hidden" value="On-site visit" />
           <div>
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">When</label>
             <input name="occurred_at" type="datetime-local" />
@@ -438,19 +439,23 @@ export default async function JobDetailPage({
           <div className="md:col-span-2">
             <label className="mb-2 block text-sm font-semibold text-[#33413b]">Walkthrough notes</label>
             <textarea name="notes" placeholder={"Fireplace room\n12’ or 9’ (in front of fireplace) by 13’\n\nSun room\n11’\n\nBed 1 — 11’ x 10.5’"} />
-            <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. This is the record you will use when building the pack list.</p>
+            <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
           </div>
-          <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-            <button className={primaryButtonClass} type="submit">Save On-Site Consult</button>
-            <Link className={secondaryButtonClass} href="#add-pack-list">Go to Pack Requests</Link>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Today&apos;s photos & video</label>
+            <input accept="image/*,video/*,.heic,.heif" multiple name="media" type="file" />
+            <p className={`${mutedTextClass} mt-2`}>Choose the photos and videos from this visit now. They will save with these notes; you can add more later.</p>
+          </div>
+          <div className="md:col-span-2">
+            <button className={primaryButtonClass} type="submit">Save Visit Notes & Media</button>
           </div>
         </form>
 
         {consults.length > 0 ? (
           <div className="mt-7 space-y-5 border-t border-[#ecdcc7] pt-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-[#20322a]">Saved Consults</h3>
-              <Link className={secondaryButtonClass} href="#add-pack-list">Create Pack Requests</Link>
+              <h3 className="text-lg font-semibold text-[#20322a]">Saved visits</h3>
+              <p className={mutedTextClass}>When you&apos;re ready, use the pack list below to turn this visit into requests.</p>
             </div>
             {consults.map((consult) => (
               <article key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
@@ -483,39 +488,16 @@ export default async function JobDetailPage({
                   </form>
                 </details>
                 {consult.media.length > 0 ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {consult.media.map((media) => (
-                      <div key={media.id} className="overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#fffaf4]">
-                        {media.url ? (
-                          media.is_video ? (
-                            <video className="h-44 w-full bg-[#20322a] object-cover" controls preload="metadata" src={media.url} />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img alt={media.file_name} className="h-44 w-full object-cover" loading="lazy" src={media.url} />
-                          )
-                        ) : (
-                          <div className="flex h-44 items-center justify-center text-sm text-[#6f756c]">Preview unavailable</div>
-                        )}
-                        <div className="flex items-center justify-between gap-3 p-3">
-                          <p className="min-w-0 truncate text-sm font-medium text-[#33413b]">{media.file_name}</p>
-                          <form action={deleteJobConsultMediaAction}>
-                            <input name="job_id" type="hidden" value={id} />
-                            <input name="media_id" type="hidden" value={media.id} />
-                            <button className="text-xs font-semibold text-[#a7502d] hover:underline" type="submit">Remove</button>
-                          </form>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
                 ) : null}
                 <ConsultMediaUploadForm action={uploadJobConsultMediaAction} consultId={consult.id} jobId={id} />
               </article>
             ))}
           </div>
         ) : null}
-      </details>
+      </section>
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", job.status === "archived")}>
+      {job.status === "archived" ? <details className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Archive Readiness"
@@ -601,9 +583,9 @@ export default async function JobDetailPage({
             </div>
           </div>
         ) : null}
-      </details>
+      </details> : null}
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open={detailsOpen(activeSection, "add-pack-list", Boolean(editingPackRequest))}>
+      {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? <details className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title={editingPackRequest ? "Edit Pack Request" : "Add to Pack List"}
@@ -734,9 +716,9 @@ export default async function JobDetailPage({
             </div>
           </form>
         ) : null}
-      </details>
+      </details> : null}
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="quick-select" open={detailsOpen(activeSection, "quick-select")}>
+      {activeSection === "quick-select" || Boolean(activePickRequest) ? <details className={`${sectionCardClass} scroll-mt-6`} id="quick-select" open={detailsOpen(activeSection, "quick-select", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Quick Select"
@@ -799,9 +781,9 @@ export default async function JobDetailPage({
             </button>
           </div>
         </form>
-      </details>
+      </details> : null}
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
+      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Scene Templates"
@@ -945,17 +927,16 @@ export default async function JobDetailPage({
             )}
           </div>
         </div>
-      </details>
+      </details> : null}
 
       <section className={`${sectionCardClass} scroll-mt-6`} id="pack-requests">
         <SectionHeader
-          title="Pack Requests"
-          description="Designer asks like mirrors, pillows, art, and kitchen styling live here, grouped by room."
-          right={
-            <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>
-              Add Request
-            </Link>
-          }
+          title="2. Build Pack List"
+          description="Turn what you saw into room-by-room staging requests."
+          right={<div className="flex flex-wrap gap-2">
+            {sceneTemplates.length > 0 ? <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "scene-templates" })}>Room templates</Link> : null}
+            <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>Add a Pack Request</Link>
+          </div>}
         />
         <div className="mt-5 space-y-6">
           {openPackRequests.length === 0 ? (
@@ -1183,7 +1164,7 @@ export default async function JobDetailPage({
         </section>
       ) : null}
 
-      <section className={`${sectionCardClass} scroll-mt-6`} id="picked-queue">
+      {pickedQueueItems.length > 0 ? <section className={`${sectionCardClass} scroll-mt-6`} id="picked-queue">
         <SectionHeader
           title="Picked Queue"
           description="These exact picks are logged for this project but not yet checked out. Use this as the trailer/load queue. As items are checked out, they disappear from here and move into Checked Out to Project."
@@ -1240,9 +1221,9 @@ export default async function JobDetailPage({
             })
           )}
         </div>
-      </section>
+      </section> : null}
 
-      <section className={`${sectionCardClass} scroll-mt-6`} id="assignments">
+      {activeAssignments.length > 0 ? <section className={`${sectionCardClass} scroll-mt-6`} id="assignments">
         <SectionHeader
           title="Checked Out to Project"
           description="These items are currently checked out to this project. Treat this as the on-trailer / at-house list. Use Check In when the item physically returns from the house or stage."
@@ -1275,9 +1256,9 @@ export default async function JobDetailPage({
             ))
           )}
         </div>
-      </section>
+      </section> : null}
 
-      <section className={sectionCardClass}>
+      {completedAssignments.length > 0 ? <section className={sectionCardClass}>
         <SectionHeader
           title="Checked In"
           description="Check-in closes the assignment and puts the inventory item back into available status."
@@ -1296,7 +1277,7 @@ export default async function JobDetailPage({
             ))
           )}
         </div>
-      </section>
+      </section> : null}
     </section>
   );
 }
