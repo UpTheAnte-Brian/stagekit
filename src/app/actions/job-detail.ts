@@ -21,7 +21,7 @@ import {
   updatePackRequest,
   updatePackRequestStatus,
 } from "@/lib/db/job-details";
-import { assignItemToJob, checkInItem, createItem, type InventoryItemCondition } from "@/lib/db/inventory";
+import { assignItemToJob, checkInAllJobItems, checkInItem, createItem, type InventoryItemCondition } from "@/lib/db/inventory";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
@@ -325,7 +325,7 @@ export async function savePackRequestAction(formData: FormData) {
         requestedItemId: selectedItemId || null,
       });
     } else {
-      await createPackRequest({
+      const createdPackRequestId = await createPackRequest({
         jobId,
         requestText: resolvedText,
         quantity: requestQuantity,
@@ -336,13 +336,31 @@ export async function savePackRequestAction(formData: FormData) {
         optional,
         requestedItemId: selectedItemId || null,
       });
+
+      if (selectedItemId) {
+        try {
+          await createJobPickItem({
+            jobId,
+            itemId: selectedItemId,
+            packRequestId: createdPackRequestId,
+          });
+        } catch (error) {
+          await deletePackRequest(createdPackRequestId).catch(() => undefined);
+          throw error;
+        }
+      }
     }
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : packRequestId ? "Failed to update pack request." : "Failed to add pack request.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
   }
 
-  redirect(`/jobs/${jobId}`);
+  const message = packRequestId
+    ? "Pack request updated."
+    : selectedItemId
+      ? "Pack request and exact item added."
+      : "Pack request added.";
+  redirect(buildJobUrl(jobId, { message, tone: "success", section: "pack-requests" }));
 }
 
 export async function toggleOptionalAction(formData: FormData) {
@@ -435,6 +453,11 @@ export async function createExactInventoryItemForPackRequestAction(formData: For
     });
 
     await linkRequestedItemToPackRequest(packRequestId, item.id);
+    await createJobPickItem({
+      jobId,
+      itemId: item.id,
+      packRequestId,
+    });
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to create exact inventory item.";
     redirect(buildJobUrl(jobId, {
@@ -446,7 +469,7 @@ export async function createExactInventoryItemForPackRequestAction(formData: For
   }
 
   redirect(buildJobUrl(jobId, {
-    message: "Exact inventory item created and linked to this request.",
+    message: "Exact inventory item created and added to this request.",
     tone: "success",
     section: "add-pack-list",
     editRequestId: packRequestId,
@@ -482,6 +505,21 @@ export async function checkInItemAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: "Item checked in.", tone: "success", section: "assignments" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to check in item.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "assignments" }));
+  }
+}
+
+export async function checkInAllItemsAction(formData: FormData) {
+  const jobId = readJobId(formData);
+
+  try {
+    const checkedInCount = await checkInAllJobItems(jobId);
+    const message = checkedInCount === 0
+      ? "No items were still checked out to this project."
+      : `Checked in ${checkedInCount} item${checkedInCount === 1 ? "" : "s"}.`;
+    redirect(buildJobUrl(jobId, { message, tone: "success", section: "assignments" }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to check in project items.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "assignments" }));
   }
 }

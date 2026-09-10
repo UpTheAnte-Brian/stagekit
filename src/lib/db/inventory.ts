@@ -91,6 +91,10 @@ const checkInItemSchema = z.object({
   jobItemId: uuidSchema,
 });
 
+const checkInAllJobItemsSchema = z.object({
+  jobId: uuidSchema,
+});
+
 function projectAddressLabel(job: ProjectLocationJob) {
   return job.address_label ?? ([job.address1, job.city, job.state, job.postal].filter(Boolean).join(", ") || null);
 }
@@ -1180,4 +1184,44 @@ export async function checkInItem(jobItemId: string) {
   assertNoError(itemStatusError, "Failed to update item status to available");
 
   return assertData(data, "Failed to check in job item");
+}
+
+export async function checkInAllJobItems(jobId: string) {
+  const parsed = checkInAllJobItemsSchema.parse({ jobId });
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: activeJobItems, error: loadError } = await supabase
+    .from("job_items")
+    .select("id,item_id")
+    .eq("job_id", parsed.jobId)
+    .is("checked_in_at", null);
+  assertNoError(loadError, "Failed to load checked out items");
+
+  const jobItemIds = (activeJobItems ?? []).map((jobItem) => jobItem.id);
+  const itemIds = (activeJobItems ?? []).map((jobItem) => jobItem.item_id);
+  if (jobItemIds.length === 0) {
+    return 0;
+  }
+
+  const checkInTimestamp = new Date().toISOString();
+  const { error: checkInError } = await supabase
+    .from("job_items")
+    .update({
+      checked_in_at: checkInTimestamp,
+      checked_in_by: user?.id ?? null,
+    })
+    .in("id", jobItemIds)
+    .is("checked_in_at", null);
+  assertNoError(checkInError, "Failed to check in project items");
+
+  const { error: itemStatusError } = await supabase
+    .from("inventory_items")
+    .update({ status: "available" })
+    .in("id", itemIds);
+  assertNoError(itemStatusError, "Failed to update checked in items");
+
+  return jobItemIds.length;
 }
