@@ -20,7 +20,6 @@ import {
   cancelPackRequestAction,
   checkInAllItemsAction,
   checkInItemAction,
-  createJobConsultMediaUploadUrlAction,
   createExactInventoryItemForPackRequestAction,
   createSceneTemplateAction,
   deletePackRequestAction,
@@ -32,7 +31,6 @@ import {
   savePackRequestAction,
   saveJobConsultAction,
   toggleOptionalAction,
-  registerJobConsultMediaAction,
   updateJobAction,
 } from "@/app/actions/job-detail";
 
@@ -490,9 +488,7 @@ export default async function JobDetailPage({
                 ) : null}
                 <ConsultMediaUploadForm
                   consultId={consult.id}
-                  createUploadUrl={createJobConsultMediaUploadUrlAction}
                   jobId={id}
-                  registerMedia={registerJobConsultMediaAction}
                 />
               </article>
             ))}

@@ -8,8 +8,6 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
 
 type ConsultMediaUploadFormProps = {
-  createUploadUrl: (formData: FormData) => Promise<{ storagePath: string; token: string }>;
-  registerMedia: (formData: FormData) => void | Promise<void>;
   consultId: string;
   jobId: string;
 };
@@ -34,7 +32,48 @@ function mediaContentType(file: File) {
   return "image/jpeg";
 }
 
-export function ConsultMediaUploadForm({ createUploadUrl, registerMedia, consultId, jobId }: ConsultMediaUploadFormProps) {
+async function requestUploadUrl(input: { jobId: string; consultId: string; fileName: string; contentType: string; fileSizeBytes: number }) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 20_000);
+
+  try {
+    const response = await fetch("/api/jobs/consult-media/upload-url", {
+      body: JSON.stringify(input),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    });
+    const payload = (await response.json().catch(() => null)) as { message?: string; storagePath?: string; token?: string } | null;
+
+    if (!response.ok || !payload?.storagePath || !payload.token) {
+      throw new Error(payload?.message ?? "Failed to prepare the media upload.");
+    }
+
+    return { storagePath: payload.storagePath, token: payload.token };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Preparing the upload timed out. Please try again, or sign in again if the problem continues.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function registerUpload(input: { jobId: string; consultId: string; storagePath: string; fileName: string; contentType: string; fileSizeBytes: number }) {
+  const response = await fetch("/api/jobs/consult-media/register", {
+    body: JSON.stringify(input),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.message ?? "Failed to save the uploaded media.");
+  }
+}
+
+export function ConsultMediaUploadForm({ consultId, jobId }: ConsultMediaUploadFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -89,13 +128,13 @@ export function ConsultMediaUploadForm({ createUploadUrl, registerMedia, consult
     try {
       for (const [index, media] of selectedMedia.entries()) {
         const contentType = mediaContentType(media.file);
-        const metadata = new FormData();
-        metadata.set("job_id", jobId);
-        metadata.set("consult_id", consultId);
-        metadata.set("file_name", media.name);
-        metadata.set("content_type", contentType);
-        metadata.set("file_size_bytes", String(media.file.size));
-        const { storagePath, token } = await createUploadUrl(metadata);
+        const { storagePath, token } = await requestUploadUrl({
+          jobId,
+          consultId,
+          fileName: media.name,
+          contentType,
+          fileSizeBytes: media.file.size,
+        });
 
         setUploadStatus(`Uploading ${index + 1} of ${selectedMedia.length}: ${media.name}`);
         const { error: uploadError } = await supabase.storage.from("job-consults").uploadToSignedUrl(storagePath, token, media.file, {
@@ -105,8 +144,14 @@ export function ConsultMediaUploadForm({ createUploadUrl, registerMedia, consult
         if (uploadError) throw new Error(uploadError.message);
 
         setUploadStatus(`Saving ${index + 1} of ${selectedMedia.length}: ${media.name}`);
-        metadata.set("storage_path", storagePath);
-        await registerMedia(metadata);
+        await registerUpload({
+          jobId,
+          consultId,
+          storagePath,
+          fileName: media.name,
+          contentType,
+          fileSizeBytes: media.file.size,
+        });
       }
 
       setSelectedMedia([]);
