@@ -10,11 +10,12 @@ function simplifyCategoryLabel(value) {
 
 const exactCategoryMap = new Map([
   ["tables", "Tables"],
+  ["table", "Tables"],
   ["tables coffee", "Tables / Coffee"],
   ["coffee table", "Tables / Coffee"],
   ["cocktail table", "Tables / Coffee"],
-  ["tables sofa", "Tables / Sofa"],
-  ["sofa table", "Tables / Sofa"],
+  ["tables sofa", "Tables / Console"],
+  ["sofa table", "Tables / Console"],
   ["tables end", "Tables / End"],
   ["end table", "Tables / End"],
   ["side table", "Tables / End"],
@@ -156,8 +157,7 @@ const exactCategoryMap = new Map([
 const categoryMatchers = [
   { match: (value) => value.includes("coffee table"), value: "Tables / Coffee" },
   { match: (value) => value.includes("cocktail table"), value: "Tables / Coffee" },
-  { match: (value) => value.includes("sofa table"), value: "Tables / Sofa" },
-  { match: (value) => value.includes("console table") || value.includes("entry table"), value: "Tables / Console" },
+  { match: (value) => value.includes("sofa table") || value.includes("console table") || value.includes("entry table"), value: "Tables / Console" },
   { match: (value) => value.includes("end table") || value.includes("side table") || value.includes("drink table"), value: "Tables / End" },
   { match: (value) => value.includes("dining table") || value.includes("breakfast table"), value: "Tables / Dining" },
   { match: (value) => value.includes("buffet") || value.includes("sideboard") || value.includes("credenza"), value: "Tables / Buffet" },

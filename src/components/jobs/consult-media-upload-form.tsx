@@ -8,7 +8,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
 
 type ConsultMediaUploadFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  createUploadUrl: (formData: FormData) => Promise<{ storagePath: string; token: string }>;
+  registerMedia: (formData: FormData) => void | Promise<void>;
   consultId: string;
   jobId: string;
 };
@@ -33,13 +34,14 @@ function mediaContentType(file: File) {
   return "image/jpeg";
 }
 
-export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMediaUploadFormProps) {
+export function ConsultMediaUploadForm({ createUploadUrl, registerMedia, consultId, jobId }: ConsultMediaUploadFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [isDragActive, setIsDragActive] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<SelectedMedia[]>([]);
 
   useEffect(() => () => selectedMedia.forEach((media) => URL.revokeObjectURL(media.url)), [selectedMedia]);
@@ -81,33 +83,30 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
 
     setIsUploading(true);
     setMessage(null);
+    setUploadStatus("Preparing upload…");
     const supabase = createBrowserSupabaseClient();
 
     try {
-      for (const media of selectedMedia) {
+      for (const [index, media] of selectedMedia.entries()) {
         const contentType = mediaContentType(media.file);
-        const extension = media.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
-        const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, media.file, {
+        const metadata = new FormData();
+        metadata.set("job_id", jobId);
+        metadata.set("consult_id", consultId);
+        metadata.set("file_name", media.name);
+        metadata.set("content_type", contentType);
+        metadata.set("file_size_bytes", String(media.file.size));
+        const { storagePath, token } = await createUploadUrl(metadata);
+
+        setUploadStatus(`Uploading ${index + 1} of ${selectedMedia.length}: ${media.name}`);
+        const { error: uploadError } = await supabase.storage.from("job-consults").uploadToSignedUrl(storagePath, token, media.file, {
           cacheControl: "31536000",
           contentType,
-          upsert: false,
         });
         if (uploadError) throw new Error(uploadError.message);
 
-        try {
-          const metadata = new FormData();
-          metadata.set("job_id", jobId);
-          metadata.set("consult_id", consultId);
-          metadata.set("storage_path", storagePath);
-          metadata.set("file_name", media.name);
-          metadata.set("content_type", contentType);
-          metadata.set("file_size_bytes", String(media.file.size));
-          await action(metadata);
-        } catch (error) {
-          await supabase.storage.from("job-consults").remove([storagePath]);
-          throw error;
-        }
+        setUploadStatus(`Saving ${index + 1} of ${selectedMedia.length}: ${media.name}`);
+        metadata.set("storage_path", storagePath);
+        await registerMedia(metadata);
       }
 
       setSelectedMedia([]);
@@ -117,6 +116,7 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
       setMessage(error instanceof Error ? error.message : "Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -165,6 +165,7 @@ export function ConsultMediaUploadForm({ action, consultId, jobId }: ConsultMedi
         </div>
       ) : null}
       {message ? <p className="mt-3 text-sm font-medium text-[#a7502d]">{message}</p> : null}
+      {uploadStatus ? <p aria-live="polite" className="mt-3 text-sm font-medium text-[#4e584f]">{uploadStatus}</p> : null}
       <div className="mt-3">
         <button className="rounded-xl border border-[#e3d0ba] bg-white px-3 py-2 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] disabled:cursor-not-allowed disabled:opacity-50" disabled={isUploading || selectedMedia.length === 0} type="submit">{buttonLabel}</button>
       </div>

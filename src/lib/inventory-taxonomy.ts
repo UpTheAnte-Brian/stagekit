@@ -24,11 +24,10 @@ export const inventoryCategoryTaxonomy: InventoryCategorySection[] = [
         label: "Table Types",
         options: [
           { label: "Coffee", value: "Tables / Coffee", aliases: ["coffee table", "cocktail table"] },
-          { label: "Sofa", value: "Tables / Sofa", aliases: ["sofa table"] },
           { label: "End", value: "Tables / End", aliases: ["end table", "side table", "drink table"] },
           { label: "Dining", value: "Tables / Dining", aliases: ["dining table", "breakfast table"] },
           { label: "Buffet", value: "Tables / Buffet", aliases: ["buffet", "sideboard", "credenza"] },
-          { label: "Console", value: "Tables / Console", aliases: ["console table", "entry table"] },
+          { label: "Console", value: "Tables / Console", aliases: ["sofa table", "console table", "entry table"] },
         ],
       },
     ],
@@ -184,8 +183,7 @@ type CategoryMatcher = {
 const categoryMatchers: CategoryMatcher[] = [
   { match: (value) => value.includes("coffee table"), value: "Tables / Coffee" },
   { match: (value) => value.includes("cocktail table"), value: "Tables / Coffee" },
-  { match: (value) => value.includes("sofa table"), value: "Tables / Sofa" },
-  { match: (value) => value.includes("console table") || value.includes("entry table"), value: "Tables / Console" },
+  { match: (value) => value.includes("sofa table") || value.includes("console table") || value.includes("entry table"), value: "Tables / Console" },
   { match: (value) => value.includes("end table") || value.includes("side table") || value.includes("drink table"), value: "Tables / End" },
   { match: (value) => value.includes("dining table") || value.includes("breakfast table"), value: "Tables / Dining" },
   { match: (value) => value.includes("buffet") || value.includes("sideboard") || value.includes("credenza"), value: "Tables / Buffet" },
@@ -251,6 +249,10 @@ export function canonicalizeInventoryCategory(value: string | null | undefined) 
   const directMatch = categoryValueBySimplifiedLabel.get(simplified);
   if (directMatch) {
     return directMatch;
+  }
+
+  if (simplified === "table") {
+    return "Tables";
   }
 
   const matcher = categoryMatchers.find((entry) => entry.match(simplified));

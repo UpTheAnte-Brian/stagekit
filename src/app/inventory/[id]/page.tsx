@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
+import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
 import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { FlashMessage } from "@/components/web/flash-message";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
-import { inventoryCategorySuggestionValues } from "@/lib/inventory-taxonomy";
 import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
 import { listAssignableJobs } from "@/lib/db/jobs";
 import {
@@ -651,11 +651,6 @@ export default async function ItemDetailPage({
 
       <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Details</h2>
-        <datalist id="inventory-category-options">
-          {inventoryCategorySuggestionValues.map((category) => (
-            <option key={category} value={category} />
-          ))}
-        </datalist>
         <div className="mt-3 grid gap-3 rounded-xl border border-border/70 bg-slate-50 p-3 text-sm text-slate-700 md:grid-cols-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Estimated List Price</p>
@@ -697,7 +692,7 @@ export default async function ItemDetailPage({
             <label className="mb-1 block text-sm font-medium" htmlFor="category">
               Category
             </label>
-            <input id="category" list="inventory-category-options" name="category" defaultValue={item.category ?? ""} />
+            <InventoryCategorySelect defaultValue={item.category} id="category" name="category" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="status">

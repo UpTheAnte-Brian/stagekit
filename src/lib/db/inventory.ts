@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { inventoryAuditSuppressionTagByTag, inventoryAuditTagValues, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { isInventoryUserLabel, normalizeInventoryLabel } from "@/lib/inventory-labels";
-import { canonicalizeInventoryCategory } from "@/lib/inventory-taxonomy";
+import { canonicalizeInventoryCategory, getInventoryCategoryFamily } from "@/lib/inventory-taxonomy";
 import type { Database } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -540,7 +540,12 @@ function applyListItemFilters<T extends InventoryItemsFilterQuery>(query: T, par
   }
 
   if (parsed.category) {
-    next = next.eq("category", canonicalizeInventoryCategory(parsed.category) ?? parsed.category) as T;
+    const category = canonicalizeInventoryCategory(parsed.category) ?? parsed.category;
+    const family = getInventoryCategoryFamily(category);
+    next =
+      category === family
+        ? (next.or(`category.eq.${category},category.like.${category} / *`) as T)
+        : (next.eq("category", category) as T);
   }
 
   if (parsed.disposition === "dispose") {

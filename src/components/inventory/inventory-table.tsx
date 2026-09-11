@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 
+import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
 import type { InventoryItemCondition, InventoryItemStatus, InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
 import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
@@ -291,7 +292,7 @@ export function InventoryTable({
                           </label>
                           <label className="text-sm font-medium text-foreground">
                             Category
-                            <input className="mt-1" defaultValue={item.category ?? ""} list="inventory-category-options" name="category" />
+                            <InventoryCategorySelect className="mt-1" defaultValue={item.category} name="category" />
                           </label>
                           <label className="text-sm font-medium text-foreground">
                             Dimensions

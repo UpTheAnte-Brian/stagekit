@@ -236,7 +236,7 @@ export async function uploadJobConsultMediaAction(formData: FormData) {
 }
 
 export async function registerJobConsultMediaAction(formData: FormData) {
-  readJobId(formData);
+  const jobId = readJobId(formData);
   const consultId = readString(formData.get("consult_id"));
   const storagePath = readString(formData.get("storage_path"));
   const fileName = readString(formData.get("file_name"));
@@ -247,11 +247,64 @@ export async function registerJobConsultMediaAction(formData: FormData) {
     throw new Error("The uploaded media details are invalid.");
   }
 
+  const supabase = await createServerSupabaseClient();
+  const { data: consult, error: consultError } = await supabase
+    .from("job_consults")
+    .select("id")
+    .eq("id", consultId)
+    .eq("job_id", jobId)
+    .maybeSingle();
+
+  if (consultError) {
+    throw new Error(consultError.message);
+  }
+  if (!consult) {
+    throw new Error("The saved visit could not be found.");
+  }
+
   try {
     await addJobConsultMedia({ consultId, storagePath, fileName, contentType: contentType || null, fileSizeBytes });
   } catch (error) {
+    await supabase.storage.from("job-consults").remove([storagePath]);
     throw new Error(error instanceof Error ? error.message : "Failed to save consult media.");
   }
+}
+
+export async function createJobConsultMediaUploadUrlAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const consultId = readString(formData.get("consult_id"));
+  const fileName = readString(formData.get("file_name"));
+  const contentType = readString(formData.get("content_type"));
+  const fileSizeBytes = Number.parseInt(readString(formData.get("file_size_bytes")), 10);
+
+  if (!consultId || !fileName || !Number.isFinite(fileSizeBytes) || fileSizeBytes < 1 || fileSizeBytes > MAX_CONSULT_MEDIA_BYTES) {
+    throw new Error("The selected media details are invalid.");
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data: consult, error: consultError } = await supabase
+    .from("job_consults")
+    .select("id")
+    .eq("id", consultId)
+    .eq("job_id", jobId)
+    .maybeSingle();
+
+  if (consultError) {
+    throw new Error(consultError.message);
+  }
+  if (!consult) {
+    throw new Error("The saved visit could not be found.");
+  }
+
+  const extension = fileName.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
+  const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
+  const { data, error } = await supabase.storage.from("job-consults").createSignedUploadUrl(storagePath);
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Failed to prepare the media upload.");
+  }
+
+  return { storagePath, token: data.token };
 }
 
 export async function deleteJobConsultMediaAction(formData: FormData) {

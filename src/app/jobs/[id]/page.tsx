@@ -20,6 +20,7 @@ import {
   cancelPackRequestAction,
   checkInAllItemsAction,
   checkInItemAction,
+  createJobConsultMediaUploadUrlAction,
   createExactInventoryItemForPackRequestAction,
   createSceneTemplateAction,
   deletePackRequestAction,
@@ -487,7 +488,12 @@ export default async function JobDetailPage({
                 {consult.media.length > 0 ? (
                   <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
                 ) : null}
-                <ConsultMediaUploadForm action={registerJobConsultMediaAction} consultId={consult.id} jobId={id} />
+                <ConsultMediaUploadForm
+                  consultId={consult.id}
+                  createUploadUrl={createJobConsultMediaUploadUrlAction}
+                  jobId={id}
+                  registerMedia={registerJobConsultMediaAction}
+                />
               </article>
             ))}
           </div>

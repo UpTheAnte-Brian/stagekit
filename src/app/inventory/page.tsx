@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
+import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
 import { InventoryTable } from "@/components/inventory/inventory-table";
 import { FlashMessage } from "@/components/web/flash-message";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
@@ -270,11 +271,6 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
       {message ? <FlashMessage message={message} tone={message.toLowerCase().includes("updated") ? "success" : "warning"} /> : null}
 
       <form className="grid gap-3 rounded-2xl border border-border bg-surface p-4 shadow-sm lg:grid-cols-7" method="get">
-        <datalist id="inventory-category-options">
-          {categories.map((category) => (
-            <option key={category} value={category} />
-          ))}
-        </datalist>
         <input name="q" placeholder="Search name, sku, brand..." defaultValue={q} />
         <select name="status" defaultValue={statusFilter ?? ""}>
           <option value="">All statuses</option>
@@ -284,14 +280,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             </option>
           ))}
         </select>
-        <select name="category" defaultValue={categoryFilter}>
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+        <InventoryCategorySelect additionalOptions={categories} defaultValue={categoryFilter} filterMode name="category" />
         <select name="disposition" defaultValue={dispositionFilter ?? ""}>
           <option value="">All disposition</option>
           <option value="keep">Keep in inventory</option>
@@ -367,7 +356,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
         <form action={createItemAction} className="mt-3 grid gap-3 md:grid-cols-5">
           <input name="name" placeholder="Name" required />
           <input aria-label="Optional external SKU" name="sku" placeholder="Optional SKU (vendor/barcode)" />
-          <input list="inventory-category-options" name="category" placeholder="Tables / Coffee" />
+          <InventoryCategorySelect aria-label="Category" name="category" />
           <select name="status" defaultValue="available">
             {statusOptions.map((status) => (
               <option key={status} value={status}>
