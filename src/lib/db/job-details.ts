@@ -1135,7 +1135,8 @@ export async function createSceneTemplateFromJobRoom({
   summary?: string;
   notes?: string;
 }) {
-  const normalizedSourceRoom = sourceRoom.trim();
+  const normalizedSourceRoom = sourceRoom.trim().replace(/\s+/g, " ");
+  const sourceRoomKey = normalizedSourceRoom.toLocaleLowerCase();
   const normalizedName = name.trim();
   if (!normalizedSourceRoom) {
     throw new Error("Choose a room to save as a reusable scene.");
@@ -1149,11 +1150,10 @@ export async function createSceneTemplateFromJobRoom({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: sourceRequests, error: sourceRequestsError } = await supabase
+  const { data: projectRequests, error: sourceRequestsError } = await supabase
     .from("job_pack_requests")
-    .select("request_text,quantity,category,color,notes,optional,requested_item_id,created_at")
+    .select("request_text,quantity,category,color,notes,optional,requested_item_id,created_at,room")
     .eq("job_id", jobId)
-    .eq("room", normalizedSourceRoom)
     .neq("status", "cancelled")
     .order("created_at", { ascending: true });
 
@@ -1161,7 +1161,11 @@ export async function createSceneTemplateFromJobRoom({
     throw toSceneSchemaAwareError(sourceRequestsError);
   }
 
-  if (!sourceRequests || sourceRequests.length === 0) {
+  const sourceRequests = (projectRequests ?? []).filter(
+    (request) => (request.room ?? "").trim().replace(/\s+/g, " ").toLocaleLowerCase() === sourceRoomKey,
+  );
+
+  if (sourceRequests.length === 0) {
     throw new Error("That room does not have any active pack requests to save.");
   }
 

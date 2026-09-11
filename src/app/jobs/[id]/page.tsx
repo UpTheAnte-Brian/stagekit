@@ -106,6 +106,14 @@ function detailsOpen(activeSection: string | null, sectionName: string, fallback
   return fallback || activeSection === sectionName;
 }
 
+function normalizeRoomLabel(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function roomGroupKey(value: string | null | undefined) {
+  return normalizeRoomLabel(value).toLocaleLowerCase() || "no room";
+}
+
 function buildJobSectionHash(section?: string) {
   return section ? `#${section}` : "";
 }
@@ -250,17 +258,19 @@ export default async function JobDetailPage({
   const openPackRequestById = new Map(openPackRequests.map((request) => [request.id, request]));
   const fulfilledRequestCount = openPackRequests.filter((request) => request.picked_count >= request.quantity).length;
   const totalRequestedQuantity = openPackRequests.reduce((sum, request) => sum + request.quantity, 0);
-  const openPackRequestsByRoom = Object.entries(
-    openPackRequests.reduce<Record<string, JobPackRequest[]>>((acc, request) => {
-      const key = (request.room ?? "").trim() || "No room";
-      acc[key] = [...(acc[key] ?? []), request];
-      return acc;
-    }, {}),
-  ).sort(([a], [b]) => {
-    if (a === "No room") return 1;
-    if (b === "No room") return -1;
-    return a.localeCompare(b);
-  });
+  const openPackRequestsByRoom = [...openPackRequests.reduce<Map<string, { label: string; requests: JobPackRequest[] }>>((groups, request) => {
+    const key = roomGroupKey(request.room);
+    const current = groups.get(key);
+    const label = normalizeRoomLabel(request.room) || "No room";
+    groups.set(key, current ? { ...current, requests: [...current.requests, request] } : { label, requests: [request] });
+    return groups;
+  }, new Map()).values()]
+    .map(({ label, requests }) => [label, requests] as const)
+    .sort(([a], [b]) => {
+      if (a === "No room") return 1;
+      if (b === "No room") return -1;
+      return a.localeCompare(b);
+    });
   const extraPickedItems = pickedItems.filter((pickedItem) => !pickedItem.pack_request_id);
   const pickedQueueItems = pickedItems.filter((pickedItem) => !activeAssignedItemIds.has(pickedItem.item_id));
   const exactItemIds = new Set(pickedItems.map((pickedItem) => pickedItem.item_id));
@@ -424,75 +434,90 @@ export default async function JobDetailPage({
         </div>
       </section>
 
-      <section className={`${sectionCardClass} scroll-mt-6`} id="on-site-consults">
-        <SectionHeader
-          title="1. Capture On-Site Visit"
-          description="Save raw notes and room measurements first. Then add today’s photos and larger walkthrough videos directly to the saved visit."
-        />
+      <section className="space-y-5 scroll-mt-6" id="on-site-consults">
+        <details className={sectionCardClass} open={detailsOpen(activeSection, "on-site-consults")}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <SectionHeader
+              title="1. Capture On-Site Visit"
+              description="Save raw notes and room measurements first. Then add today’s photos and larger walkthrough videos directly to the saved visit."
+              right={<span className={quietButtonClass}>Add visit</span>}
+            />
+          </summary>
 
-        <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
-          <input name="job_id" type="hidden" value={id} />
-          <input name="title" type="hidden" value="On-site visit" />
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">When</label>
-            <input name="occurred_at" type="datetime-local" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Walkthrough notes</label>
-            <textarea name="notes" placeholder={"Fireplace room\n12’ or 9’ (in front of fireplace) by 13’\n\nSun room\n11’\n\nBed 1 — 11’ x 10.5’"} />
-            <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
-          </div>
-          <div className="md:col-span-2">
-            <button className={primaryButtonClass} type="submit">Save Visit Notes</button>
-          </div>
-        </form>
+          <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
+            <input name="job_id" type="hidden" value={id} />
+            <input name="title" type="hidden" value="On-site visit" />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">When</label>
+              <input name="occurred_at" type="datetime-local" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Walkthrough notes</label>
+              <textarea name="notes" placeholder={"Fireplace room\n12’ or 9’ (in front of fireplace) by 13’\n\nSun room\n11’\n\nBed 1 — 11’ x 10.5’"} />
+              <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
+            </div>
+            <div className="md:col-span-2">
+              <button className={primaryButtonClass} type="submit">Save Visit Notes</button>
+            </div>
+          </form>
+        </details>
 
         {consults.length > 0 ? (
-          <div className="mt-7 space-y-5 border-t border-[#ecdcc7] pt-6">
+          <section className={sectionCardClass} aria-labelledby="saved-visits-heading">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-[#20322a]">Saved visits</h3>
-              <p className={mutedTextClass}>When you&apos;re ready, use the pack list below to turn this visit into requests.</p>
+              <div>
+                <h3 className="text-lg font-semibold text-[#20322a]" id="saved-visits-heading">Saved visits</h3>
+                <p className={`${mutedTextClass} mt-1`}>Expand a visit to review notes, photos, and videos.</p>
+              </div>
+              <p className={mutedTextClass}>Use the pack list below to turn a visit into requests.</p>
             </div>
-            {consults.map((consult) => (
-              <article key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-lg font-semibold text-[#20322a]">{consult.title}</h4>
-                    <p className={`${mutedTextClass} mt-1`}>{formatTimestamp(consult.occurred_at)}</p>
+            <div className="mt-5 space-y-3">
+              {consults.map((consult) => (
+                <details key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4" open={consult.id === editRequestId}>
+                  <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                    <div>
+                      <h4 className="text-lg font-semibold text-[#20322a]">{consult.title}</h4>
+                      <p className={`${mutedTextClass} mt-1`}>{formatTimestamp(consult.occurred_at)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]">{consult.media.length} file{consult.media.length === 1 ? "" : "s"}</span>
+                      <span className={quietButtonClass}>View visit</span>
+                    </div>
+                  </summary>
+                  <div className="mt-4 border-t border-[#ecdcc7] pt-4">
+                    {consult.notes ? <p className="whitespace-pre-wrap text-sm leading-6 text-[#4e584f]">{consult.notes}</p> : <p className={mutedTextClass}>No written notes saved.</p>}
+                    <details className="mt-4 rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-[#33413b]">Edit consult notes</summary>
+                      <form action={saveJobConsultAction} className="mt-4 grid gap-3 md:grid-cols-2">
+                        <input name="job_id" type="hidden" value={id} />
+                        <input name="consult_id" type="hidden" value={consult.id} />
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#33413b]">Consult name</label>
+                          <input defaultValue={consult.title} name="title" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#33413b]">When</label>
+                          <input defaultValue={formatDateTimeLocal(consult.occurred_at)} name="occurred_at" type="datetime-local" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="mb-1 block text-xs font-semibold text-[#33413b]">Walkthrough notes</label>
+                          <textarea defaultValue={consult.notes ?? ""} name="notes" />
+                        </div>
+                        <div className="md:col-span-2"><button className={secondaryButtonClass} type="submit">Save changes</button></div>
+                      </form>
+                    </details>
+                    {consult.media.length > 0 ? (
+                      <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
+                    ) : null}
+                    <ConsultMediaUploadForm
+                      consultId={consult.id}
+                      jobId={id}
+                    />
                   </div>
-                  <span className="rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]">{consult.media.length} file{consult.media.length === 1 ? "" : "s"}</span>
-                </div>
-                {consult.notes ? <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#4e584f]">{consult.notes}</p> : <p className={`${mutedTextClass} mt-4`}>No written notes saved.</p>}
-                <details className="mt-4 rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3">
-                  <summary className="cursor-pointer text-sm font-semibold text-[#33413b]">Edit consult notes</summary>
-                  <form action={saveJobConsultAction} className="mt-4 grid gap-3 md:grid-cols-2">
-                    <input name="job_id" type="hidden" value={id} />
-                    <input name="consult_id" type="hidden" value={consult.id} />
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">Consult name</label>
-                      <input defaultValue={consult.title} name="title" />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">When</label>
-                      <input defaultValue={formatDateTimeLocal(consult.occurred_at)} name="occurred_at" type="datetime-local" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-[#33413b]">Walkthrough notes</label>
-                      <textarea defaultValue={consult.notes ?? ""} name="notes" />
-                    </div>
-                    <div className="md:col-span-2"><button className={secondaryButtonClass} type="submit">Save changes</button></div>
-                  </form>
                 </details>
-                {consult.media.length > 0 ? (
-                  <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
-                ) : null}
-                <ConsultMediaUploadForm
-                  consultId={consult.id}
-                  jobId={id}
-                />
-              </article>
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
         ) : null}
       </section>
 
@@ -717,77 +742,11 @@ export default async function JobDetailPage({
         ) : null}
       </details> : null}
 
-      {activeSection === "quick-select" || Boolean(activePickRequest) ? <details className={`${sectionCardClass} scroll-mt-6`} id="quick-select" open={detailsOpen(activeSection, "quick-select", true)}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-          <SectionHeader
-            title="Quick Select"
-            description="Log multiple exact-item options at once. Use this when one request has several real-piece options. Logging them does not check anything out by itself."
-            right={<span className={secondaryButtonClass}>Toggle</span>}
-          />
-        </summary>
-
-        <form action={quickSelectAction} className="mt-5 grid gap-4">
-          <input name="job_id" type="hidden" value={id} />
-          <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] p-4">
-            <p className="font-semibold text-[#20322a]">
-              {activePickRequest ? `Adding pick options for: ${activePickRequest.request_text}` : "Creating a generated bulk pack request"}
-            </p>
-            <p className={`mt-2 ${mutedTextClass}`}>
-              {activePickRequest
-                ? `This request currently has ${activePickRequest.picked_count} exact option record${activePickRequest.picked_count === 1 ? "" : "s"} logged. You can add several options here, then remove the ones you do not want from the request card.`
-                : "Selected items will be grouped under a generated bulk pack request so they stay linked together."}
-            </p>
-            {activePickRequest ? (
-              <p className={`mt-2 ${mutedTextClass}`}>
-                <Link className="font-semibold text-[#33413b] underline underline-offset-2" href={buildJobUrl(id, { section: "quick-select" })}>
-                  Switch back to generated bulk request
-                </Link>
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Log against existing pack request</label>
-            <select defaultValue={activePickRequest?.id ?? ""} name="pack_request_id">
-              <option value="">Create a generated bulk pack request</option>
-              {openPackRequests.map((request) => (
-                <option key={request.id} value={request.id}>
-                  {request.quantity} x {request.request_text} {request.room ? `• ${request.room}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Pick Notes</label>
-            <textarea name="notes" placeholder="Optional notes about why these items satisfied the request." />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Inventory Items</label>
-            <JobQuickSelectPicker
-              items={packCandidates.map((item) => ({
-                id: item.id,
-                name: item.name,
-                item_code: item.item_code,
-                status: item.status,
-                category: item.category,
-                color: item.color,
-                current_location_name: item.current_location_name,
-              }))}
-            />
-          </div>
-          <div>
-            <button className={primaryButtonClass} type="submit">
-              {activePickRequest ? "Log Quick Select for Request" : "Log Quick Select"}
-            </button>
-          </div>
-        </form>
-      </details> : null}
-
-      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates", true)}>
+      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Scene Templates"
             description="Use reusable room recipes to generate grouped pack requests from staging patterns you repeat often."
-            right={<span className={secondaryButtonClass}>Toggle</span>}
           />
         </summary>
 
@@ -884,9 +843,9 @@ export default async function JobDetailPage({
           </div>
 
           <div className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
-            <h3 className="text-lg font-semibold text-[#20322a]">Save Current Room as Scene</h3>
+            <h3 className="text-lg font-semibold text-[#20322a]">Save a Room as a Reusable Template</h3>
             <p className={`mt-2 ${mutedTextClass}`}>
-              Snapshot a room&apos;s current pack requests into a reusable scene template so future projects can start from the same recipe.
+              This copies a room&apos;s current pack requests into a reusable recipe for future projects. It does not change, merge, or remove this project&apos;s room requests.
             </p>
             {authorableRooms.length === 0 ? (
               <p className={`mt-4 ${mutedTextClass}`}>Add pack requests to a named room first, then save that room as a reusable scene.</p>
@@ -894,8 +853,13 @@ export default async function JobDetailPage({
               <form action={createSceneTemplateAction} className="mt-5 grid gap-4 md:grid-cols-2">
                 <input name="job_id" type="hidden" value={id} />
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Source room</label>
-                  <input defaultValue={defaultSceneSourceRoom} name="source_room" placeholder={authorableRooms.map(([roomLabel]) => roomLabel).join(", ")} />
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room to copy</label>
+                  <select defaultValue={defaultSceneSourceRoom} name="source_room">
+                    {authorableRooms.map(([roomLabel]) => (
+                      <option key={roomLabel} value={roomLabel}>{roomLabel}</option>
+                    ))}
+                  </select>
+                  <p className={`${mutedTextClass} mt-2`}>Room labels are grouped without regard to capitalization.</p>
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-[#33413b]">Scene template name</label>
@@ -1066,9 +1030,41 @@ export default async function JobDetailPage({
                             Open Exact Item
                           </Link>
                         ) : null}
-                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "quick-select", pickRequestId: request.id })}>
-                          Add Exact Item Options
-                        </Link>
+                        <details className="w-full rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3" open={activePickRequest?.id === request.id}>
+                          <summary className="cursor-pointer list-none text-sm font-semibold text-[#33413b] [&::-webkit-details-marker]:hidden">
+                            Select Exact Item Options
+                          </summary>
+                          <form action={quickSelectAction} className="mt-4 grid gap-4">
+                            <input name="job_id" type="hidden" value={id} />
+                            <input name="pack_request_id" type="hidden" value={request.id} />
+                            <div>
+                              <p className="font-semibold text-[#20322a]">Choose items for: {request.request_text}</p>
+                              <p className={`${mutedTextClass} mt-2`}>
+                                Select one or more inventory items to add as exact options for this request. Selecting them does not check anything out.
+                              </p>
+                            </div>
+                            <div>
+                              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Pick notes</label>
+                              <textarea name="notes" placeholder="Optional notes about why these items fit this request." />
+                            </div>
+                            <div>
+                              <JobQuickSelectPicker
+                                items={packCandidates.map((item) => ({
+                                  id: item.id,
+                                  name: item.name,
+                                  item_code: item.item_code,
+                                  status: item.status,
+                                  category: item.category,
+                                  color: item.color,
+                                  current_location_name: item.current_location_name,
+                                }))}
+                              />
+                            </div>
+                            <div>
+                              <button className={primaryButtonClass} type="submit">Pick Selected for Request</button>
+                            </div>
+                          </form>
+                        </details>
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <form action={logPickedItemAction}>
                             <input name="job_id" type="hidden" value={id} />

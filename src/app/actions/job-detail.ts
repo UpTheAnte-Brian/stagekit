@@ -550,9 +550,10 @@ export async function quickSelectAction(formData: FormData) {
   const packRequestId = readString(formData.get("pack_request_id"));
   const notes = readString(formData.get("notes"));
   const pickRequestId = packRequestId || null;
+  const section = "pack-requests";
 
   if (selectedItemIds.length === 0) {
-    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to log.", tone: "error", section: "quick-select", pickRequestId }));
+    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to add to this request.", tone: "error", section, pickRequestId }));
   }
 
   try {
@@ -596,20 +597,20 @@ export async function quickSelectAction(formData: FormData) {
       redirect(buildJobUrl(jobId, {
         message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
         tone: "error",
-        section: "quick-select",
+        section,
         pickRequestId,
       }));
     }
 
     redirect(buildJobUrl(jobId, {
-      message: packRequestId ? `Logged ${successCount} quick select item${successCount === 1 ? "" : "s"} for request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
+      message: packRequestId ? `Added ${successCount} exact item${successCount === 1 ? "" : "s"} to the request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
       tone: "success",
-      section: "quick-select",
+      section,
       pickRequestId,
     }));
   } catch (error) {
-    const nextMessage = error instanceof Error ? error.message : "Failed to log quick select items.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "quick-select", pickRequestId }));
+    const nextMessage = error instanceof Error ? error.message : "Failed to add selected items to the request.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section, pickRequestId }));
   }
 }
 

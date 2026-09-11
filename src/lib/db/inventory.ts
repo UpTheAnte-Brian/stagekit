@@ -72,6 +72,10 @@ const addPhotoRowSchema = z.object({
   thumbnailStoragePath: z.string().trim().min(1).nullable().optional(),
   sortOrder: z.number().int().nonnegative().default(0),
 });
+const deletePhotoSchema = z.object({
+  itemId: uuidSchema,
+  photoId: uuidSchema,
+});
 const removeAuditTagSchema = z.object({
   itemId: uuidSchema,
   tag: z.enum(inventoryAuditTagValues),
@@ -1067,6 +1071,33 @@ export async function addPhotoRow(itemId: string, storagePath: string, sortOrder
 
   assertNoError(fallbackError, "Failed to add photo row");
   return assertData(fallbackData, "Failed to add photo row");
+}
+
+export async function deletePhoto(itemId: string, photoId: string) {
+  const parsed = deletePhotoSchema.parse({ itemId, photoId });
+  const supabase = await createServerSupabaseClient();
+  const { data: photo, error: photoError } = await supabase
+    .from("inventory_photos")
+    .select("id,storage_bucket,storage_path,thumbnail_storage_path")
+    .eq("id", parsed.photoId)
+    .eq("item_id", parsed.itemId)
+    .maybeSingle();
+  assertNoError(photoError, "Failed to load inventory photo");
+
+  if (!photo) {
+    throw new Error("Photo not found.");
+  }
+
+  const storagePaths = [photo.storage_path, photo.thumbnail_storage_path ?? buildThumbnailStoragePath(photo.storage_path)];
+  const { error: storageError } = await supabase.storage.from(photo.storage_bucket).remove(storagePaths);
+  assertNoError(storageError, "Failed to remove inventory photo files");
+
+  const { error: deleteError } = await supabase
+    .from("inventory_photos")
+    .delete()
+    .eq("id", parsed.photoId)
+    .eq("item_id", parsed.itemId);
+  assertNoError(deleteError, "Failed to delete inventory photo");
 }
 
 export async function deleteItem(id: string) {

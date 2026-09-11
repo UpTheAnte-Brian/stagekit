@@ -15,6 +15,7 @@ import {
   assignItemToJob,
   createInventoryThumbnailAsset,
   deleteItem,
+  deletePhoto,
   getItem,
   listItemThumbnailUrls,
   listPhotos,
@@ -267,6 +268,26 @@ async function deleteItemAction(formData: FormData) {
 
   await deleteItem(itemId);
   redirect(appendSearchParams(returnTo ?? "/inventory", { message: "Item deleted." }));
+}
+
+async function deletePhotoAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const photoId = readString(formData.get("photo_id"));
+  const returnTo = readReturnTo(formData);
+  if (!itemId || !photoId) {
+    redirect(`/inventory?message=${encodeURIComponent("Invalid photo.")}`);
+  }
+
+  try {
+    await deletePhoto(itemId, photoId);
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Unable to remove photo.";
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: nextMessage, returnTo }));
+  }
+
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Photo removed.", returnTo }));
 }
 
 async function removeAuditTagAction(formData: FormData) {
@@ -853,7 +874,20 @@ export default async function ItemDetailPage({
                 ) : (
                   <div className="flex h-48 items-center justify-center text-sm text-muted">Unavailable</div>
                 )}
-                <figcaption className="px-3 py-2 text-xs text-muted">{photo.storage_path}</figcaption>
+                <figcaption className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="min-w-0 break-all text-xs text-muted">{photo.storage_path}</span>
+                  <form action={deletePhotoAction} className="shrink-0">
+                    <input name="item_id" type="hidden" value={item.id} />
+                    <input name="photo_id" type="hidden" value={photo.id} />
+                    <input name="return_to" type="hidden" value={returnTo ?? ""} />
+                    <button
+                      className="rounded-md border border-rose-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                      type="submit"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </figcaption>
               </figure>
             ))
           )}
