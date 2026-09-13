@@ -906,10 +906,22 @@ export default async function JobDetailPage({
             <p className={mutedTextClass}>No pack requests yet.</p>
           ) : (
             openPackRequestsByRoom.map(([roomLabel, requests]) => (
-              <div key={roomLabel} className="space-y-4">
-                <h3 className="text-lg font-semibold text-[#20322a]">
-                  {roomLabel} ({requests.length})
-                </h3>
+              <details key={roomLabel} className="group space-y-4" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#fff8ef] [&::-webkit-details-marker]:hidden">
+                  <h3 className="text-lg font-semibold text-[#20322a]">
+                    {roomLabel} ({requests.length})
+                  </h3>
+                  <svg
+                    aria-hidden="true"
+                    className="h-5 w-5 shrink-0 text-[#6f756c] transition-transform group-open:rotate-180"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </summary>
                 {requests.map((request) => {
                   return (
                     <article key={request.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
@@ -1094,7 +1106,7 @@ export default async function JobDetailPage({
                     </article>
                   );
                 })}
-              </div>
+              </details>
             ))
           )}
         </div>
