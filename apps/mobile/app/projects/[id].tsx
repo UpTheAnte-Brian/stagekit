@@ -59,9 +59,6 @@ function PackRequestCard({
   onOpenPickedItem,
   onAssignPickedItem,
   onRemovePickedItem,
-  onAssign,
-  assignDisabled,
-  assignLabel,
   onCancel,
   onDelete,
 }: {
@@ -76,9 +73,6 @@ function PackRequestCard({
   onOpenPickedItem: (pickedItemId: string) => void;
   onAssignPickedItem: (pickedItemId: string) => void;
   onRemovePickedItem: (jobPickItemId: string) => void;
-  onAssign?: () => void;
-  assignDisabled?: boolean;
-  assignLabel?: string;
   onCancel: () => void;
   onDelete: () => void;
 }) {
@@ -115,7 +109,7 @@ function PackRequestCard({
       </View>
       {request.optional ? <Text style={{ color: colors.muted }}>Optional item</Text> : null}
       <Text style={{ color: request.picked_count >= request.quantity ? colors.successText : colors.muted }}>
-        Exact picks logged: {request.picked_count} of {request.quantity}
+        Exact item options: {request.picked_count} • Needed: {request.quantity}
       </Text>
       {request.requested_item_name ? (
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
@@ -134,39 +128,28 @@ function PackRequestCard({
             <Text style={{ color: colors.muted }}>
               Exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
             </Text>
+            <Text style={{ color: colors.muted }}>Dimensions: {request.requested_item_dimensions?.trim() || "Not recorded"}</Text>
             {request.requested_item_thumbnail_url ? (
               <Text style={{ color: colors.muted }}>Tap image to preview.</Text>
             ) : null}
           </View>
         </View>
       ) : null}
-      {request.picked_items.length > 0 ? (
-        <View style={{ gap: 8 }}>
-          {request.picked_items.map((pickedItem) => (
-            <View
-              key={pickedItem.id}
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 10, gap: 6, backgroundColor: colors.panelAlt }}
-            >
-              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
-                {pickedItem.item_name} ({pickedItem.item_code})
-              </Text>
-              <Text style={{ color: colors.muted }}>
-                {pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}
-              </Text>
-              {pickedItem.notes ? <Text style={{ color: colors.muted }}>Pick notes: {pickedItem.notes}</Text> : null}
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <SecondaryButton disabled={saving} label="Open Picked Item" onPress={() => onOpenPickedItem(pickedItem.item_id)} />
-                <SecondaryButton
-                  disabled={saving || pickedItem.item_status !== "available"}
-                  label={pickedItem.item_status === "available" ? "Assign to Project" : pickedItem.item_status === "on_job" ? "Already Assigned" : "Unavailable"}
-                  onPress={() => onAssignPickedItem(pickedItem.item_id)}
-                />
-                <SecondaryButton disabled={saving} label="Remove Pick" onPress={() => onRemovePickedItem(pickedItem.id)} />
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {request.picked_items.map((pickedItem) => (
+        <PickedItemCard
+          key={pickedItem.id}
+          pickedItem={pickedItem}
+          saving={saving}
+          onOpenItem={() => onOpenPickedItem(pickedItem.item_id)}
+          onAssign={() => onAssignPickedItem(pickedItem.item_id)}
+          onRemove={() => onRemovePickedItem(pickedItem.id)}
+        />
+      ))}
+      <Text style={{ color: colors.muted, fontSize: 13 }}>
+        {request.picked_count === 0
+          ? "Next: select exact item options for this request."
+          : "Next: check out the chosen item when it is ready to leave inventory. Options are not checked out yet."}
+      </Text>
       {request.active_job_names.length > 0 ? (
         <Text style={{ color: colors.errorText }}>Also on active jobs: {request.active_job_names.join(", ")}</Text>
       ) : null}
@@ -175,9 +158,8 @@ function PackRequestCard({
         <SecondaryButton disabled={saving} label="Edit" onPress={onEdit} />
         <SecondaryButton disabled={saving} label={request.optional ? "Mark Required" : "Mark Optional"} onPress={onToggleOptional} />
         {request.requested_item_id ? <SecondaryButton disabled={saving} label="Open Exact Item" onPress={onOpenItem} /> : null}
-        {onAssign ? <SecondaryButton disabled={saving || assignDisabled} label={assignLabel ?? "Assign to Project"} onPress={onAssign} /> : null}
-        <SecondaryButton disabled={saving} label="Pick for Request" onPress={onStartPicking} />
-        {onLogRequestedItem ? <SecondaryButton disabled={saving} label="Log Exact Item" onPress={onLogRequestedItem} /> : null}
+        <SecondaryButton disabled={saving} label="Select Exact Item Options" onPress={onStartPicking} />
+        {onLogRequestedItem ? <SecondaryButton disabled={saving} label="Add as Exact Item" onPress={onLogRequestedItem} /> : null}
         <SecondaryButton disabled={saving} label="Cancel" onPress={onCancel} />
         <SecondaryButton disabled={saving} label="Delete" onPress={onDelete} />
       </View>
@@ -185,37 +167,44 @@ function PackRequestCard({
   );
 }
 
-function PickedItemCard({
-  pickedItem,
-  saving,
-  onOpenItem,
-  onAssign,
-  onRemove,
-}: {
-  pickedItem: JobPickItem;
-  saving: boolean;
-  onOpenItem: () => void;
-  onAssign: () => void;
-  onRemove: () => void;
+function PickAction({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+      style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 10, backgroundColor: colors.panel, opacity: disabled ? 0.5 : 1 }}>
+      <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function PickedItemCard({ pickedItem, saving, onOpenItem, onAssign, onRemove }: {
+  pickedItem: JobPickItem; saving: boolean; onOpenItem: () => void; onAssign: () => void; onRemove: () => void;
 }) {
   return (
-    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 14, gap: 8, backgroundColor: colors.panel }}>
-      <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
-        {pickedItem.item_name} ({pickedItem.item_code})
-      </Text>
-      <Text style={{ color: colors.muted }}>
-        {pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}
-      </Text>
-      {pickedItem.notes ? <Text style={{ color: colors.muted }}>Pick notes: {pickedItem.notes}</Text> : null}
+    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 10, gap: 10, backgroundColor: "#f8efe3" }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Open ${pickedItem.item_name}`} onPress={onOpenItem} style={{ flexDirection: "row", gap: 10 }}>
+        {pickedItem.thumbnail_url ? (
+          <CachedImage accessibilityLabel={pickedItem.item_name} cachePolicy="memory-disk" contentFit="cover"
+            source={{ uri: pickedItem.thumbnail_url }} style={{ width: 88, height: 88, borderRadius: 10 }} />
+        ) : (
+          <View style={{ width: 88, height: 88, borderRadius: 10, backgroundColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: colors.text, fontSize: 12 }}>No photo</Text>
+          </View>
+        )}
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>{pickedItem.item_name}</Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>{pickedItem.item_code} • {pickedItem.item_status === "on_job" ? "Checked out" : pickedItem.item_status}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>Dimensions: {pickedItem.item_dimensions?.trim() || "Not recorded"}</Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>{pickedItem.item_category ?? "No category"} • {pickedItem.item_color ?? "No color"} • {pickedItem.item_room ?? "No room"}</Text>
+        </View>
+      </Pressable>
+      {pickedItem.notes ? <Text style={{ color: colors.muted, fontSize: 12 }}>Pick notes: {pickedItem.notes}</Text> : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <SecondaryButton disabled={saving} label="Open Item" onPress={onOpenItem} />
-        <SecondaryButton
-          disabled={saving || pickedItem.item_status !== "available"}
-          label={pickedItem.item_status === "available" ? "Assign to Project" : pickedItem.item_status === "on_job" ? "Already Assigned" : "Unavailable"}
-          onPress={onAssign}
-        />
-        <SecondaryButton disabled={saving} label="Remove Pick" onPress={onRemove} />
+        <PickAction disabled={saving || pickedItem.item_status !== "available"}
+          label={pickedItem.item_status === "available" ? "Check Out to Project" : pickedItem.item_status === "on_job" ? "Checked Out" : "Unavailable"}
+          onPress={onAssign} />
+        <PickAction disabled={saving} label="Remove Pick" onPress={onRemove} />
       </View>
+      {saving ? <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontSize: 12 }}>Saving changes…</Text> : null}
     </View>
   );
 }
@@ -227,6 +216,7 @@ export default function ProjectDetailScreen() {
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const jobId = params.id;
   const [loading, setLoading] = useState(true);
+  const [collapsedRooms, setCollapsedRooms] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [job, setJob] = useState<JobDetail | null>(null);
@@ -334,7 +324,6 @@ export default function ProjectDetailScreen() {
 
   const activeAssignments = useMemo(() => assignments.filter((assignment) => !assignment.checked_in_at), [assignments]);
   const completedAssignments = useMemo(() => assignments.filter((assignment) => assignment.checked_in_at), [assignments]);
-  const activeAssignedItemIds = useMemo(() => new Set(activeAssignments.map((assignment) => assignment.item_id)), [activeAssignments]);
   const openPackRequests = useMemo(() => packRequests.filter((request) => request.status !== "cancelled"), [packRequests]);
   const fulfilledRequestCount = useMemo(() => openPackRequests.filter((request) => request.picked_count >= request.quantity).length, [openPackRequests]);
   const openPackRequestsByRoom = useMemo(() => {
@@ -642,24 +631,6 @@ export default function ProjectDetailScreen() {
     }
   }
 
-  async function handleAssignRequestedItem(itemId: string) {
-    if (!jobId) {
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-    try {
-      await assignItemToJob(jobId, itemId);
-      await refreshJob();
-      setMessage("Item assigned.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to assign item.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleAssignPickedItem(itemId: string) {
     if (!jobId) {
       return;
@@ -752,7 +723,7 @@ export default function ProjectDetailScreen() {
           requestedItemId: selectedPackItemId,
         });
       } else {
-        await createPackRequest({
+        const createdRequestId = await createPackRequest({
           jobId,
           requestText: resolvedText,
           quantity,
@@ -763,6 +734,14 @@ export default function ProjectDetailScreen() {
           optional: requestOptional,
           requestedItemId: selectedPackItemId,
         });
+        if (selectedPackItemId) {
+          try {
+            await createJobPickItem({ jobId, itemId: selectedPackItemId, packRequestId: createdRequestId });
+          } catch (error) {
+            await deletePackRequest(createdRequestId).catch(() => undefined);
+            throw error;
+          }
+        }
       }
       await refreshJob();
       resetPackRequestForm();
@@ -790,6 +769,7 @@ export default function ProjectDetailScreen() {
   }
 
   async function handleCreatePickItem() {
+    if (saving) return;
     if (!jobId || selectedPickItemIds.length === 0) {
       setMessage("Choose at least one inventory item to log.");
       return;
@@ -816,6 +796,8 @@ export default function ProjectDetailScreen() {
       }
 
       const failures: string[] = [];
+      const failedItemIds: string[] = [];
+      setActivePickRequestId(resolvedPackRequestId);
       let successCount = 0;
 
       for (const itemId of selectedPickItemIds) {
@@ -828,16 +810,20 @@ export default function ProjectDetailScreen() {
           });
           successCount += 1;
         } catch (error) {
+          failedItemIds.push(itemId);
           failures.push(error instanceof Error ? error.message : `Failed to log item ${itemId}.`);
         }
       }
 
       await refreshJob();
-      resetPickForm(activePickRequestId);
-      setShowAddPickList(false);
       if (failures.length > 0) {
+        setSelectedPickItemIds(failedItemIds);
         setMessage(`Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failures[0]}`);
       } else {
+        resetPickForm(null);
+        setShowAddPickList(false);
+        setShowQuickSelect(false);
+        setActivePickRequestId(null);
         setMessage(activePickRequestId ? `Logged ${successCount} quick select item${successCount === 1 ? "" : "s"} for request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`);
       }
     } catch (error) {
@@ -873,7 +859,7 @@ export default function ProjectDetailScreen() {
     setSaving(true);
     setMessage(null);
     try {
-      await deleteJobPickItem(jobPickItemId);
+      await deleteJobPickItem(jobPickItemId, jobId);
       await refreshJob();
       setMessage("Exact project item removed.");
     } catch (error) {
@@ -1081,7 +1067,7 @@ export default function ProjectDetailScreen() {
               {openPackRequests.length} requests total • {fulfilledRequestCount} fully covered • {pickedItems.length} exact items logged for this project
             </Text>
             <Text style={{ color: colors.muted }}>
-              Pack requests describe designer intent. Exact picks describe what you actually loaded or left at the house.
+              Pack requests describe what is needed. Exact items are options; Check Out to Project records what leaves inventory.
             </Text>
             <Text style={{ color: colors.muted }}>
               {sceneApplications.length} applied scene{sceneApplications.length === 1 ? "" : "s"} are currently feeding this room-by-room pack list.
@@ -1132,8 +1118,14 @@ export default function ProjectDetailScreen() {
                 <View style={{ gap: 10 }}>
                   {visiblePackCandidates.map((item) => (
                     <Card key={item.id}>
+                      {item.thumbnail_url ? (
+                        <Pressable accessibilityRole="button" accessibilityLabel={`Preview ${item.name}`} onPress={() => handleOpenPreview(item.thumbnail_url, item.name)}>
+                          <CachedImage source={{ uri: item.thumbnail_url }} cachePolicy="memory-disk" contentFit="cover" style={{ width: 96, height: 96, borderRadius: 12 }} />
+                        </Pressable>
+                      ) : <Text style={{ color: colors.muted }}>No photo</Text>}
                       <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>{item.name}</Text>
                       <Text style={{ color: colors.muted }}>{item.item_code}</Text>
+                      <Text style={{ color: colors.muted }}>Dimensions: {item.dimensions?.trim() || "Not recorded"}</Text>
                       <Text style={{ color: colors.muted }}>
                         {item.category ?? "No category"} • {item.color ?? "No color"} • {item.current_location_name ?? "No location"}
                       </Text>
@@ -1227,7 +1219,7 @@ export default function ProjectDetailScreen() {
                     {sceneApplications.map((application) => (
                       <View
                         key={application.id}
-                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 14, gap: 6, backgroundColor: colors.panelAlt }}
+                        style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 14, gap: 6, backgroundColor: "#f8efe3" }}
                       >
                         <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
                           {application.scene_template_name} for {application.room_label}
@@ -1337,10 +1329,12 @@ export default function ProjectDetailScreen() {
             ) : (
               openPackRequestsByRoom.map(([roomLabel, requests]) => (
                 <View key={roomLabel} style={{ gap: 10 }}>
-                  <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
-                    {roomLabel} ({requests.length})
-                  </Text>
-                  {requests.map((request) => (
+                  <Pressable accessibilityRole="button" accessibilityState={{ expanded: !collapsedRooms[roomLabel] }}
+                    onPress={() => setCollapsedRooms((current) => ({ ...current, [roomLabel]: !current[roomLabel] }))}
+                    style={{ minHeight: 44, justifyContent: "center" }}>
+                    <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>{roomLabel} ({requests.length}) {collapsedRooms[roomLabel] ? "▾" : "▴"}</Text>
+                  </Pressable>
+                  {!collapsedRooms[roomLabel] && requests.map((request) => (
                     <PackRequestCard
                       key={request.id}
                       request={request}
@@ -1350,19 +1344,10 @@ export default function ProjectDetailScreen() {
                       onOpenItem={() => request.requested_item_id ? openInventoryItem(request.requested_item_id) : undefined}
                       onPreview={() => handleOpenPreview(request.requested_item_thumbnail_url, `${request.requested_item_name} (${request.requested_item_code})`)}
                       onStartPicking={() => handleStartQuickSelect(request.id)}
-                      onLogRequestedItem={request.requested_item_id ? () => void handleLogRequestedExactItem(request) : undefined}
+                      onLogRequestedItem={request.requested_item_id && !request.picked_items.some((item) => item.item_id === request.requested_item_id) ? () => void handleLogRequestedExactItem(request) : undefined}
                       onOpenPickedItem={(pickedItemId) => openInventoryItem(pickedItemId)}
                       onAssignPickedItem={(pickedItemId) => void handleAssignPickedItem(pickedItemId)}
                       onRemovePickedItem={(jobPickItemId) => void handleDeletePickItem(jobPickItemId)}
-                      onAssign={request.requested_item_id ? () => void handleAssignRequestedItem(request.requested_item_id!) : undefined}
-                      assignDisabled={!request.requested_item_id || activeAssignedItemIds.has(request.requested_item_id) || request.requested_item_status !== "available"}
-                      assignLabel={
-                        activeAssignedItemIds.has(request.requested_item_id ?? "")
-                          ? "Already Assigned"
-                          : request.requested_item_status !== "available"
-                            ? "Unavailable"
-                            : "Assign to Project"
-                      }
                       onCancel={() => void handleUpdatePackRequest(request.id, "cancelled")}
                       onDelete={() => void handleDeletePackRequest(request.id)}
                     />
@@ -1515,6 +1500,7 @@ export default function ProjectDetailScreen() {
                           <View style={{ flex: 1, gap: 4 }}>
                             <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>{item.name}</Text>
                             <Text style={{ color: colors.muted }}>{item.item_code}</Text>
+                      <Text style={{ color: colors.muted }}>Dimensions: {item.dimensions?.trim() || "Not recorded"}</Text>
                             <Text style={{ color: colors.muted }}>
                               {item.category ?? "No category"} • {item.color ?? "No color"} • {item.current_location_name ?? "No location"}
                             </Text>
@@ -1550,7 +1536,7 @@ export default function ProjectDetailScreen() {
               </View>
             </View>
           </Modal>
-          <Modal animationType="slide" transparent visible={showAddPickList} onRequestClose={() => setShowAddPickList(false)}>
+          <Modal animationType="slide" transparent visible={showAddPickList} onRequestClose={() => { if (!saving) setShowAddPickList(false); }}>
             <View
               style={{
                 flex: 1,
@@ -1570,12 +1556,14 @@ export default function ProjectDetailScreen() {
                   borderColor: colors.border,
                 }}
               >
-                <Text style={{ color: colors.text, fontSize: 18, fontWeight: "800" }}>Quick Select Inventory</Text>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: "800" }}>{activePickRequest ? `Options for ${activePickRequest.request_text}` : "Select Inventory"}</Text>
+                {message ? <Message text={message} /> : null}
                 <Text style={{ color: colors.muted }}>
-                  Use search, availability, and location filters here without stretching the project page. This modal scrolls independently.
+                  Compare photos and dimensions, then add your choices. This does not check items out.
                 </Text>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
                   <InventoryThumbnailPicker
+                    disabled={saving}
                     items={filteredPickCandidates}
                     search={pickSearch}
                     onSearchChange={setPickSearch}
@@ -1598,9 +1586,9 @@ export default function ProjectDetailScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <PrimaryButton
-                      disabled={saving}
-                      label={saving ? "Working..." : `Keep ${selectedPickItemIds.length} Selected`}
-                      onPress={() => setShowAddPickList(false)}
+                      disabled={saving || selectedPickItemIds.length === 0}
+                      label={saving ? "Saving…" : `Add ${selectedPickItemIds.length} Exact Items`}
+                      onPress={() => void handleCreatePickItem()}
                     />
                   </View>
                 </View>

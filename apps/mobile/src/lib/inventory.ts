@@ -279,7 +279,7 @@ export type InventoryAssignableItem = Pick<
 
 export type InventoryPackCandidate = Pick<
   Database["public"]["Tables"]["inventory_items"]["Row"],
-  "id" | "name" | "category" | "status" | "item_code" | "room" | "color" | "source_job_id" | "current_location_id"
+  "id" | "name" | "category" | "status" | "item_code" | "room" | "dimensions" | "color" | "source_job_id" | "current_location_id"
 > & {
   current_location_name: string | null;
   thumbnail_url: string | null;
@@ -438,7 +438,7 @@ export async function listAvailableInventoryItems() {
 
 export async function listPackListInventoryItems() {
   const items = await listInventoryItemRows<Omit<InventoryPackCandidate, "thumbnail_url" | "current_location_name">>(
-    "id,name,category,status,item_code,room,color,source_job_id,current_location_id",
+    "id,name,category,status,item_code,room,color,dimensions,source_job_id,current_location_id",
     (query) => query.order("name", { ascending: true }),
   );
   const locationIds = [...new Set(items.map((item) => item.current_location_id).filter((value): value is string => Boolean(value)))];

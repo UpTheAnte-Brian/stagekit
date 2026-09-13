@@ -1,3 +1,5 @@
+import { PersistentDetails } from "@/components/web/persistent-details";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -346,7 +348,7 @@ export default async function JobDetailPage({
 
       {message ? <FlashMessage clearSearchParams={["tone"]} message={message} tone={tone} /> : null}
 
-      <details className={`${sectionCardClass} scroll-mt-6`} id="edit-project" open={detailsOpen(activeSection, "edit-project")}>
+      <PersistentDetails storageKey={`job:${id}:edit-project`} className={`${sectionCardClass} scroll-mt-6`} id="edit-project" open={detailsOpen(activeSection, "edit-project")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Edit Project Details"
@@ -411,7 +413,7 @@ export default async function JobDetailPage({
             </button>
           </div>
         </form>
-      </details>
+      </PersistentDetails>
 
       <section className={sectionCardClass}>
         <SectionHeader
@@ -435,7 +437,7 @@ export default async function JobDetailPage({
       </section>
 
       <section className="space-y-5 scroll-mt-6" id="on-site-consults">
-        <details className={sectionCardClass} open={detailsOpen(activeSection, "on-site-consults")}>
+        <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={sectionCardClass} open={detailsOpen(activeSection, "on-site-consults")}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
             <SectionHeader
               title="1. Capture On-Site Visit"
@@ -460,7 +462,7 @@ export default async function JobDetailPage({
               <button className={primaryButtonClass} type="submit">Save Visit Notes</button>
             </div>
           </form>
-        </details>
+        </PersistentDetails>
 
         {consults.length > 0 ? (
           <section className={sectionCardClass} aria-labelledby="saved-visits-heading">
@@ -473,7 +475,7 @@ export default async function JobDetailPage({
             </div>
             <div className="mt-5 space-y-3">
               {consults.map((consult) => (
-                <details key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4" open={consult.id === editRequestId}>
+                <PersistentDetails storageKey={`job:${id}:consult:${consult.id}`} key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4" open={consult.id === editRequestId}>
                   <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
                     <div>
                       <h4 className="text-lg font-semibold text-[#20322a]">{consult.title}</h4>
@@ -486,7 +488,7 @@ export default async function JobDetailPage({
                   </summary>
                   <div className="mt-4 border-t border-[#ecdcc7] pt-4">
                     {consult.notes ? <p className="whitespace-pre-wrap text-sm leading-6 text-[#4e584f]">{consult.notes}</p> : <p className={mutedTextClass}>No written notes saved.</p>}
-                    <details className="mt-4 rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3">
+                    <PersistentDetails storageKey={`job:${id}:consult-media:${consult.id}`} className="mt-4 rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3">
                       <summary className="cursor-pointer text-sm font-semibold text-[#33413b]">Edit consult notes</summary>
                       <form action={saveJobConsultAction} className="mt-4 grid gap-3 md:grid-cols-2">
                         <input name="job_id" type="hidden" value={id} />
@@ -505,7 +507,7 @@ export default async function JobDetailPage({
                         </div>
                         <div className="md:col-span-2"><button className={secondaryButtonClass} type="submit">Save changes</button></div>
                       </form>
-                    </details>
+                    </PersistentDetails>
                     {consult.media.length > 0 ? (
                       <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
                     ) : null}
@@ -514,14 +516,14 @@ export default async function JobDetailPage({
                       jobId={id}
                     />
                   </div>
-                </details>
+                </PersistentDetails>
               ))}
             </div>
           </section>
         ) : null}
       </section>
 
-      {job.status === "archived" ? <details className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>
+      {job.status === "archived" ? <PersistentDetails storageKey={`job:${id}:archive-readiness`} className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Archive Readiness"
@@ -607,9 +609,9 @@ export default async function JobDetailPage({
             </div>
           </div>
         ) : null}
-      </details> : null}
+      </PersistentDetails> : null}
 
-      {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? <details className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open>
+      {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? <PersistentDetails storageKey={`job:${id}:add-pack-list`} className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title={editingPackRequest ? "Edit Pack Request" : "Add to Pack List"}
@@ -740,9 +742,9 @@ export default async function JobDetailPage({
             </div>
           </form>
         ) : null}
-      </details> : null}
+      </PersistentDetails> : null}
 
-      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <details className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
+      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <PersistentDetails storageKey={`job:${id}:scene-templates`} className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Scene Templates"
@@ -890,7 +892,7 @@ export default async function JobDetailPage({
             )}
           </div>
         </div>
-      </details> : null}
+      </PersistentDetails> : null}
 
       <section className={`${sectionCardClass} scroll-mt-6`} id="pack-requests">
         <SectionHeader
@@ -906,7 +908,7 @@ export default async function JobDetailPage({
             <p className={mutedTextClass}>No pack requests yet.</p>
           ) : (
             openPackRequestsByRoom.map(([roomLabel, requests]) => (
-              <details key={roomLabel} className="group space-y-4" open>
+              <PersistentDetails storageKey={`job:${id}:room:${roomLabel}`} key={roomLabel} className="group space-y-4" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#fff8ef] [&::-webkit-details-marker]:hidden">
                   <h3 className="text-lg font-semibold text-[#20322a]">
                     {roomLabel} ({requests.length})
@@ -963,6 +965,7 @@ export default async function JobDetailPage({
                               <p className={mutedTextClass}>
                                 Selected exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
                               </p>
+                              <p className={mutedTextClass}>Dimensions: {request.requested_item_dimensions?.trim() || "Not recorded"}</p>
                               {request.requested_item_thumbnail_url ? <p className={mutedTextClass}>Open Exact Item to see it larger.</p> : null}
                             </div>
                           </div>
@@ -976,6 +979,11 @@ export default async function JobDetailPage({
                           <p className="text-sm leading-6 text-rose-700">Also on active jobs: {request.active_job_names.join(", ")}</p>
                         ) : null}
                         {request.notes ? <p className={mutedTextClass}>Notes: {request.notes}</p> : null}
+                        <p className={mutedTextClass}>
+                          {request.picked_count === 0
+                            ? "Next: open Select Exact Item Options and choose inventory for this request."
+                            : "Next: use Check Out to Project on the chosen item when it is ready to leave inventory. Adding exact options does not check them out."}
+                        </p>
                       </div>
 
                       {request.picked_items.length > 0 ? (
@@ -1016,9 +1024,9 @@ export default async function JobDetailPage({
                                   <input name="job_id" type="hidden" value={id} />
                                   <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
                                   <input name="section" type="hidden" value="pack-requests" />
-                                  <button className={secondaryButtonClass} type="submit">
+                                  <PendingSubmitButton pendingLabel="Removing…" className={secondaryButtonClass} type="submit">
                                     Remove Pick
-                                  </button>
+                                  </PendingSubmitButton>
                                 </form>
                               </div>
                             </div>
@@ -1042,7 +1050,9 @@ export default async function JobDetailPage({
                             Open Exact Item
                           </Link>
                         ) : null}
-                        <details className="w-full rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3" open={activePickRequest?.id === request.id}>
+                        <PersistentDetails storageKey={`job:${id}:pick-options:${request.id}`}
+                          resetToken={activePickRequest?.id === request.id && tone === "success" && message ? request.picked_items.map((item) => item.id).join(",") : undefined}
+                          forceOpen={activePickRequest?.id === request.id && tone === "error"} className="w-full rounded-xl border border-[#ecdcc7] bg-[#fffaf4] p-3" open={activePickRequest?.id === request.id && tone === "error"}>
                           <summary className="cursor-pointer list-none text-sm font-semibold text-[#33413b] [&::-webkit-details-marker]:hidden">
                             Select Exact Item Options
                           </summary>
@@ -1073,10 +1083,10 @@ export default async function JobDetailPage({
                               />
                             </div>
                             <div>
-                              <button className={primaryButtonClass} type="submit">Pick Selected for Request</button>
+                              <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">Pick Selected for Request</PendingSubmitButton>
                             </div>
                           </form>
-                        </details>
+                        </PersistentDetails>
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <form action={logPickedItemAction}>
                             <input name="job_id" type="hidden" value={id} />
@@ -1106,7 +1116,7 @@ export default async function JobDetailPage({
                     </article>
                   );
                 })}
-              </details>
+              </PersistentDetails>
             ))
           )}
         </div>
@@ -1144,9 +1154,9 @@ export default async function JobDetailPage({
                     <input name="job_id" type="hidden" value={id} />
                     <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
                     <input name="section" type="hidden" value="extra-items" />
-                    <button className={secondaryButtonClass} type="submit">
+                    <PendingSubmitButton pendingLabel="Removing…" className={secondaryButtonClass} type="submit">
                       Remove Pick
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                 </div>
               </article>
@@ -1202,9 +1212,9 @@ export default async function JobDetailPage({
                       <input name="job_id" type="hidden" value={id} />
                       <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
                       <input name="section" type="hidden" value="picked-queue" />
-                      <button className={secondaryButtonClass} type="submit">
+                      <PendingSubmitButton pendingLabel="Removing…" className={secondaryButtonClass} type="submit">
                         Remove Pick
-                      </button>
+                      </PendingSubmitButton>
                     </form>
                   </div>
                 </article>

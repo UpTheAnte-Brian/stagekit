@@ -223,6 +223,7 @@ export type JobPickItem = {
   item_status: string;
   item_code: string;
   item_room: string | null;
+  item_dimensions: string | null;
   thumbnail_url: string | null;
 };
 
@@ -243,6 +244,7 @@ export type JobPackRequest = {
   scene_room_label: string | null;
   requested_item_name: string | null;
   requested_item_code: string | null;
+  requested_item_dimensions: string | null;
   requested_item_status: string | null;
   requested_item_thumbnail_url: string | null;
   active_job_names: string[];
@@ -587,7 +589,7 @@ export async function getJobDetail(jobId: string) {
   const { data: referencedItems, error: referencedItemsError } =
     referencedItemIds.length === 0
       ? { data: [], error: null }
-      : await supabase.from("inventory_items").select("id,name,category,color,status,item_code,room").in("id", referencedItemIds);
+      : await supabase.from("inventory_items").select("id,name,category,color,status,item_code,room,dimensions").in("id", referencedItemIds);
 
   if (referencedItemsError) {
     throw new Error(referencedItemsError.message);
@@ -672,6 +674,7 @@ export async function getJobDetail(jobId: string) {
       item_status: item?.status ?? "unknown",
       item_code: item?.item_code ?? "unknown",
       item_room: item?.room ?? null,
+      item_dimensions: item?.dimensions ?? null,
       thumbnail_url: thumbnailUrlByItemId.get(pickedItem.item_id) ?? null,
     };
   }) as JobPickItem[];
@@ -707,6 +710,7 @@ export async function getJobDetail(jobId: string) {
       scene_room_label: sceneApplication?.room_label ?? null,
       requested_item_name: requestedItem?.name ?? null,
       requested_item_code: requestedItem?.item_code ?? null,
+      requested_item_dimensions: requestedItem?.dimensions ?? null,
       requested_item_status: requestedItem?.status ?? null,
       requested_item_thumbnail_url: request.requested_item_id ? thumbnailUrlByItemId.get(request.requested_item_id) ?? null : null,
       active_job_names:
@@ -948,9 +952,29 @@ export async function createJobPickItem({
   }
 }
 
-export async function deleteJobPickItem(jobPickItemId: string) {
+export async function deleteJobPickItem(jobPickItemId: string, jobId: string) {
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.from("job_pick_items").delete().eq("id", jobPickItemId);
+  const { data: pick, error: pickError } = await supabase
+    .from("job_pick_items")
+    .select("item_id,pack_request_id")
+    .eq("id", jobPickItemId)
+    .eq("job_id", jobId)
+    .maybeSingle();
+  if (pickError) throw new Error(pickError.message);
+  if (!pick) return;
+
+  // Clear only this pick's original selection. Do this first so a failed
+  // deletion can be retried without losing the link needed for cleanup.
+  if (pick.pack_request_id) {
+    const { error: selectionError } = await supabase
+      .from("job_pack_requests")
+      .update({ requested_item_id: null })
+      .eq("id", pick.pack_request_id)
+      .eq("job_id", jobId)
+      .eq("requested_item_id", pick.item_id);
+    if (selectionError) throw new Error(selectionError.message);
+  }
+  const { error } = await supabase.from("job_pick_items").delete().eq("id", jobPickItemId).eq("job_id", jobId);
 
   if (error) {
     throw new Error(error.message);

@@ -1,6 +1,6 @@
 import { Image as CachedImage } from "expo-image";
 import { useMemo, useState } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import type { InventoryPackCandidate } from "../lib/inventory";
 import { colors } from "../lib/theme";
@@ -34,6 +34,7 @@ function ThumbnailCard({
   onToggle,
   onOpen,
   onPreview,
+  disabled,
 }: {
   item: InventoryPackCandidate;
   selected: boolean;
@@ -41,6 +42,7 @@ function ThumbnailCard({
   onToggle: () => void;
   onOpen: () => void;
   onPreview: () => void;
+  disabled: boolean;
 }) {
   return (
     <View
@@ -53,7 +55,7 @@ function ThumbnailCard({
         overflow: "hidden",
       }}
     >
-      <Pressable onPress={onToggle}>
+      <Pressable disabled={disabled} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled }} onPress={onToggle}>
         {item.thumbnail_url ? (
           <CachedImage
             alt=""
@@ -85,19 +87,20 @@ function ThumbnailCard({
         <Text numberOfLines={2} style={{ color: colors.muted, fontSize: 12 }}>
           {item.category ?? "No category"} • {item.color ?? "No color"}
         </Text>
+        <Text style={{ color: colors.muted, fontSize: 12 }}>Dimensions: {item.dimensions?.trim() || "Not recorded"}</Text>
         <Text numberOfLines={2} style={{ color: colors.muted, fontSize: 12 }}>
           {item.current_location_name ?? "No location"} • {item.status}
         </Text>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Pressable onPress={onToggle} style={{ flex: 1 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Pressable disabled={disabled} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled }} onPress={onToggle} style={{ minHeight: 44, justifyContent: "center" }}>
             <Text style={{ color: colors.accentDark, fontSize: 13, fontWeight: "700" }}>{selected ? "Deselect" : "Select"}</Text>
           </Pressable>
           {item.thumbnail_url ? (
-            <Pressable onPress={onPreview}>
+            <Pressable onPress={onPreview} style={{ minHeight: 44, justifyContent: "center" }}>
               <Text style={{ color: colors.accentDark, fontSize: 13, fontWeight: "700" }}>Preview</Text>
             </Pressable>
           ) : null}
-          <Pressable onPress={onOpen}>
+          <Pressable onPress={onOpen} style={{ minHeight: 44, justifyContent: "center" }}>
             <Text style={{ color: colors.accentDark, fontSize: 13, fontWeight: "700" }}>Open</Text>
           </Pressable>
         </View>
@@ -119,8 +122,10 @@ export function InventoryThumbnailPicker({
   locationOptions,
   onOpenItem,
   onPreviewItem,
+  disabled = false,
 }: {
   items: InventoryPackCandidate[];
+  disabled?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   selectedItemIds: string[];
@@ -133,8 +138,9 @@ export function InventoryThumbnailPicker({
   onOpenItem: (itemId: string) => void;
   onPreviewItem: (item: InventoryPackCandidate) => void;
 }) {
-  const { width: windowWidth } = useWindowDimensions();
-  const cardWidth = windowWidth >= 900 ? 280 : windowWidth >= 640 ? 220 : windowWidth - 40;
+  const [containerWidth, setContainerWidth] = useState(0);
+  const columns = containerWidth >= 600 ? 3 : containerWidth >= 340 ? 2 : 1;
+  const cardWidth = containerWidth > 0 ? (containerWidth - (columns - 1) * 10) / columns : 260;
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -160,7 +166,7 @@ export function InventoryThumbnailPicker({
   }
 
   return (
-    <View style={{ gap: 12 }}>
+    <View onLayout={(event) => setContainerWidth(event.nativeEvent.layout.width)} style={{ gap: 12 }}>
       <Field label="Find" onChangeText={handleSearchChange} placeholder="Search by item code, name, category, color..." value={search} />
       <View style={{ gap: 8 }}>
         <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>Availability</Text>
@@ -233,6 +239,7 @@ export function InventoryThumbnailPicker({
             <ThumbnailCard
               key={item.id}
               item={item}
+              disabled={disabled}
               selected={selectedItemIds.includes(item.id)}
               width={cardWidth}
               onToggle={() => onToggleItem(item.id)}

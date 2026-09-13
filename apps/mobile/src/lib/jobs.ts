@@ -52,6 +52,7 @@ export type JobPackRequest = {
   scene_room_label: string | null;
   requested_item_name: string | null;
   requested_item_code: string | null;
+  requested_item_dimensions: string | null;
   requested_item_status: string | null;
   requested_item_thumbnail_url: string | null;
   active_job_names: string[];
@@ -60,6 +61,7 @@ export type JobPackRequest = {
 };
 
 export type JobPickItem = {
+  item_dimensions: string | null;
   id: string;
   pack_request_id: string | null;
   item_id: string;
@@ -434,7 +436,7 @@ export async function getJobDetail(jobId: string) {
       ? { data: [], error: null }
       : await supabase
           .from("inventory_items")
-          .select("id,name,category,color,status,item_code,room")
+          .select("id,name,category,color,status,item_code,room,dimensions")
           .in("id", referencedItemIds);
 
   if (assignedItemsError) {
@@ -537,6 +539,7 @@ export async function getJobDetail(jobId: string) {
       item_status: item?.status ?? "unknown",
       item_code: item?.item_code ?? "unknown",
       item_room: item?.room ?? null,
+      item_dimensions: item?.dimensions ?? null,
       thumbnail_url: thumbnailUrlByItemId.get(pickedItem.item_id) ?? null,
     };
   }) as JobPickItem[];
@@ -571,6 +574,7 @@ export async function getJobDetail(jobId: string) {
       scene_room_label: sceneApplication?.room_label ?? null,
       requested_item_name: requestedItem?.name ?? null,
       requested_item_code: requestedItem?.item_code ?? null,
+      requested_item_dimensions: requestedItem?.dimensions ?? null,
       requested_item_status: requestedItem?.status ?? null,
       requested_item_thumbnail_url: request.requested_item_id ? thumbnailUrlByItemId.get(request.requested_item_id) ?? null : null,
       active_job_names: request.requested_item_id ? [...new Set((activeJobNamesByItemId[request.requested_item_id] ?? []).filter((name) => name !== job.name))] : [],
@@ -699,7 +703,7 @@ export async function createExactItemPackRequest({
     throw new Error("This item is already on that project's pack list.");
   }
 
-  await createPackRequest({
+  const requestId = await createPackRequest({
     jobId,
     requestText: itemName,
     quantity: 1,
@@ -710,6 +714,12 @@ export async function createExactItemPackRequest({
     optional: false,
     requestedItemId: itemId,
   });
+  try {
+    await createJobPickItem({ jobId, itemId, packRequestId: requestId });
+  } catch (error) {
+    await deletePackRequest(requestId).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function updatePackRequest({
@@ -919,9 +929,29 @@ export async function createJobPickItem({
   }
 }
 
-export async function deleteJobPickItem(jobPickItemId: string) {
+export async function deleteJobPickItem(jobPickItemId: string, jobId: string) {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.from("job_pick_items").delete().eq("id", jobPickItemId);
+  const { data: pick, error: pickError } = await supabase
+    .from("job_pick_items")
+    .select("item_id,pack_request_id")
+    .eq("id", jobPickItemId)
+    .eq("job_id", jobId)
+    .maybeSingle();
+  if (pickError) throw new Error(pickError.message);
+  if (!pick) return;
+
+  // Clear only this pick's original selection. Do this first so a failed
+  // deletion can be retried without losing the link needed for cleanup.
+  if (pick.pack_request_id) {
+    const { error: selectionError } = await supabase
+      .from("job_pack_requests")
+      .update({ requested_item_id: null })
+      .eq("id", pick.pack_request_id)
+      .eq("job_id", jobId)
+      .eq("requested_item_id", pick.item_id);
+    if (selectionError) throw new Error(selectionError.message);
+  }
+  const { error } = await supabase.from("job_pick_items").delete().eq("id", jobPickItemId).eq("job_id", jobId);
 
   if (error) {
     throw new Error(error.message);

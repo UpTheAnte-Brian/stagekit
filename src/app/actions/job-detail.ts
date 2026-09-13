@@ -536,12 +536,12 @@ export async function deletePickedItemAction(formData: FormData) {
   }
 
   try {
-    await deleteJobPickItem(jobPickItemId);
-    redirect(buildJobUrl(jobId, { message: "Exact project item removed.", tone: "success", section }));
+    await deleteJobPickItem(jobPickItemId, jobId);
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to remove exact item.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
   }
+  redirect(buildJobUrl(jobId, { message: "Exact pick and matching original selection removed.", tone: "success", section }));
 }
 
 export async function quickSelectAction(formData: FormData) {
@@ -556,6 +556,8 @@ export async function quickSelectAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to add to this request.", tone: "error", section, pickRequestId }));
   }
 
+  let successCount = 0;
+  let failureMessage: string | null = null;
   try {
     let resolvedPackRequestId = packRequestId || null;
     const resolvedNotes = notes || `Bulk pack request at ${new Date().toLocaleString()}`;
@@ -574,9 +576,6 @@ export async function quickSelectAction(formData: FormData) {
       });
     }
 
-    let successCount = 0;
-    let failureMessage: string | null = null;
-
     for (const itemId of selectedItemIds) {
       try {
         await createJobPickItem({
@@ -592,26 +591,26 @@ export async function quickSelectAction(formData: FormData) {
         }
       }
     }
-
-    if (failureMessage) {
-      redirect(buildJobUrl(jobId, {
-        message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
-        tone: "error",
-        section,
-        pickRequestId,
-      }));
-    }
-
-    redirect(buildJobUrl(jobId, {
-      message: packRequestId ? `Added ${successCount} exact item${successCount === 1 ? "" : "s"} to the request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
-      tone: "success",
-      section,
-      pickRequestId,
-    }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to add selected items to the request.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section, pickRequestId }));
   }
+
+  if (failureMessage) {
+    redirect(buildJobUrl(jobId, {
+      message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
+      tone: "error",
+      section,
+      pickRequestId,
+    }));
+  }
+
+  redirect(buildJobUrl(jobId, {
+    message: packRequestId ? `Added ${successCount} exact item${successCount === 1 ? "" : "s"} to the request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
+    tone: "success",
+    section,
+    pickRequestId,
+  }));
 }
 
 export async function applySceneTemplateAction(formData: FormData) {
