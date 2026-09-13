@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
-const PREPARE_UPLOAD_TIMEOUT_MS = 20_000;
 const SAVE_UPLOAD_TIMEOUT_MS = 30_000;
 const TRANSFER_UPLOAD_TIMEOUT_MS = 5 * 60_000;
 
@@ -33,34 +32,6 @@ function mediaContentType(file: File) {
   if (/\.png$/i.test(file.name)) return "image/png";
   if (/\.gif$/i.test(file.name)) return "image/gif";
   return "image/jpeg";
-}
-
-async function requestUploadUrl(input: { jobId: string; consultId: string; fileName: string; contentType: string; fileSizeBytes: number }) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), PREPARE_UPLOAD_TIMEOUT_MS);
-
-  try {
-    const response = await fetch("/api/jobs/consult-media/upload-url", {
-      body: JSON.stringify(input),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-      signal: controller.signal,
-    });
-    const payload = (await response.json().catch(() => null)) as { message?: string; storagePath?: string; token?: string } | null;
-
-    if (!response.ok || !payload?.storagePath || !payload.token) {
-      throw new Error(payload?.message ?? "Failed to prepare the media upload.");
-    }
-
-    return { storagePath: payload.storagePath, token: payload.token };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Preparing the upload timed out. Please try again, or sign in again if the problem continues.");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
-  }
 }
 
 function createTimedFetch(timeoutMs: number, timeoutMessage: string): typeof fetch {
@@ -165,28 +136,27 @@ export function ConsultMediaUploadForm({ consultId, jobId }: ConsultMediaUploadF
     setIsUploading(true);
     setMessage(null);
     setUploadStatus("Preparing upload…");
-    const supabase = createBrowserSupabaseClient({
-      fetch: createTimedFetch(
-        TRANSFER_UPLOAD_TIMEOUT_MS,
-        "The upload timed out. Please try again with this file.",
-      ),
-    });
-
     try {
+      const supabase = createBrowserSupabaseClient({
+        fetch: createTimedFetch(
+          TRANSFER_UPLOAD_TIMEOUT_MS,
+          "The upload timed out. Please try again with this file.",
+        ),
+      });
+
       for (const [index, media] of selectedMedia.entries()) {
         const contentType = mediaContentType(media.file);
-        const { storagePath, token } = await requestUploadUrl({
-          jobId,
-          consultId,
-          fileName: media.name,
-          contentType,
-          fileSizeBytes: media.file.size,
-        });
+        const extension = media.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? (contentType.startsWith("video/") ? "mp4" : "jpg");
+        const storagePath = `consults/${jobId}/${consultId}/${crypto.randomUUID()}.${extension}`;
 
         setUploadStatus(`Uploading ${index + 1} of ${selectedMedia.length}: ${media.name}`);
-        const { error: uploadError } = await supabase.storage.from("job-consults").uploadToSignedUrl(storagePath, token, media.file, {
+        // Signed-upload PUT requests have been stalling before reaching Storage
+        // in Chrome. A normal authenticated browser upload uses this bucket's
+        // existing insert policy and avoids that failing signed-upload path.
+        const { error: uploadError } = await supabase.storage.from("job-consults").upload(storagePath, media.file, {
           cacheControl: "31536000",
           contentType,
+          upsert: false,
         });
         if (uploadError) throw new Error(uploadError.message);
 
