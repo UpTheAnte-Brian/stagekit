@@ -298,13 +298,25 @@ export type SceneTemplate = Pick<
 
 export async function listPackListInventoryItems() {
   const supabase = await createServerSupabaseClient();
-  const { data: items, error: itemsError } = await supabase
-    .from("inventory_items")
-    .select("id,name,category,status,item_code,room,color,source_job_id,current_location_id")
-    .order("name", { ascending: true });
+  const items: Omit<InventoryPackCandidate, "current_location_name">[] = [];
+  const pageSize = 500;
 
-  if (itemsError) {
-    throw new Error(itemsError.message);
+  // Fetch every page: a single query can silently omit items beyond the server row limit.
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("inventory_items")
+      .select("id,name,category,status,item_code,room,color,source_job_id,current_location_id")
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const page = data ?? [];
+    items.push(...page);
+    if (page.length < pageSize) break;
   }
 
   const locationIds = [...new Set((items ?? []).map((item) => item.current_location_id).filter((value): value is string => Boolean(value)))];

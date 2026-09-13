@@ -320,10 +320,15 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <details className="group rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+          <h2 className="text-lg font-semibold">Audit Queue</h2>
+          <svg aria-hidden="true" className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Audit Queue</h2>
             <p className="text-sm text-muted">Open the filtered review screen for duplicate candidates, bad images, and unreadable-photo items.</p>
           </div>
           <Link
@@ -346,11 +351,16 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             </Link>
           ))}
         </div>
-      </section>
+      </details>
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Add Item</h2>
-        <p className="mt-1 text-sm text-muted">
+      <details className="group rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+          <h2 className="text-lg font-semibold">Add Item</h2>
+          <svg aria-hidden="true" className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
+        <p className="mt-4 text-sm text-muted">
           StageKit assigns the item code automatically when you save. Leave the optional SKU blank unless the item already has a vendor or barcode reference.
         </p>
         <form action={createItemAction} className="mt-3 grid gap-3 md:grid-cols-5">
@@ -375,7 +385,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             Add Item
           </button>
         </form>
-      </section>
+      </details>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted">{showingCountLabel}</div>
