@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
+const PREPARE_UPLOAD_TIMEOUT_MS = 20_000;
+const SAVE_UPLOAD_TIMEOUT_MS = 30_000;
+const TRANSFER_UPLOAD_TIMEOUT_MS = 5 * 60_000;
 
 type ConsultMediaUploadFormProps = {
   consultId: string;
@@ -34,7 +37,7 @@ function mediaContentType(file: File) {
 
 async function requestUploadUrl(input: { jobId: string; consultId: string; fileName: string; contentType: string; fileSizeBytes: number }) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 20_000);
+  const timeout = window.setTimeout(() => controller.abort(), PREPARE_UPLOAD_TIMEOUT_MS);
 
   try {
     const response = await fetch("/api/jobs/consult-media/upload-url", {
@@ -60,16 +63,55 @@ async function requestUploadUrl(input: { jobId: string; consultId: string; fileN
   }
 }
 
-async function registerUpload(input: { jobId: string; consultId: string; storagePath: string; fileName: string; contentType: string; fileSizeBytes: number }) {
-  const response = await fetch("/api/jobs/consult-media/register", {
-    body: JSON.stringify(input),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+function createTimedFetch(timeoutMs: number, timeoutMessage: string): typeof fetch {
+  return async (input, init) => {
+    const controller = new AbortController();
+    const parentSignal = init?.signal;
+    const abortForParentSignal = () => controller.abort(parentSignal?.reason);
+    if (parentSignal?.aborted) {
+      abortForParentSignal();
+    } else {
+      parentSignal?.addEventListener("abort", abortForParentSignal, { once: true });
+    }
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    throw new Error(payload?.message ?? "Failed to save the uploaded media.");
+    try {
+      return await fetch(input, { ...init, signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.aborted && !parentSignal?.aborted) {
+        throw new Error(timeoutMessage, { cause: error });
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+      parentSignal?.removeEventListener("abort", abortForParentSignal);
+    }
+  };
+}
+
+async function registerUpload(input: { jobId: string; consultId: string; storagePath: string; fileName: string; contentType: string; fileSizeBytes: number }) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), SAVE_UPLOAD_TIMEOUT_MS);
+
+  try {
+    const response = await fetch("/api/jobs/consult-media/register", {
+      body: JSON.stringify(input),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    });
+    const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+
+    if (!response.ok) {
+      throw new Error(payload?.message ?? "Failed to save the uploaded media.");
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Saving the upload timed out. Refresh the page to check whether it was saved before trying again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
@@ -123,7 +165,12 @@ export function ConsultMediaUploadForm({ consultId, jobId }: ConsultMediaUploadF
     setIsUploading(true);
     setMessage(null);
     setUploadStatus("Preparing upload…");
-    const supabase = createBrowserSupabaseClient();
+    const supabase = createBrowserSupabaseClient({
+      fetch: createTimedFetch(
+        TRANSFER_UPLOAD_TIMEOUT_MS,
+        "The upload timed out. Please try again with this file.",
+      ),
+    });
 
     try {
       for (const [index, media] of selectedMedia.entries()) {
