@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { useFormStatus } from "react-dom";
+
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 
 type PhotoUploadFormProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -18,16 +19,13 @@ function isLikelyImageFile(file: File) {
 }
 
 function UploadButton() {
-  const { pending } = useFormStatus();
-
   return (
-    <button
+    <PendingSubmitButton
       className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={pending}
-      type="submit"
+      pendingLabel="Uploading…"
     >
-      {pending ? "Uploading..." : "Upload"}
-    </button>
+      Upload
+    </PendingSubmitButton>
   );
 }
 

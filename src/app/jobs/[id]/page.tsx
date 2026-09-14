@@ -269,8 +269,8 @@ export default async function JobDetailPage({
   }, new Map()).values()]
     .map(({ label, requests }) => [label, requests] as const)
     .sort(([a], [b]) => {
-      if (a === "No room") return 1;
-      if (b === "No room") return -1;
+      if (a === "No room") return -1;
+      if (b === "No room") return 1;
       return a.localeCompare(b);
     });
   const extraPickedItems = pickedItems.filter((pickedItem) => !pickedItem.pack_request_id);
@@ -408,9 +408,9 @@ export default async function JobDetailPage({
             <textarea defaultValue={job.notes ?? ""} name="notes" />
           </div>
           <div className="md:col-span-2">
-            <button className={primaryButtonClass} type="submit">
+            <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">
               Save Project Details
-            </button>
+            </PendingSubmitButton>
           </div>
         </form>
       </PersistentDetails>
@@ -459,7 +459,7 @@ export default async function JobDetailPage({
               <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
             </div>
             <div className="md:col-span-2">
-              <button className={primaryButtonClass} type="submit">Save Visit Notes</button>
+              <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">Save Visit Notes</PendingSubmitButton>
             </div>
           </form>
         </PersistentDetails>
@@ -505,7 +505,7 @@ export default async function JobDetailPage({
                           <label className="mb-1 block text-xs font-semibold text-[#33413b]">Walkthrough notes</label>
                           <textarea defaultValue={consult.notes ?? ""} name="notes" />
                         </div>
-                        <div className="md:col-span-2"><button className={secondaryButtonClass} type="submit">Save changes</button></div>
+                        <div className="md:col-span-2"><PendingSubmitButton className={secondaryButtonClass} pendingLabel="Saving…">Save changes</PendingSubmitButton></div>
                       </form>
                     </PersistentDetails>
                     {consult.media.length > 0 ? (
@@ -586,9 +586,9 @@ export default async function JobDetailPage({
             {job.status === "archived" ? null : (
               <form action={archiveProjectAction} className="mt-4">
                 <input name="job_id" type="hidden" value={id} />
-                <button className={primaryButtonClass} type="submit">
+                <PendingSubmitButton className={primaryButtonClass} pendingLabel="Archiving…">
                   Archive Project
-                </button>
+                </PendingSubmitButton>
               </form>
             )}
           </div>
@@ -676,9 +676,9 @@ export default async function JobDetailPage({
             </p>
           </div>
           <div className="flex flex-wrap gap-3 md:col-span-2">
-            <button className={primaryButtonClass} type="submit">
+            <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">
               {editingPackRequest ? "Save Pack Request" : "Add Pack Request"}
-            </button>
+            </PendingSubmitButton>
             {editingPackRequest ? (
               <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>
                 Cancel Edit
@@ -736,9 +736,9 @@ export default async function JobDetailPage({
               />
             </div>
             <div className="md:col-span-2">
-              <button className={quietButtonClass} type="submit">
+              <PendingSubmitButton className={quietButtonClass} pendingLabel="Creating…">
                 Create and Add Exact Item
-              </button>
+              </PendingSubmitButton>
             </div>
           </form>
         ) : null}
@@ -776,9 +776,9 @@ export default async function JobDetailPage({
                         <input name="job_id" type="hidden" value={id} />
                         <input name="scene_application_id" type="hidden" value={application.id} />
                         <input name="scene_name" type="hidden" value={application.scene_template_name} />
-                        <button className={secondaryButtonClass} type="submit">
+                        <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Removing…">
                           Remove Scene
-                        </button>
+                        </PendingSubmitButton>
                       </form>
                     </div>
                   </div>
@@ -833,9 +833,9 @@ export default async function JobDetailPage({
                         </div>
                       </div>
                       <div>
-                        <button className={primaryButtonClass} type="submit">
+                        <PendingSubmitButton className={primaryButtonClass} pendingLabel="Applying…">
                           Apply Scene to Project
-                        </button>
+                        </PendingSubmitButton>
                       </div>
                     </div>
                   </form>
@@ -884,9 +884,9 @@ export default async function JobDetailPage({
                   <textarea name="notes" placeholder="Anything worth remembering when this scene is reused." />
                 </div>
                 <div className="md:col-span-2">
-                  <button className={primaryButtonClass} type="submit">
+                  <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">
                     Save Room as New Scene
-                  </button>
+                  </PendingSubmitButton>
                 </div>
               </form>
             )}
@@ -1016,9 +1016,9 @@ export default async function JobDetailPage({
                                   <input name="job_id" type="hidden" value={id} />
                                   <input name="item_id" type="hidden" value={pickedItem.item_id} />
                                   <input name="section" type="hidden" value="pack-requests" />
-                                  <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
+                                  <PendingSubmitButton className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} pendingLabel="Checking out…">
                                     {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
-                                  </button>
+                                  </PendingSubmitButton>
                                 </form>
                                 <form action={deletePickedItemAction}>
                                   <input name="job_id" type="hidden" value={id} />
@@ -1041,9 +1041,9 @@ export default async function JobDetailPage({
                         <form action={toggleOptionalAction}>
                           <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
-                          <button className={secondaryButtonClass} type="submit">
+                          <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Saving…">
                             {request.optional ? "Mark Required" : "Mark Optional"}
-                          </button>
+                          </PendingSubmitButton>
                         </form>
                         {request.requested_item_id ? (
                           <Link className={secondaryButtonClass} href={`/inventory/${request.requested_item_id}`}>
@@ -1093,24 +1093,24 @@ export default async function JobDetailPage({
                             <input name="item_id" type="hidden" value={request.requested_item_id} />
                             <input name="pack_request_id" type="hidden" value={request.id} />
                             <input name="section" type="hidden" value="pack-requests" />
-                            <button className={secondaryButtonClass} type="submit">
+                            <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Adding…">
                               Add as Exact Item
-                            </button>
+                            </PendingSubmitButton>
                           </form>
                         ) : null}
                         <form action={cancelPackRequestAction}>
                           <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
-                          <button className={secondaryButtonClass} type="submit">
+                          <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Cancelling…">
                             Cancel
-                          </button>
+                          </PendingSubmitButton>
                         </form>
                         <form action={deletePackRequestAction}>
                           <input name="job_id" type="hidden" value={id} />
                           <input name="pack_request_id" type="hidden" value={request.id} />
-                          <button className={secondaryButtonClass} type="submit">
+                          <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Deleting…">
                             Delete
-                          </button>
+                          </PendingSubmitButton>
                         </form>
                       </div>
                     </article>
@@ -1146,9 +1146,9 @@ export default async function JobDetailPage({
                     <input name="job_id" type="hidden" value={id} />
                     <input name="item_id" type="hidden" value={pickedItem.item_id} />
                     <input name="section" type="hidden" value="extra-items" />
-                    <button className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
+                    <PendingSubmitButton className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} pendingLabel="Checking out…">
                       {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                   <form action={deletePickedItemAction}>
                     <input name="job_id" type="hidden" value={id} />
@@ -1204,9 +1204,9 @@ export default async function JobDetailPage({
                       <input name="job_id" type="hidden" value={id} />
                       <input name="item_id" type="hidden" value={pickedItem.item_id} />
                       <input name="section" type="hidden" value="assignments" />
-                      <button className={primaryButtonClass} disabled={pickedItem.item_status !== "available"} type="submit">
+                      <PendingSubmitButton className={primaryButtonClass} disabled={pickedItem.item_status !== "available"} pendingLabel="Checking out…">
                         {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
-                      </button>
+                      </PendingSubmitButton>
                     </form>
                     <form action={deletePickedItemAction}>
                       <input name="job_id" type="hidden" value={id} />
@@ -1249,9 +1249,9 @@ export default async function JobDetailPage({
                   <form action={checkInItemAction}>
                     <input name="job_id" type="hidden" value={id} />
                     <input name="job_item_id" type="hidden" value={assignment.id} />
-                    <button className={primaryButtonClass} type="submit">
+                    <PendingSubmitButton className={primaryButtonClass} pendingLabel="Checking in…">
                       Check In
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                 </div>
               </article>

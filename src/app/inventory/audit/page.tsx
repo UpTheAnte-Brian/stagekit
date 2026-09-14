@@ -3,6 +3,7 @@ import Link from "next/link";
 import { InventoryHistoryMarker } from "@/components/inventory/inventory-history-marker";
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryTable } from "@/components/inventory/inventory-table";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { countItems, listItemsPage, type InventoryItemStatus } from "@/lib/db/inventory";
 import { inventoryAuditTagConfig, isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 
@@ -180,9 +181,9 @@ export default async function InventoryAuditPage({ searchParams }: { searchParam
           <option value="keep">Keep in inventory</option>
           <option value="dispose">Marked for disposal</option>
         </select>
-        <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-4" type="submit">
+        <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-4" pendingLabel="Applying…">
           Apply Audit Filters
-        </button>
+        </PendingSubmitButton>
       </form>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">

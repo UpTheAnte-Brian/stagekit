@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type FlashMessageTone = "success" | "warning" | "error" | "info";
 
@@ -30,7 +29,6 @@ export function FlashMessage({
   durationMs?: number;
   clearSearchParams?: string[];
 }) {
-  const router = useRouter();
   const [visible, setVisible] = useState(true);
   const clearTimer = useRef<number | null>(null);
   const dismissTimer = useRef<number | null>(null);
@@ -57,9 +55,9 @@ export function FlashMessage({
         .filter(Boolean)
         .forEach((param) => searchParams.delete(param));
       const search = searchParams.toString();
-      router.replace(`${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`, { scroll: false });
+      window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
     }, 220);
-  }, [clearSearchParamsKey, router]);
+  }, [clearSearchParamsKey]);
 
   useEffect(() => {
     dismissTimer.current = window.setTimeout(dismiss, duration);

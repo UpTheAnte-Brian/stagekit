@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
+
 type ConsultMedia = {
   id: string;
   file_name: string;
@@ -53,7 +55,7 @@ export function ConsultMediaGallery({ action, jobId, media }: ConsultMediaGaller
               <form action={action}>
                 <input name="job_id" type="hidden" value={jobId} />
                 <input name="media_id" type="hidden" value={item.id} />
-                <button className="text-xs font-semibold text-[#a7502d] hover:underline" type="submit">Remove</button>
+                <PendingSubmitButton className="text-xs font-semibold text-[#a7502d] hover:underline" pendingLabel="Removing…">Remove</PendingSubmitButton>
               </form>
             </div>
           </div>

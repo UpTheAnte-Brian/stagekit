@@ -229,7 +229,14 @@ export function ConsultMediaUploadForm({ consultId, jobId }: ConsultMediaUploadF
       {message ? <p className="mt-3 text-sm font-medium text-[#a7502d]">{message}</p> : null}
       {uploadStatus ? <p aria-live="polite" className="mt-3 text-sm font-medium text-[#4e584f]">{uploadStatus}</p> : null}
       <div className="mt-3">
-        <button className="rounded-xl border border-[#e3d0ba] bg-white px-3 py-2 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] disabled:cursor-not-allowed disabled:opacity-50" disabled={isUploading || selectedMedia.length === 0} type="submit">{buttonLabel}</button>
+        <button className="rounded-xl border border-[#e3d0ba] bg-white px-3 py-2 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] disabled:cursor-not-allowed disabled:opacity-50" disabled={isUploading || selectedMedia.length === 0} type="submit" aria-busy={isUploading}>
+          <span className="inline-flex items-center justify-center gap-2">
+            {isUploading ? (
+              <span aria-hidden="true" className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : null}
+            <span>{buttonLabel}</span>
+          </span>
+        </button>
       </div>
     </form>
   );

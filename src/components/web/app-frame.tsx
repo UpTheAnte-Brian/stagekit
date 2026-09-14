@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { signOutAction } from "@/app/actions/auth";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 
 type NavItem = {
   href: string;
@@ -69,9 +70,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
               </span>
             </Link>
             <form action={signOutAction} className="lg:hidden">
-              <button className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium" type="submit">
+              <PendingSubmitButton className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium" pendingLabel="Signing out…">
                 Sign Out
-              </button>
+              </PendingSubmitButton>
             </form>
           </div>
 
@@ -88,9 +89,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           </nav>
 
           <form action={signOutAction} className="hidden lg:block">
-            <button className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" type="submit">
+            <PendingSubmitButton className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium" pendingLabel="Signing out…">
               Sign Out
-            </button>
+            </PendingSubmitButton>
           </form>
         </div>
       </header>

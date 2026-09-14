@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import type { InventoryItemCondition, InventoryItemStatus, InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
 import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
@@ -343,9 +344,9 @@ export function InventoryTable({
                           </label>
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
-                          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" type="submit">
+                          <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" pendingLabel="Saving…">
                             Save changes
-                          </button>
+                          </PendingSubmitButton>
                           <button className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground" onClick={() => setEditingItemId(null)} type="button">
                             Cancel
                           </button>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function readString(value: FormDataEntryValue | null) {
@@ -67,22 +68,22 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <input id="password" name="password" type="password" autoComplete="current-password" required />
         </div>
         <div className="flex gap-3">
-          <button
-            type="submit"
+          <PendingSubmitButton
             name="intent"
             value="signin"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground"
+            pendingLabel="Signing in…"
           >
             Sign In
-          </button>
-          <button
-            type="submit"
+          </PendingSubmitButton>
+          <PendingSubmitButton
             name="intent"
             value="signup"
             className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium"
+            pendingLabel="Signing up…"
           >
             Sign Up
-          </button>
+          </PendingSubmitButton>
         </div>
       </form>
     </section>

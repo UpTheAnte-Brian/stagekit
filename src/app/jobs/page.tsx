@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { listJobsWithStats, type JobWithStats } from "@/lib/db/jobs";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -207,9 +208,9 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
           <input name="start_date" type="date" />
           <input name="end_date" type="date" />
           <textarea className="md:col-span-2" name="notes" placeholder="Notes" />
-          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" type="submit">
+          <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" pendingLabel="Creating…">
             Create Job
-          </button>
+          </PendingSubmitButton>
         </form>
       </details>
     </section>

@@ -6,6 +6,7 @@ import { InventoryCategorySelect } from "@/components/inventory/inventory-catego
 import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 import { formatInventoryLabel, isInventoryUserLabel, needsMeasurementLabel } from "@/lib/inventory-labels";
@@ -540,9 +541,9 @@ export default async function ItemDetailPage({
                     </span>
                     <p className="mt-2 text-sm text-slate-700">{auditTagDescription(tag)}</p>
                   </div>
-                  <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900" type="submit">
+                  <PendingSubmitButton className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900" pendingLabel="Clearing…">
                     Clear Tag
-                  </button>
+                  </PendingSubmitButton>
                 </form>
               ))}
             </div>
@@ -561,17 +562,17 @@ export default async function ItemDetailPage({
             <input name="return_to" type="hidden" value={returnTo ?? ""} />
             <input name="label" type="hidden" value={needsMeasurementLabel} />
             <input name="action" type="hidden" value={needsMeasurement ? "remove" : "add"} />
-            <button
+            <PendingSubmitButton
               className={[
                 "rounded-lg px-4 py-2 text-sm font-medium",
                 needsMeasurement
                   ? "border border-amber-300 bg-amber-50 text-amber-900"
                   : "bg-amber-500 text-white hover:bg-amber-600",
               ].join(" ")}
-              type="submit"
+              pendingLabel="Saving…"
             >
               {needsMeasurement ? "Remove Needs Measurement" : "Mark Needs Measurement"}
-            </button>
+            </PendingSubmitButton>
           </form>
         </div>
         {itemLabels.length > 0 ? (
@@ -582,9 +583,9 @@ export default async function ItemDetailPage({
                 <input name="return_to" type="hidden" value={returnTo ?? ""} />
                 <input name="label" type="hidden" value={label} />
                 <input name="action" type="hidden" value="remove" />
-                <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800" title={`Remove ${formatInventoryLabel(label)}`} type="submit">
+                <PendingSubmitButton className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800" pendingLabel="Removing…" title={`Remove ${formatInventoryLabel(label)}`}>
                   {formatInventoryLabel(label)} <span aria-hidden="true">×</span>
-                </button>
+                </PendingSubmitButton>
               </form>
             ))}
           </div>
@@ -596,9 +597,9 @@ export default async function ItemDetailPage({
           <input name="return_to" type="hidden" value={returnTo ?? ""} />
           <input name="action" type="hidden" value="add" />
           <input aria-label="New label" className="sm:max-w-xs" name="label" placeholder="Create a label (for example, Needs repair)" required />
-          <button className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:border-accent/40" type="submit">
+          <PendingSubmitButton className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:border-accent/40" pendingLabel="Adding…">
             Add Label
-          </button>
+          </PendingSubmitButton>
         </form>
       </section>
 
@@ -653,13 +654,13 @@ export default async function ItemDetailPage({
                   ))}
                 </select>
               </div>
-              <button
+              <PendingSubmitButton
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={item.status !== "available" || assignableJobs.length === 0}
-                type="submit"
+                pendingLabel="Assigning…"
               >
                 {item.status === "available" ? "Assign to Project" : "Item Unavailable"}
-              </button>
+              </PendingSubmitButton>
             </form>
 
             {assignableJobs.length === 0 ? <p className="text-sm text-muted">No active projects are available yet.</p> : null}
@@ -848,9 +849,9 @@ export default async function ItemDetailPage({
             </label>
             <textarea id="notes" name="notes" defaultValue={item.notes ?? ""} />
           </div>
-          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" type="submit">
+          <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" pendingLabel="Saving…">
             Save Changes
-          </button>
+          </PendingSubmitButton>
         </form>
       </section>
 
@@ -880,12 +881,12 @@ export default async function ItemDetailPage({
                     <input name="item_id" type="hidden" value={item.id} />
                     <input name="photo_id" type="hidden" value={photo.id} />
                     <input name="return_to" type="hidden" value={returnTo ?? ""} />
-                    <button
+                    <PendingSubmitButton
                       className="rounded-md border border-rose-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                      type="submit"
+                      pendingLabel="Removing…"
                     >
                       Remove
-                    </button>
+                    </PendingSubmitButton>
                   </form>
                 </figcaption>
               </figure>
@@ -900,9 +901,9 @@ export default async function ItemDetailPage({
         <form action={deleteItemAction} className="mt-4">
           <input type="hidden" name="item_id" value={item.id} />
           <input type="hidden" name="return_to" value={returnTo ?? ""} />
-          <button className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white" type="submit">
+          <PendingSubmitButton className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white" pendingLabel="Deleting…">
             Delete Item
-          </button>
+          </PendingSubmitButton>
         </form>
       </section>
     </section>

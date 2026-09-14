@@ -6,6 +6,7 @@ import { InventoryHistoryMarker } from "@/components/inventory/inventory-history
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
 import { InventoryTable } from "@/components/inventory/inventory-table";
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { inventoryCategorySuggestionValues, sortInventoryCategories } from "@/lib/inventory-taxonomy";
 import {
@@ -294,9 +295,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             </option>
           ))}
         </select>
-        <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" type="submit">
+        <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground" pendingLabel="Applying…">
           Apply Filters
-        </button>
+        </PendingSubmitButton>
         <Link
           className="inline-flex items-center justify-center rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground hover:border-accent/40"
           href={inventoryExportHref}
@@ -381,9 +382,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
               </option>
             ))}
           </select>
-          <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-5" type="submit">
+          <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-5" pendingLabel="Adding…">
             Add Item
-          </button>
+          </PendingSubmitButton>
         </form>
       </details>
 
