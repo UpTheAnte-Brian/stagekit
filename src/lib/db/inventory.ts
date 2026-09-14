@@ -999,7 +999,7 @@ export async function updateInventoryItemLabel(itemId: string, label: string, ac
   const nextTags =
     parsed.action === "add"
       ? [...new Set([...existingTags, parsed.label])]
-      : existingTags.filter((existingTag) => existingTag !== parsed.label);
+      : existingTags.filter((existingTag) => existingTag !== parsed.label && normalizeInventoryLabel(existingTag) !== parsed.label);
   nextTags.sort((left, right) => left.localeCompare(right));
 
   if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) return item;

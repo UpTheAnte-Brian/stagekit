@@ -9,6 +9,7 @@ import { ConsultMediaGallery } from "@/components/jobs/consult-media-gallery";
 import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { CheckInAllItemsForm } from "@/components/jobs/check-in-all-items-form";
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingLink } from "@/components/web/pending-link";
 import {
   getJobDetail,
   listPackListInventoryItems,
@@ -900,7 +901,7 @@ export default async function JobDetailPage({
           description="Turn what you saw into room-by-room staging requests."
           right={<div className="flex flex-wrap gap-2">
             {sceneTemplates.length > 0 ? <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "scene-templates" })}>Room templates</Link> : null}
-            <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>Add a Pack Request</Link>
+            <PendingLink className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })} pendingLabel="Opening…">Add a Pack Request</PendingLink>
           </div>}
         />
         <div className="mt-5 space-y-6">
@@ -1009,9 +1010,9 @@ export default async function JobDetailPage({
                                 </div>
                               </div>
                               <div className="mt-3 flex flex-wrap gap-2">
-                                <Link className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`}>
+                                <PendingLink className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`} pendingLabel="Opening…">
                                   Open Picked Item
-                                </Link>
+                                </PendingLink>
                                 <form action={assignItemAction}>
                                   <input name="job_id" type="hidden" value={id} />
                                   <input name="item_id" type="hidden" value={pickedItem.item_id} />
@@ -1046,9 +1047,9 @@ export default async function JobDetailPage({
                           </PendingSubmitButton>
                         </form>
                         {request.requested_item_id ? (
-                          <Link className={secondaryButtonClass} href={`/inventory/${request.requested_item_id}`}>
+                          <PendingLink className={secondaryButtonClass} href={`/inventory/${request.requested_item_id}`} pendingLabel="Opening…">
                             Open Exact Item
-                          </Link>
+                          </PendingLink>
                         ) : null}
                         <PersistentDetails storageKey={`job:${id}:pick-options:${request.id}`}
                           resetToken={activePickRequest?.id === request.id && tone === "success" && message ? request.picked_items.map((item) => item.id).join(",") : undefined}
@@ -1139,9 +1140,9 @@ export default async function JobDetailPage({
                 </p>
                 {pickedItem.notes ? <p className={`${mutedTextClass} mt-2`}>Pick notes: {pickedItem.notes}</p> : null}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`}>
+                  <PendingLink className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`} pendingLabel="Opening…">
                     Open Item
-                  </Link>
+                  </PendingLink>
                   <form action={assignItemAction}>
                     <input name="job_id" type="hidden" value={id} />
                     <input name="item_id" type="hidden" value={pickedItem.item_id} />
@@ -1197,9 +1198,9 @@ export default async function JobDetailPage({
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`}>
+                    <PendingLink className={secondaryButtonClass} href={`/inventory/${pickedItem.item_id}`} pendingLabel="Opening…">
                       Open Picked Item
-                    </Link>
+                    </PendingLink>
                     <form action={assignItemAction}>
                       <input name="job_id" type="hidden" value={id} />
                       <input name="item_id" type="hidden" value={pickedItem.item_id} />
@@ -1243,9 +1244,9 @@ export default async function JobDetailPage({
                 <p className={mutedTextClass}>Room: {assignment.item_room ?? "Not assigned"}</p>
                 <p className={mutedTextClass}>Checked out: {formatTimestamp(assignment.checked_out_at)}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link className={secondaryButtonClass} href={`/inventory/${assignment.item_id}`}>
+                  <PendingLink className={secondaryButtonClass} href={`/inventory/${assignment.item_id}`} pendingLabel="Opening…">
                     Open Item
-                  </Link>
+                  </PendingLink>
                   <form action={checkInItemAction}>
                     <input name="job_id" type="hidden" value={id} />
                     <input name="job_item_id" type="hidden" value={assignment.id} />

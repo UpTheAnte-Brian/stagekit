@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
+import { PendingLink } from "@/components/web/pending-link";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import type { InventoryItemCondition, InventoryItemStatus, InventoryListRow } from "@/lib/db/inventory";
 import { hasAnyInventoryAuditTag, isInventoryAuditTag } from "@/lib/inventory-audit";
@@ -220,12 +220,13 @@ export function InventoryTable({
                     )}
                   </td>
                   <td>
-                    <Link
+                    <PendingLink
                       className="font-medium text-accent hover:underline"
                       href={`/inventory/${item.id}?returnTo=${encodeURIComponent(returnTo)}`}
+                      pendingLabel="Opening…"
                     >
                       {item.name}
-                    </Link>
+                    </PendingLink>
                     <div className="mt-1 text-xs text-muted">{item.item_code}</div>
                     {itemLabels.length > 0 ? (
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -282,9 +283,9 @@ export function InventoryTable({
                             <h3 className="font-semibold text-foreground">Edit {item.item_code}</h3>
                             <p className="mt-1 text-sm text-muted">Update the fields shown in this list. Open the item for photos, costs, notes, and other details.</p>
                           </div>
-                          <Link className="text-sm font-medium text-accent hover:underline" href={`/inventory/${item.id}?returnTo=${encodeURIComponent(returnTo)}`}>
+                          <PendingLink className="text-sm font-medium text-accent hover:underline" href={`/inventory/${item.id}?returnTo=${encodeURIComponent(returnTo)}`} pendingLabel="Opening…">
                             Full item details
-                          </Link>
+                          </PendingLink>
                         </div>
                         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                           <label className="text-sm font-medium text-foreground">
