@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { BackToInventoryButton } from "@/components/inventory/back-to-inventory-button";
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
+import { InventoryPhotoViewer } from "@/components/inventory/inventory-photo-viewer";
 import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { FlashMessage } from "@/components/web/flash-message";
@@ -21,6 +22,7 @@ import {
   listItemThumbnailUrls,
   listPhotos,
   removeInventoryAuditTag,
+  setPrimaryInventoryPhoto,
   updateInventoryItemLabel,
   updateItem,
   type InventoryItemCondition,
@@ -291,6 +293,26 @@ async function deletePhotoAction(formData: FormData) {
   redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Photo removed.", returnTo }));
 }
 
+async function setPrimaryPhotoAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  const photoId = readString(formData.get("photo_id"));
+  const returnTo = readReturnTo(formData);
+  if (!itemId || !photoId) {
+    redirect(`/inventory?message=${encodeURIComponent("Invalid photo.")}`);
+  }
+
+  try {
+    await setPrimaryInventoryPhoto(itemId, photoId);
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Unable to update primary photo.";
+    redirect(appendSearchParams(`/inventory/${itemId}`, { message: nextMessage, returnTo }));
+  }
+
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Primary photo updated.", returnTo }));
+}
+
 async function removeAuditTagAction(formData: FormData) {
   "use server";
 
@@ -489,6 +511,14 @@ export default async function ItemDetailPage({
     }),
   );
   const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
+  const viewerPhotos = photosWithUrls
+    .filter((photo): photo is (typeof photo) & { signedUrl: string } => Boolean(photo.signedUrl))
+    .map((photo) => ({
+      id: photo.id,
+      alt: photo.caption ?? item.name,
+      label: photo.storage_path,
+      src: photo.signedUrl,
+    }));
   const inventoryThumbnailUrl = thumbnailByItemId.get(id) ?? null;
   const auditTags = (item.tags ?? []).filter((tag): tag is InventoryAuditTag => isInventoryAuditTag(tag));
   const itemLabels = (item.tags ?? []).filter(isInventoryUserLabel);
@@ -607,8 +637,11 @@ export default async function ItemDetailPage({
         <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <div className="overflow-hidden rounded-2xl border border-border bg-slate-50">
             {coverPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img alt={`${item.name} cover`} className="h-full min-h-64 w-full object-cover" src={coverPhoto} />
+              <InventoryPhotoViewer
+                buttonClassName="block h-full w-full"
+                imageClassName="h-full min-h-64 w-full object-cover"
+                photos={viewerPhotos}
+              />
             ) : (
               <div className="flex min-h-64 items-center justify-center text-sm text-muted">No photo uploaded yet.</div>
             )}
@@ -862,32 +895,48 @@ export default async function ItemDetailPage({
           {photosWithUrls.length === 0 ? (
             <p className="text-sm text-muted">No photos uploaded yet.</p>
           ) : (
-            photosWithUrls.map((photo) => (
+            photosWithUrls.map((photo, index) => (
               <figure key={photo.id} className="overflow-hidden rounded-lg border border-border bg-slate-50">
                 {photo.signedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    alt={photo.caption ?? item.name}
-                    className="h-48 w-full object-cover"
-                    suppressHydrationWarning
-                    src={photo.signedUrl}
+                  <InventoryPhotoViewer
+                    buttonClassName="block h-48 w-full"
+                    imageClassName="h-48 w-full object-cover"
+                    initialIndex={viewerPhotos.findIndex((viewerPhoto) => viewerPhoto.id === photo.id)}
+                    photos={viewerPhotos}
                   />
                 ) : (
                   <div className="flex h-48 items-center justify-center text-sm text-muted">Unavailable</div>
                 )}
                 <figcaption className="flex items-center justify-between gap-2 px-3 py-2">
                   <span className="min-w-0 break-all text-xs text-muted">{photo.storage_path}</span>
-                  <form action={deletePhotoAction} className="shrink-0">
-                    <input name="item_id" type="hidden" value={item.id} />
-                    <input name="photo_id" type="hidden" value={photo.id} />
-                    <input name="return_to" type="hidden" value={returnTo ?? ""} />
-                    <PendingSubmitButton
-                      className="rounded-md border border-rose-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
-                      pendingLabel="Removing…"
-                    >
-                      Remove
-                    </PendingSubmitButton>
-                  </form>
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {index === 0 ? (
+                      <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">Primary</span>
+                    ) : (
+                      <form action={setPrimaryPhotoAction}>
+                        <input name="item_id" type="hidden" value={item.id} />
+                        <input name="photo_id" type="hidden" value={photo.id} />
+                        <input name="return_to" type="hidden" value={returnTo ?? ""} />
+                        <PendingSubmitButton
+                          className="rounded-md border border-border bg-white px-2 py-1 text-xs font-medium text-foreground hover:border-accent/40"
+                          pendingLabel="Setting…"
+                        >
+                          Set primary
+                        </PendingSubmitButton>
+                      </form>
+                    )}
+                    <form action={deletePhotoAction}>
+                      <input name="item_id" type="hidden" value={item.id} />
+                      <input name="photo_id" type="hidden" value={photo.id} />
+                      <input name="return_to" type="hidden" value={returnTo ?? ""} />
+                      <PendingSubmitButton
+                        className="rounded-md border border-rose-200 bg-white px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                        pendingLabel="Removing…"
+                      >
+                        Remove
+                      </PendingSubmitButton>
+                    </form>
+                  </div>
                 </figcaption>
               </figure>
             ))

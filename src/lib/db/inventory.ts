@@ -76,6 +76,7 @@ const deletePhotoSchema = z.object({
   itemId: uuidSchema,
   photoId: uuidSchema,
 });
+const setPrimaryPhotoSchema = deletePhotoSchema;
 const removeAuditTagSchema = z.object({
   itemId: uuidSchema,
   tag: z.enum(inventoryAuditTagValues),
@@ -1098,6 +1099,31 @@ export async function deletePhoto(itemId: string, photoId: string) {
     .eq("id", parsed.photoId)
     .eq("item_id", parsed.itemId);
   assertNoError(deleteError, "Failed to delete inventory photo");
+}
+
+export async function setPrimaryInventoryPhoto(itemId: string, photoId: string) {
+  const parsed = setPrimaryPhotoSchema.parse({ itemId, photoId });
+  const photos = await listPhotos(parsed.itemId);
+  const targetPhoto = photos.find((photo) => photo.id === parsed.photoId);
+
+  if (!targetPhoto) {
+    throw new Error("Photo not found.");
+  }
+
+  const reorderedPhotos = [
+    targetPhoto,
+    ...photos.filter((photo) => photo.id !== parsed.photoId),
+  ];
+  const supabase = await createServerSupabaseClient();
+
+  for (const [index, photo] of reorderedPhotos.entries()) {
+    const { error } = await supabase
+      .from("inventory_photos")
+      .update({ sort_order: index })
+      .eq("id", photo.id)
+      .eq("item_id", parsed.itemId);
+    assertNoError(error, "Failed to update primary photo");
+  }
 }
 
 export async function deleteItem(id: string) {

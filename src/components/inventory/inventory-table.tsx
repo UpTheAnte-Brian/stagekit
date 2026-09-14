@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
+import { InventoryPhotoViewer } from "@/components/inventory/inventory-photo-viewer";
 import { PendingLink } from "@/components/web/pending-link";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import type { InventoryItemCondition, InventoryItemStatus, InventoryListRow } from "@/lib/db/inventory";
@@ -222,14 +223,15 @@ export function InventoryTable({
                 <tr>
                   <td>
                     {thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        alt={`${item.name} thumbnail`}
-                        className="h-12 w-12 rounded-md border border-border object-cover"
-                        decoding="async"
-                        loading="lazy"
-                        suppressHydrationWarning
-                        src={thumbnailUrl}
+                      <InventoryPhotoViewer
+                        buttonClassName="block"
+                        imageClassName="h-12 w-12 rounded-md border border-border object-cover"
+                        photos={[{
+                          id: item.id,
+                          alt: `${item.name} thumbnail`,
+                          label: item.name,
+                          src: thumbnailUrl,
+                        }]}
                       />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-slate-100 p-1 text-center text-[8px] leading-tight text-muted">
