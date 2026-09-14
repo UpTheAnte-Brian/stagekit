@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { InventoryCategorySelect } from "@/components/inventory/inventory-category-select";
 import { PendingLink } from "@/components/web/pending-link";
@@ -86,12 +87,14 @@ export function InventoryTable({
 }: {
   items: InventoryListRow[];
   locationOptions?: LocationOption[];
-  onQuickUpdate?: (formData: FormData) => void | Promise<void>;
+  onQuickUpdate?: (formData: FormData) => InventoryListRow | Promise<InventoryListRow>;
   returnTo: string;
   emptyMessage?: string;
   showAuditTags?: boolean;
 }) {
+  const router = useRouter();
   const itemIdsKey = items.map((item) => item.id).join(",");
+  const [displayItems, setDisplayItems] = useState(items);
   const [thumbnailByItemId, setThumbnailByItemId] = useState<Record<string, string>>(() =>
     getCachedInventoryThumbnails(itemIdsKey ? itemIdsKey.split(",") : []),
   );
@@ -104,6 +107,21 @@ export function InventoryTable({
     groups.set(location.kind, locations);
     return groups;
   }, new Map());
+
+  useEffect(() => {
+    setDisplayItems(items);
+  }, [items]);
+
+  async function handleQuickUpdate(formData: FormData) {
+    if (!onQuickUpdate) {
+      return;
+    }
+
+    const updatedItem = await onQuickUpdate(formData);
+    setDisplayItems((currentItems) => currentItems.map((item) => item.id === updatedItem.id ? updatedItem : item));
+    setEditingItemId(null);
+    router.refresh();
+  }
 
   useEffect(() => {
     const itemIds = itemIdsKey ? itemIdsKey.split(",") : [];
@@ -186,14 +204,14 @@ export function InventoryTable({
         </tr>
       </thead>
       <tbody>
-        {items.length === 0 ? (
+        {displayItems.length === 0 ? (
           <tr>
             <td className="text-sm text-muted" colSpan={colSpan}>
               {emptyMessage}
             </td>
           </tr>
         ) : (
-          items.map((item) => {
+          displayItems.map((item) => {
             const auditTags = (item.tags ?? []).filter((tag) => isInventoryAuditTag(tag));
             const itemLabels = (item.tags ?? []).filter(isInventoryUserLabel);
             const thumbnailUrl = thumbnailByItemId[item.id];
@@ -275,7 +293,7 @@ export function InventoryTable({
                 {isEditing && onQuickUpdate ? (
                   <tr className="bg-slate-50/80">
                     <td colSpan={colSpan}>
-                      <form action={onQuickUpdate} className="rounded-xl border border-accent/20 bg-white p-4 shadow-sm">
+                      <form action={handleQuickUpdate} className="rounded-xl border border-accent/20 bg-white p-4 shadow-sm">
                         <input name="item_id" type="hidden" value={item.id} />
                         <input name="return_to" type="hidden" value={returnTo} />
                         <div className="flex flex-wrap items-baseline justify-between gap-2">

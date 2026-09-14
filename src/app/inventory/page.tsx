@@ -16,6 +16,7 @@ import {
   listInventoryLabels,
   listItemsPage,
   updateItem,
+  type InventoryListRow,
   type InventoryItemCondition,
   type InventoryItemStatus,
 } from "@/lib/db/inventory";
@@ -177,7 +178,7 @@ async function quickUpdateItemAction(formData: FormData) {
     );
   }
 
-  await updateItem(itemId, {
+  const updatedItem = await updateItem(itemId, {
     name,
     category: toNullableText(readString(formData.get("category"))),
     dimensions: toNullableText(readString(formData.get("dimensions"))),
@@ -188,7 +189,33 @@ async function quickUpdateItemAction(formData: FormData) {
     current_location_id: toNullableText(readString(formData.get("current_location_id"))),
   });
 
-  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}message=${encodeURIComponent("Item updated.")}`);
+  if (!updatedItem) {
+    throw new Error("Inventory item not found.");
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data: location, error: locationError } = updatedItem.current_location_id
+    ? await supabase.from("locations").select("name").eq("id", updatedItem.current_location_id).maybeSingle()
+    : { data: null, error: null };
+  if (locationError) {
+    throw new Error(`Failed to load updated location: ${locationError.message}`);
+  }
+
+  return {
+    id: updatedItem.id,
+    sku: updatedItem.sku,
+    item_code: updatedItem.item_code,
+    name: updatedItem.name,
+    category: updatedItem.category,
+    dimensions: updatedItem.dimensions,
+    status: updatedItem.status,
+    condition: updatedItem.condition,
+    current_location_id: updatedItem.current_location_id,
+    current_location_name: location?.name ?? null,
+    marked_for_disposal: updatedItem.marked_for_disposal,
+    estimated_listing_price_cents: updatedItem.estimated_listing_price_cents,
+    tags: updatedItem.tags,
+  } satisfies InventoryListRow;
 }
 
 export default async function InventoryPage({ searchParams }: { searchParams: SearchParams }) {
