@@ -136,7 +136,8 @@ function readReturnTo(formData: FormData) {
 }
 
 function appendSearchParams(path: string, params: Record<string, string | null | undefined>) {
-  const [pathname, search = ""] = path.split("?");
+  const [pathWithoutHash, hash = ""] = path.split("#");
+  const [pathname, search = ""] = pathWithoutHash.split("?");
   const nextSearchParams = new URLSearchParams(search);
 
   Object.entries(params).forEach(([key, value]) => {
@@ -149,7 +150,8 @@ function appendSearchParams(path: string, params: Record<string, string | null |
   });
 
   const nextSearch = nextSearchParams.toString();
-  return nextSearch.length > 0 ? `${pathname}?${nextSearch}` : pathname;
+  const nextPath = nextSearch.length > 0 ? `${pathname}?${nextSearch}` : pathname;
+  return hash ? `${nextPath}#${hash}` : nextPath;
 }
 
 async function updateItemAction(formData: FormData) {
@@ -340,7 +342,7 @@ async function removeAuditTagAction(formData: FormData) {
   }
 
   await removeInventoryAuditTag(itemId, tag);
-  redirect(appendSearchParams(`/inventory/${itemId}`, { message: `${auditTagLabel(tag)} cleared.`, returnTo }));
+  redirect(appendSearchParams(`/inventory/${itemId}#duplicate-review`, { message: `${auditTagLabel(tag)} cleared.`, returnTo }));
 }
 
 async function updateLabelAction(formData: FormData) {
@@ -558,7 +560,7 @@ export default async function ItemDetailPage({
 
       {message ? <FlashMessage message={message} /> : null}
 
-      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+      <section id="duplicate-review" className="scroll-mt-6 rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Duplicate Review</h2>

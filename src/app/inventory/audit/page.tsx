@@ -4,7 +4,7 @@ import { InventoryHistoryMarker } from "@/components/inventory/inventory-history
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { InventoryTable } from "@/components/inventory/inventory-table";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
-import { countItems, listItemsPage, type InventoryItemStatus } from "@/lib/db/inventory";
+import { countItems, deleteItem, listItemsPage, removeInventoryAuditTag, type InventoryItemStatus } from "@/lib/db/inventory";
 import { inventoryAuditTagConfig, isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
 
 const statusOptions: InventoryItemStatus[] = ["available", "on_job", "packed", "maintenance", "sold", "lost"];
@@ -14,6 +14,10 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function readString(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function parseStatus(value: string): InventoryItemStatus | undefined {
@@ -59,6 +63,30 @@ function buildAuditReturnTo(params: {
 
   const query = searchParams.toString();
   return query.length > 0 ? `/inventory/audit?${query}` : "/inventory/audit";
+}
+
+async function removeDuplicateAuditTagAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  if (!itemId) {
+    throw new Error("Invalid item id.");
+  }
+
+  await removeInventoryAuditTag(itemId, "audit-duplicate-candidate");
+  return { itemId };
+}
+
+async function deleteDuplicateQueueItemAction(formData: FormData) {
+  "use server";
+
+  const itemId = readString(formData.get("item_id"));
+  if (!itemId) {
+    throw new Error("Invalid item id.");
+  }
+
+  await deleteItem(itemId);
+  return { itemId };
 }
 
 export default async function InventoryAuditPage({ searchParams }: { searchParams: SearchParams }) {
@@ -194,8 +222,11 @@ export default async function InventoryAuditPage({ searchParams }: { searchParam
         <InventoryTable
           emptyMessage="No audit-tagged inventory items match these filters."
           items={pageResult.items}
+          onDeleteItemAction={selectedTag === "audit-duplicate-candidate" ? deleteDuplicateQueueItemAction : undefined}
+          onRemoveAuditTagAction={selectedTag === "audit-duplicate-candidate" ? removeDuplicateAuditTagAction : undefined}
           returnTo={returnTo}
           showAuditTags
+          showDuplicateQueueActions={selectedTag === "audit-duplicate-candidate"}
         />
         <InventoryPagination
           basePath="/inventory/audit"

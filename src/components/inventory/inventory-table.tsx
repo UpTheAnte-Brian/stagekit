@@ -82,16 +82,22 @@ export function InventoryTable({
   items,
   locationOptions = [],
   onQuickUpdate,
+  onRemoveAuditTagAction,
+  onDeleteItemAction,
   returnTo,
   emptyMessage = "No inventory items found.",
   showAuditTags = false,
+  showDuplicateQueueActions = false,
 }: {
   items: InventoryListRow[];
   locationOptions?: LocationOption[];
   onQuickUpdate?: (formData: FormData) => InventoryListRow | Promise<InventoryListRow>;
+  onRemoveAuditTagAction?: (formData: FormData) => { itemId: string } | Promise<{ itemId: string }>;
+  onDeleteItemAction?: (formData: FormData) => { itemId: string } | Promise<{ itemId: string }>;
   returnTo: string;
   emptyMessage?: string;
   showAuditTags?: boolean;
+  showDuplicateQueueActions?: boolean;
 }) {
   const router = useRouter();
   const itemIdsKey = items.map((item) => item.id).join(",");
@@ -101,7 +107,8 @@ export function InventoryTable({
   );
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const canQuickEdit = Boolean(onQuickUpdate);
-  const colSpan = (showAuditTags ? 9 : 8) + (canQuickEdit ? 1 : 0);
+  const canShowDuplicateQueueActions = showDuplicateQueueActions && Boolean(onRemoveAuditTagAction || onDeleteItemAction);
+  const colSpan = (showAuditTags ? 9 : 8) + (canQuickEdit ? 1 : 0) + (canShowDuplicateQueueActions ? 1 : 0);
   const locationsByKind = locationOptions.reduce<Map<string, LocationOption[]>>((groups, location) => {
     const locations = groups.get(location.kind) ?? [];
     locations.push(location);
@@ -121,6 +128,31 @@ export function InventoryTable({
     const updatedItem = await onQuickUpdate(formData);
     setDisplayItems((currentItems) => currentItems.map((item) => item.id === updatedItem.id ? updatedItem : item));
     setEditingItemId(null);
+    router.refresh();
+  }
+
+  async function handleRemoveAuditTag(formData: FormData) {
+    if (!onRemoveAuditTagAction) {
+      return;
+    }
+
+    const result = await onRemoveAuditTagAction(formData);
+    setDisplayItems((currentItems) => currentItems.filter((item) => item.id !== result.itemId));
+    router.refresh();
+  }
+
+  async function handleDeleteItem(formData: FormData) {
+    if (!onDeleteItemAction) {
+      return;
+    }
+
+    const itemCode = String(formData.get("item_code") ?? "this item");
+    if (!window.confirm(`Delete ${itemCode}? This permanently removes the item and its photos.`)) {
+      return;
+    }
+
+    const result = await onDeleteItemAction(formData);
+    setDisplayItems((currentItems) => currentItems.filter((item) => item.id !== result.itemId));
     router.refresh();
   }
 
@@ -197,6 +229,11 @@ export function InventoryTable({
           <th>Disposition</th>
           <th>List Price</th>
           <th>Current Location</th>
+          {canShowDuplicateQueueActions ? (
+            <th>
+              <span className="sr-only">Duplicate review actions</span>
+            </th>
+          ) : null}
           {canQuickEdit ? (
             <th>
               <span className="sr-only">Actions</span>
@@ -279,6 +316,37 @@ export function InventoryTable({
                   <td>{item.marked_for_disposal ? "Dispose" : "Keep"}</td>
                   <td>{formatCurrency(item.estimated_listing_price_cents)}</td>
                   <td>{item.current_location_name ?? "—"}</td>
+                  {canShowDuplicateQueueActions ? (
+                    <td>
+                      <div className="flex flex-col gap-2">
+                        {onRemoveAuditTagAction ? (
+                          <form action={handleRemoveAuditTag}>
+                            <input name="item_id" type="hidden" value={item.id} />
+                            <input name="item_code" type="hidden" value={item.item_code} />
+                            <input name="tag" type="hidden" value="audit-duplicate-candidate" />
+                            <PendingSubmitButton
+                              className="w-full whitespace-nowrap rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                              pendingLabel="Removing…"
+                            >
+                              Remove tag
+                            </PendingSubmitButton>
+                          </form>
+                        ) : null}
+                        {onDeleteItemAction ? (
+                          <form action={handleDeleteItem}>
+                            <input name="item_id" type="hidden" value={item.id} />
+                            <input name="item_code" type="hidden" value={item.item_code} />
+                            <PendingSubmitButton
+                              className="w-full whitespace-nowrap rounded-md border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                              pendingLabel="Deleting…"
+                            >
+                              Delete
+                            </PendingSubmitButton>
+                          </form>
+                        ) : null}
+                      </div>
+                    </td>
+                  ) : null}
                   {canQuickEdit ? (
                     <td>
                       <button
