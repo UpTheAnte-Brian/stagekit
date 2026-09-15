@@ -19,6 +19,8 @@ import {
   deleteItem,
   deletePhoto,
   getItem,
+  flagInventoryDuplicate,
+  listDuplicatePhotoMatches,
   listItemThumbnailUrls,
   listPhotos,
   removeInventoryAuditTag,
@@ -313,6 +315,15 @@ async function setPrimaryPhotoAction(formData: FormData) {
   redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Primary photo updated.", returnTo }));
 }
 
+async function flagDuplicateAction(formData: FormData) {
+  "use server";
+  const itemId = readString(formData.get("item_id"));
+  const returnTo = readReturnTo(formData);
+  if (!itemId) redirect("/inventory");
+  await flagInventoryDuplicate(itemId);
+  redirect(appendSearchParams(`/inventory/${itemId}`, { message: "Flagged for duplicate review.", returnTo }));
+}
+
 async function removeAuditTagAction(formData: FormData) {
   "use server";
 
@@ -510,6 +521,7 @@ export default async function ItemDetailPage({
       };
     }),
   );
+  const duplicateMatches = await listDuplicatePhotoMatches(id, photos);
   const coverPhoto = photosWithUrls.find((photo) => photo.signedUrl)?.signedUrl ?? null;
   const viewerPhotos = photosWithUrls
     .filter((photo): photo is (typeof photo) & { signedUrl: string } => Boolean(photo.signedUrl))
@@ -545,6 +557,40 @@ export default async function ItemDetailPage({
       </header>
 
       {message ? <FlashMessage message={message} /> : null}
+
+      <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Duplicate Review</h2>
+            <p className="mt-1 text-sm text-muted">Flag possible duplicate records for manual review.</p>
+          </div>
+          {auditTags.includes("audit-duplicate-candidate") ? (
+            <Link className="font-medium underline" href="/inventory/audit?tag=audit-duplicate-candidate">View duplicate queue</Link>
+          ) : (
+            <form action={flagDuplicateAction}>
+              <input type="hidden" name="item_id" value={item.id} />
+              <input type="hidden" name="return_to" value={returnTo ?? ""} />
+              <PendingSubmitButton className="rounded-lg border border-border px-4 py-2 text-sm font-medium" pendingLabel="Flagging…">Flag as duplicate</PendingSubmitButton>
+            </form>
+          )}
+        </div>
+        {duplicateMatches.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-sm text-muted">These items share an identical photo with this item. Compare the records before deciding whether they are duplicates.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {duplicateMatches.map((match) => (
+                <Link key={match.id} href={`/inventory/${match.item_id}?returnTo=${encodeURIComponent("/inventory/audit?tag=audit-duplicate-candidate")}`} className="flex items-center gap-3 rounded-xl border border-border p-3 hover:border-accent">
+                  {match.signedUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={match.signedUrl} alt={`Shared photo: ${match.inventory_items.name}`} className="h-24 w-24 rounded-lg object-contain" />
+                  ) : <span className="text-sm text-muted">Photo unavailable</span>}
+                  <span><span className="block font-medium">{match.inventory_items.name}</span><span className="block text-sm text-muted">{match.inventory_items.item_code}</span></span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : <p className="mt-3 text-sm text-muted">No shared photos found in the latest scan. You can still flag this item for review.</p>}
+      </section>
 
       {auditTags.length > 0 ? (
         <section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 shadow-sm">

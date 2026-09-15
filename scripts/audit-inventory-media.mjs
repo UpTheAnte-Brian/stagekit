@@ -559,6 +559,7 @@ try {
   const photoAnalyses = await runWithConcurrency(targetPhotos, options.concurrency, async (photo) => {
     const extension = path.extname(photo.storage_path) || ".img";
     const tempSourcePath = path.join(tempDir, `${photo.id}${extension}`);
+    let exactSha1 = null;
 
     try {
       const { data, error } = await supabase.storage.from(photo.storage_bucket).download(photo.storage_path);
@@ -567,7 +568,7 @@ try {
       }
 
       const buffer = Buffer.from(await data.arrayBuffer());
-      const exactSha1 = crypto.createHash("sha1").update(buffer).digest("hex");
+      exactSha1 = crypto.createHash("sha1").update(buffer).digest("hex");
       await writeFile(tempSourcePath, buffer);
 
       const analysis = await analyzePhotoFile(tempSourcePath, buffer.length);
@@ -598,7 +599,7 @@ try {
         caption: photo.caption ?? null,
         created_at: photo.created_at,
         file_size_bytes: null,
-        exact_sha1: null,
+        exact_sha1: exactSha1,
         width: null,
         height: null,
         dhash: null,

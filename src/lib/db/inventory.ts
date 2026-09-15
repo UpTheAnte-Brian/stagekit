@@ -962,6 +962,36 @@ export async function updateItem(id: string, payload: InventoryItemUpdate) {
   return assertData(data, "Failed to update inventory item");
 }
 
+export async function flagInventoryDuplicate(itemId: string) {
+  const id = uuidSchema.parse(itemId);
+  const item = await getItem(id);
+  if (!item) throw new Error("Inventory item not found.");
+  const tags = [...new Set([...(item.tags ?? []).filter((tag) => tag !== "audit-ignore-duplicate-candidate"),
+    "audit-duplicate-candidate", "audit-manual-duplicate-candidate"])].sort();
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.from("inventory_items").update({ tags }).eq("id", id);
+  assertNoError(error, "Failed to flag duplicate");
+}
+
+export async function listDuplicatePhotoMatches(itemId: string, photos: InventoryPhotoRow[]) {
+  const hashes = [...new Set(photos.map((photo) => photo.exact_sha1).filter((hash): hash is string => Boolean(hash)))];
+  if (!hashes.length) return [];
+  const supabase = await createServerSupabaseClient();
+  const matches = [];
+  for (let from = 0; ; from += 500) {
+    const { data, error } = await supabase.from("inventory_photos")
+      .select("id,item_id,storage_bucket,storage_path,exact_sha1,inventory_items!inner(id,item_code,name,tags)")
+      .in("exact_sha1", hashes).neq("item_id", itemId).order("id").range(from, from + 499);
+    assertNoError(error, "Failed to load matching photos");
+    matches.push(...(data ?? []));
+    if ((data ?? []).length < 500) break;
+  }
+  return Promise.all(matches.map(async (photo) => {
+    const { data } = await supabase.storage.from(photo.storage_bucket).createSignedUrl(photo.storage_path, 3600);
+    return { ...photo, signedUrl: data?.signedUrl ?? null };
+  }));
+}
+
 export async function removeInventoryAuditTag(itemId: string, tag: InventoryAuditTag) {
   const parsed = removeAuditTagSchema.parse({ itemId, tag });
   const item = await getItem(parsed.itemId);
@@ -972,7 +1002,7 @@ export async function removeInventoryAuditTag(itemId: string, tag: InventoryAudi
 
   const existingTags = Array.isArray(item.tags) ? item.tags : [];
   const suppressionTag = inventoryAuditSuppressionTagByTag[parsed.tag];
-  const nextTags = [...new Set([...existingTags.filter((existingTag) => existingTag !== parsed.tag), suppressionTag])].sort((left, right) =>
+  const nextTags = [...new Set([...existingTags.filter((existingTag) => existingTag !== parsed.tag && !(parsed.tag === "audit-duplicate-candidate" && existingTag === "audit-manual-duplicate-candidate")), suppressionTag])].sort((left, right) =>
     left.localeCompare(right),
   );
 

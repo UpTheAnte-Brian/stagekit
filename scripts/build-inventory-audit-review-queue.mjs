@@ -181,6 +181,7 @@ const queue = {
   generated_at: generatedAt,
   source_audit: path.relative(cwd, sourcePath),
   unreadable_photos: audit.unreadable_photos ?? [],
+  analyzed_photo_hashes: (audit.analyzed_photos ?? []).map(({ photo_id, item_id, storage_path, storage_bucket, exact_sha1 }) => ({ photo_id, item_id, storage_path, storage_bucket, exact_sha1 })),
   exact_duplicate_photo_groups: audit.exact_duplicate_photo_groups ?? [],
   likely_duplicate_items_high_confidence: (audit.likely_duplicate_items ?? []).filter((candidate) => candidate.shared_exact_cover_hash),
   bad_image_candidates_high_priority: (audit.bad_image_candidates ?? []).filter(isHighPriorityBadImage),

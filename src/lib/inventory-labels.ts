@@ -11,7 +11,7 @@ export function normalizeInventoryLabel(value: string) {
 }
 
 export function isInventoryUserLabel(value: string | null | undefined): value is string {
-  return Boolean(value) && !isInventoryAuditTag(value) && !isInventoryAuditSuppressionTag(value);
+  return Boolean(value) && value !== "audit-manual-duplicate-candidate" && !isInventoryAuditTag(value) && !isInventoryAuditSuppressionTag(value);
 }
 
 export function formatInventoryLabel(value: string) {

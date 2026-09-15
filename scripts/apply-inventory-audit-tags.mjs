@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { crossItemPhotoGroups, syncAuditTags } from "./lib/inventory-duplicate-candidates.mjs";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -28,6 +29,7 @@ async function loadEnv(cwd) {
 function parseArgs(rawArgs) {
   const options = {
     apply: false,
+    duplicatesOnly: false,
     queue: null,
     output: null,
     sync: false,
@@ -36,6 +38,11 @@ function parseArgs(rawArgs) {
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
+
+    if (arg === "--duplicates-only") {
+      options.duplicatesOnly = true;
+      continue;
+    }
 
     if (arg === "--apply") {
       options.apply = true;
@@ -79,7 +86,7 @@ function parseArgs(rawArgs) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/apply-inventory-audit-tags.mjs [--apply] [--sync] [--queue audits/review.json] [--output audits/file.json]
+  console.log(`Usage: node scripts/apply-inventory-audit-tags.mjs [--apply] [--sync] [--duplicates-only] [--queue audits/review.json] [--output audits/file.json]
 
 Applies non-destructive audit tags to inventory items from a review queue.
 
@@ -134,10 +141,6 @@ async function findLatestQueueFile(cwd) {
   return path.join(queueDirectory, candidateNames[0]);
 }
 
-function uniqueSortedTags(tags) {
-  return [...new Set(tags)].sort((left, right) => left.localeCompare(right));
-}
-
 const cwd = process.cwd();
 const options = parseArgs(process.argv.slice(2));
 
@@ -151,11 +154,11 @@ const queue = JSON.parse(await readFile(queuePath, "utf8"));
 
 const itemsById = new Map();
 
-for (const row of queue.unreadable_photos ?? []) {
+for (const row of options.duplicatesOnly ? [] : queue.unreadable_photos ?? []) {
   addReason(itemsById, row, "audit-unreadable-photo", `Unreadable photo ${row.photo_id}`);
 }
 
-for (const row of queue.bad_image_candidates_high_priority ?? []) {
+for (const row of options.duplicatesOnly ? [] : queue.bad_image_candidates_high_priority ?? []) {
   addReason(itemsById, row, "audit-bad-image", `Bad image ${row.photo_id}: ${row.quality_flags.join(", ")}`);
 }
 
@@ -180,6 +183,12 @@ for (const row of queue.likely_duplicate_items_high_confidence ?? []) {
     "audit-duplicate-candidate",
     `High-confidence duplicate with ${row.left.item_code ?? row.left.item_id}`,
   );
+}
+
+for (const group of crossItemPhotoGroups(queue.exact_duplicate_photo_groups ?? [])) {
+  for (const photo of group.photos) {
+    addReason(itemsById, photo, "audit-duplicate-candidate", "Identical photo shared with another item");
+  }
 }
 
 const targetedItems = [...itemsById.values()];
@@ -247,14 +256,10 @@ const updates = [];
 for (const existing of existingRowsById.values()) {
   const candidate = targetedById.get(existing.id);
   const existingTags = Array.isArray(existing.tags) ? existing.tags : [];
-  const allowedAuditTags = candidate
-    ? [...candidate.tags_to_add].filter((tag) => {
-        const suppressionTag = suppressionTagByAuditTag[tag];
-        return suppressionTag ? !existingTags.includes(suppressionTag) : true;
-      })
-    : [];
-  const baseTags = options.sync ? existingTags.filter((tag) => !auditTagValues.includes(tag)) : existingTags;
-  const nextTags = uniqueSortedTags([...baseTags, ...allowedAuditTags]);
+  const activeSuppressionTags = options.duplicatesOnly
+    ? { "audit-duplicate-candidate": suppressionTagByAuditTag["audit-duplicate-candidate"] }
+    : suppressionTagByAuditTag;
+  const nextTags = syncAuditTags(existingTags, [...(candidate?.tags_to_add ?? [])], activeSuppressionTags, options.sync);
 
   if (nextTags.length === existingTags.length && nextTags.every((tag, index) => tag === existingTags[index])) {
     continue;
@@ -273,11 +278,17 @@ for (const existing of existingRowsById.values()) {
 let appliedUpdates = 0;
 
 if (options.apply) {
+  for (const photo of queue.analyzed_photo_hashes ?? []) {
+    const { error } = await supabase.from("inventory_photos").update({ exact_sha1: photo.exact_sha1 })
+      .eq("id", photo.photo_id).eq("item_id", photo.item_id).eq("storage_path", photo.storage_path).eq("storage_bucket", photo.storage_bucket);
+    if (error) throw new Error(`Failed to save photo fingerprint: ${error.message}`);
+  }
   for (const update of updates) {
-    const { error } = await supabase.from("inventory_items").update({ tags: update.next_tags }).eq("id", update.item_id);
+    const { data, error } = await supabase.from("inventory_items").update({ tags: update.next_tags }).eq("id", update.item_id).eq("tags", update.previous_tags).select("id");
     if (error) {
       throw new Error(`Failed to update ${update.item_id}: ${error.message}`);
     }
+    if (!data?.length) throw new Error(`Item ${update.item_id} changed during the audit; rerun to preserve its latest tags.`);
     appliedUpdates += 1;
   }
 }

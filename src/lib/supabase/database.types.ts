@@ -191,6 +191,7 @@ export type Database = {
           sort_order: number
           storage_bucket: string
           storage_path: string
+          exact_sha1: string | null
           thumbnail_storage_path: string | null
         }
         Insert: {
@@ -201,6 +202,7 @@ export type Database = {
           sort_order?: number
           storage_bucket?: string
           storage_path: string
+          exact_sha1?: string | null
           thumbnail_storage_path?: string | null
         }
         Update: {
@@ -211,6 +213,7 @@ export type Database = {
           sort_order?: number
           storage_bucket?: string
           storage_path?: string
+          exact_sha1?: string | null
           thumbnail_storage_path?: string | null
         }
         Relationships: [

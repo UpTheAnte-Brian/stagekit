@@ -86,3 +86,22 @@ Useful commands from the repo root:
 
 The mobile app will use the same Supabase backend, but it cannot directly reuse the current Next.js server-only modules.
 Treat the existing web app as the product reference while rebuilding the mobile screens natively.
+
+### Duplicate inventory review
+
+Open an inventory item and choose **Flag as duplicate** in **Duplicate Review**.
+Manual flags remain in Inventory → Inventory Audit → Duplicate Candidates until
+cleared, and can be added again after clearing. Clearing an automatic candidate
+suppresses it on later scans.
+
+The media audit compares identical files across all item photos, including
+secondary photos, regardless of item names or other metadata. Shared photos are
+candidates for manual review, not proof that two records should be merged.
+Item detail pages show matching photos and links to the other records.
+
+After applying database migrations, scan and preview with
+`pnpm inventory:refresh-audit-tags --dry-run`. To populate only duplicate flags
+and photo fingerprints from the generated queue, run
+`pnpm inventory:apply-audit-tags --duplicates-only --apply --queue <queue-report>`.
+Use a fresh complete scan. The normal full audit refresh also includes these
+matches. No inventory items or photos are deleted by this process.
