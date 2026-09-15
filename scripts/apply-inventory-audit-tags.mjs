@@ -284,7 +284,7 @@ if (options.apply) {
     if (error) throw new Error(`Failed to save photo fingerprint: ${error.message}`);
   }
   for (const update of updates) {
-    const { data, error } = await supabase.from("inventory_items").update({ tags: update.next_tags }).eq("id", update.item_id).eq("tags", update.previous_tags).select("id");
+    const { data, error } = await supabase.from("inventory_items").update({ tags: update.next_tags }).eq("id", update.item_id).contains("tags", update.previous_tags).containedBy("tags", update.previous_tags).select("id");
     if (error) {
       throw new Error(`Failed to update ${update.item_id}: ${error.message}`);
     }
