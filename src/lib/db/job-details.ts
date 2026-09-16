@@ -243,10 +243,6 @@ export type JobPackRequest = {
   scene_template_name: string | null;
   scene_room_label: string | null;
   requested_item_name: string | null;
-  requested_item_code: string | null;
-  requested_item_dimensions: string | null;
-  requested_item_status: string | null;
-  requested_item_thumbnail_url: string | null;
   active_job_names: string[];
   picked_items: JobPickItem[];
   picked_count: number;
@@ -709,10 +705,6 @@ export async function getJobDetail(jobId: string) {
       scene_template_name: sceneApplication?.scene_template_name ?? null,
       scene_room_label: sceneApplication?.room_label ?? null,
       requested_item_name: requestedItem?.name ?? null,
-      requested_item_code: requestedItem?.item_code ?? null,
-      requested_item_dimensions: requestedItem?.dimensions ?? null,
-      requested_item_status: requestedItem?.status ?? null,
-      requested_item_thumbnail_url: request.requested_item_id ? thumbnailUrlByItemId.get(request.requested_item_id) ?? null : null,
       active_job_names:
         request.requested_item_id != null ? [...new Set((activeJobNamesByItemId[request.requested_item_id] ?? []).filter((name) => name !== job.name))] : [],
       picked_items: requestPickedItems,

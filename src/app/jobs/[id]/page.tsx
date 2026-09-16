@@ -953,24 +953,6 @@ export default async function JobDetailPage({
                         <p className={request.picked_count >= request.quantity ? "text-sm leading-6 text-emerald-700" : mutedTextClass}>
                           Exact items added to this request: {request.picked_count}
                         </p>
-                        {request.requested_item_name ? (
-                          <div className="flex items-center gap-3">
-                            {request.requested_item_thumbnail_url ? (
-                              <ItemThumbnail
-                                alt={`${request.requested_item_name} thumbnail`}
-                                href={`/inventory/${request.requested_item_id}`}
-                                src={request.requested_item_thumbnail_url}
-                              />
-                            ) : null}
-                            <div className="min-w-0">
-                              <p className={mutedTextClass}>
-                                Selected exact item: {request.requested_item_name} ({request.requested_item_code}) • {request.requested_item_status}
-                              </p>
-                              <p className={mutedTextClass}>Dimensions: {request.requested_item_dimensions?.trim() || "Not recorded"}</p>
-                              {request.requested_item_thumbnail_url ? <p className={mutedTextClass}>Open Exact Item to see it larger.</p> : null}
-                            </div>
-                          </div>
-                        ) : null}
                         {request.requested_item_id && request.picked_count === 0 ? (
                           <p className={mutedTextClass}>
                             This selected item has not been added to the request yet. Use Add as Exact Item below to include it. It will not check the item out.
