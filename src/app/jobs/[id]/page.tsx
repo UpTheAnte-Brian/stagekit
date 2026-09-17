@@ -8,6 +8,7 @@ import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker"
 import { ConsultMediaGallery } from "@/components/jobs/consult-media-gallery";
 import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { CheckInAllItemsForm } from "@/components/jobs/check-in-all-items-form";
+import { CloseDetailsButton } from "@/components/web/close-details-button";
 import { FlashMessage } from "@/components/web/flash-message";
 import { PendingLink } from "@/components/web/pending-link";
 import {
@@ -799,13 +800,17 @@ export default async function JobDetailPage({
           />
           <SectionChevron />
         </summary>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {sceneTemplates.length > 0 ? <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "scene-templates" })}>Room templates</Link> : null}
-          <PendingLink className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })} pendingLabel="Opening…">Add Request</PendingLink>
-        </div>
-        {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? (
-          <PersistentDetails storageKey={`job:${id}:add-pack-list`} className="mt-5 scroll-mt-6 border-t border-[#ecdcc7] pt-5" id="add-pack-list" open>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#fff8ef] [&::-webkit-details-marker]:hidden">
+        <PersistentDetails
+          storageKey={`job:${id}:add-pack-list`}
+          className="mt-4 scroll-mt-6"
+          id="add-pack-list"
+          open={detailsOpen(activeSection, "add-pack-list") || Boolean(editingPackRequest)}
+        >
+          <summary className="inline-flex cursor-pointer list-none items-center justify-center rounded-xl border border-[#e3d0ba] bg-white px-4 py-2.5 text-sm font-semibold text-[#33413b] transition hover:bg-[#fffaf4] [&::-webkit-details-marker]:hidden">
+            {editingPackRequest ? "Edit Request" : "Add Request"}
+          </summary>
+          <div className="mt-5 border-t border-[#ecdcc7] pt-5">
+            <div className="flex items-start justify-between gap-3">
               <SectionHeader
                 title={editingPackRequest ? "Edit Pack Request" : "New Pack Request"}
                 description={
@@ -813,9 +818,15 @@ export default async function JobDetailPage({
                     ? "Update this request here, then save or cancel the edit state."
                     : "Create a room request and, when you choose an item, add that exact piece to it."
                 }
-                right={<span className={secondaryButtonClass}>{editingPackRequest ? "Editing" : "Toggle"}</span>}
               />
-            </summary>
+              {editingPackRequest ? (
+                <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "pack-requests" })}>
+                  Cancel
+                </Link>
+              ) : (
+                <CloseDetailsButton className={secondaryButtonClass}>Cancel</CloseDetailsButton>
+              )}
+            </div>
 
             <form action={savePackRequestAction} className="mt-5 grid gap-4 md:grid-cols-2">
               <input name="job_id" type="hidden" value={id} />
@@ -873,10 +884,12 @@ export default async function JobDetailPage({
                   {editingPackRequest ? "Save Pack Request" : "Add Pack Request"}
                 </PendingSubmitButton>
                 {editingPackRequest ? (
-                  <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>
+                  <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "pack-requests" })}>
                     Cancel Edit
                   </Link>
-                ) : null}
+                ) : (
+                  <CloseDetailsButton className={secondaryButtonClass}>Cancel</CloseDetailsButton>
+                )}
               </div>
             </form>
 
@@ -935,8 +948,8 @@ export default async function JobDetailPage({
                 </div>
               </form>
             ) : null}
-          </PersistentDetails>
-        ) : null}
+          </div>
+        </PersistentDetails>
         <div className="mt-5 space-y-6">
           {openPackRequests.length === 0 ? (
             <p className={mutedTextClass}>No pack requests yet.</p>

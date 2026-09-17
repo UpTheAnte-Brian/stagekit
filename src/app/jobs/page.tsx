@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingBlockLink } from "@/components/web/pending-block-link";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { listJobsWithStats, type JobWithStats } from "@/lib/db/jobs";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -116,11 +116,12 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               {activeJobs.map((job) => (
-                <Link
+                <PendingBlockLink
                   key={job.id}
                   aria-label={`Open ${job.name}`}
                   className="group block rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                   href={`/jobs/${job.id}`}
+                  pendingLabel={`Opening ${job.name}…`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -153,7 +154,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
                       <p className="mt-1 text-base font-semibold text-foreground">{job.importedItemCount}</p>
                     </div>
                   </div>
-                </Link>
+                </PendingBlockLink>
               ))}
             </div>
 
@@ -168,7 +169,12 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
                 </summary>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {archivedJobs.map((job) => (
-                    <Link key={job.id} className="block rounded-xl border border-border bg-slate-50 px-4 py-3 transition hover:border-accent/35 hover:bg-white" href={`/jobs/${job.id}`}>
+                    <PendingBlockLink
+                      key={job.id}
+                      className="block rounded-xl border border-border bg-slate-50 px-4 py-3 transition hover:border-accent/35 hover:bg-white"
+                      href={`/jobs/${job.id}`}
+                      pendingLabel={`Opening ${job.name}…`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <h3 className="font-semibold text-foreground">{job.name}</h3>
@@ -179,7 +185,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
                       <p className="mt-2 text-sm text-muted">
                         {job.packRequestCount} pack requests • {job.sceneApplicationCount} scenes • {job.activeItemCount} assigned
                       </p>
-                    </Link>
+                    </PendingBlockLink>
                   ))}
                 </div>
               </details>
