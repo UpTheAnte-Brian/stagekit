@@ -172,20 +172,44 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 function SectionHeader({
   title,
   description,
+  countLabel,
   right,
 }: {
   title: string;
   description?: string;
+  countLabel?: string;
   right?: import("react").ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-xl font-semibold text-[#20322a]">{title}</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-xl font-semibold text-[#20322a]">{title}</h2>
+          {countLabel ? (
+            <span className="rounded-full border border-[#e3d0ba] bg-[#fff8ef] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#6f756c]">
+              {countLabel}
+            </span>
+          ) : null}
+        </div>
         {description ? <p className={`mt-2 ${mutedTextClass}`}>{description}</p> : null}
       </div>
       {right}
     </div>
+  );
+}
+
+function SectionChevron() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0 text-[#6f756c] transition-transform group-open:rotate-180"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -438,13 +462,15 @@ export default async function JobDetailPage({
       </section>
 
       <section className="space-y-5 scroll-mt-6" id="on-site-consults">
-        <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={sectionCardClass} open={detailsOpen(activeSection, "on-site-consults")}>
+        <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={`${sectionCardClass} group`} open={detailsOpen(activeSection, "on-site-consults")}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
             <SectionHeader
               title="1. Capture On-Site Visit"
+              countLabel={buildCountLabel(consults.length, "visit")}
               description="Save raw notes and room measurements first. Then add today’s photos and larger walkthrough videos directly to the saved visit."
               right={<span className={quietButtonClass}>Add visit</span>}
             />
+            <SectionChevron />
           </summary>
 
           <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
@@ -612,145 +638,14 @@ export default async function JobDetailPage({
         ) : null}
       </PersistentDetails> : null}
 
-      {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? <PersistentDetails storageKey={`job:${id}:add-pack-list`} className={`${sectionCardClass} scroll-mt-6`} id="add-pack-list" open>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-          <SectionHeader
-            title={editingPackRequest ? "Edit Pack Request" : "Add to Pack List"}
-            description={
-              editingPackRequest
-                ? "Update this request here, then save or cancel the edit state."
-                : "Create a room request and, when you choose an item, add that exact piece to it."
-            }
-            right={<span className={secondaryButtonClass}>{editingPackRequest ? "Editing" : "Toggle"}</span>}
-          />
-        </summary>
-
-        <form action={savePackRequestAction} className="mt-5 grid gap-4 md:grid-cols-2">
-          <input name="job_id" type="hidden" value={id} />
-          {editingPackRequest ? <input name="pack_request_id" type="hidden" value={editingPackRequest.id} /> : null}
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Request</label>
-            <input defaultValue={editingPackRequest?.request_text ?? ""} name="request_text" placeholder="4 blue pillows, 1 ladder, dining table art..." />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Quantity</label>
-            <input defaultValue={String(editingPackRequest?.quantity ?? 1)} min={1} name="quantity" type="number" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room</label>
-            <input defaultValue={editingPackRequest?.room ?? ""} name="room" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Category</label>
-            <input defaultValue={editingPackRequest?.category ?? ""} name="category" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Color</label>
-            <input defaultValue={editingPackRequest?.color ?? ""} name="color" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Notes</label>
-            <textarea defaultValue={editingPackRequest?.notes ?? ""} name="notes" placeholder="Optional styling notes, alternates, or client preferences." />
-          </div>
-          <label className="flex items-center gap-3 text-sm font-medium text-[#33413b] md:col-span-2">
-            <input defaultChecked={editingPackRequest?.optional ?? false} name="optional" type="checkbox" />
-            Mark as optional
-          </label>
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-semibold text-[#33413b]">Exact Inventory Item (optional)</label>
-            <JobExactItemPicker
-              defaultValue={editingPackRequest?.requested_item_id ?? ""}
-              initialSearch={editingPackRequest?.requested_item_name ?? editingPackRequest?.request_text ?? ""}
-              inputName="requested_item_id"
-              items={packCandidates.map((item) => ({
-                id: item.id,
-                name: item.name,
-                item_code: item.item_code,
-                status: item.status,
-                category: item.category,
-                color: item.color,
-                current_location_name: item.current_location_name,
-              }))}
-            />
-            <p className={`mt-2 ${mutedTextClass}`}>
-              Select the item you plan to use. Saving a new request adds it as the exact item; it is not checked out until you choose Check Out to Project.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 md:col-span-2">
-            <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">
-              {editingPackRequest ? "Save Pack Request" : "Add Pack Request"}
-            </PendingSubmitButton>
-            {editingPackRequest ? (
-              <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>
-                Cancel Edit
-              </Link>
-            ) : null}
-          </div>
-        </form>
-
-        {editingPackRequest ? (
-          <form action={createExactInventoryItemForPackRequestAction} className="mt-6 grid gap-4 rounded-2xl border border-[#ecdcc7] bg-white p-5 md:grid-cols-2">
-            <input name="job_id" type="hidden" value={id} />
-            <input name="pack_request_id" type="hidden" value={editingPackRequest.id} />
-            <div className="md:col-span-2">
-              <h3 className="text-lg font-semibold text-[#20322a]">Create Exact Inventory Item</h3>
-              <p className={`mt-2 ${mutedTextClass}`}>
-                Use this when the request describes a real piece that never got entered into inventory. The new item will be added as this request&apos;s exact item automatically.
-              </p>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Item Name</label>
-              <input defaultValue={editingPackRequest.request_text} name="name" placeholder="Walnut dining table with black metal legs" required />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">SKU</label>
-              <input name="sku" placeholder="Optional SKU" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room</label>
-              <input defaultValue={editingPackRequest.room ?? ""} name="room" placeholder="Dining room" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Category</label>
-              <input defaultValue={editingPackRequest.category ?? ""} name="category" placeholder="Tables / Dining" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Color</label>
-              <input defaultValue={editingPackRequest.color ?? ""} name="color" placeholder="Walnut/Brown" />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Condition</label>
-              <select defaultValue="good" name="condition">
-                {inventoryConditionOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Inventory Notes</label>
-              <textarea
-                defaultValue={editingPackRequest.notes ?? ""}
-                name="notes"
-                placeholder="Add any identifying details that will help the team recognize this exact piece later."
-              />
-            </div>
-            <div className="md:col-span-2">
-              <PendingSubmitButton className={quietButtonClass} pendingLabel="Creating…">
-                Create and Add Exact Item
-              </PendingSubmitButton>
-            </div>
-          </form>
-        ) : null}
-      </PersistentDetails> : null}
-
-      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <PersistentDetails storageKey={`job:${id}:scene-templates`} className={`${sectionCardClass} scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
+      {activeSection === "scene-templates" || sceneApplications.length > 0 ? <PersistentDetails storageKey={`job:${id}:scene-templates`} className={`${sectionCardClass} group scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
             title="Scene Templates"
+            countLabel={buildCountLabel(sceneApplications.length, "scene")}
             description="Use reusable room recipes to generate grouped pack requests from staging patterns you repeat often."
           />
+          <SectionChevron />
         </summary>
 
         <div className="mt-5 space-y-6">
@@ -895,15 +790,153 @@ export default async function JobDetailPage({
         </div>
       </PersistentDetails> : null}
 
-      <section className={`${sectionCardClass} scroll-mt-6`} id="pack-requests">
-        <SectionHeader
-          title="2. Build Pack List"
-          description="Turn what you saw into room-by-room staging requests."
-          right={<div className="flex flex-wrap gap-2">
-            {sceneTemplates.length > 0 ? <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "scene-templates" })}>Room templates</Link> : null}
-            <PendingLink className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })} pendingLabel="Opening…">Add a Pack Request</PendingLink>
-          </div>}
-        />
+      <PersistentDetails storageKey={`job:${id}:pack-requests`} className={`${sectionCardClass} group scroll-mt-6`} id="pack-requests" open={detailsOpen(activeSection, "pack-requests", true)}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <SectionHeader
+            title="2. Build Pack List"
+            countLabel={buildCountLabel(openPackRequests.length, "request")}
+            description="Turn what you saw into room-by-room staging requests."
+          />
+          <SectionChevron />
+        </summary>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {sceneTemplates.length > 0 ? <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "scene-templates" })}>Room templates</Link> : null}
+          <PendingLink className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })} pendingLabel="Opening…">Add Request</PendingLink>
+        </div>
+        {activeSection === "add-pack-list" || Boolean(editingPackRequest) ? (
+          <PersistentDetails storageKey={`job:${id}:add-pack-list`} className="mt-5 scroll-mt-6 border-t border-[#ecdcc7] pt-5" id="add-pack-list" open>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-1 text-left hover:bg-[#fff8ef] [&::-webkit-details-marker]:hidden">
+              <SectionHeader
+                title={editingPackRequest ? "Edit Pack Request" : "New Pack Request"}
+                description={
+                  editingPackRequest
+                    ? "Update this request here, then save or cancel the edit state."
+                    : "Create a room request and, when you choose an item, add that exact piece to it."
+                }
+                right={<span className={secondaryButtonClass}>{editingPackRequest ? "Editing" : "Toggle"}</span>}
+              />
+            </summary>
+
+            <form action={savePackRequestAction} className="mt-5 grid gap-4 md:grid-cols-2">
+              <input name="job_id" type="hidden" value={id} />
+              {editingPackRequest ? <input name="pack_request_id" type="hidden" value={editingPackRequest.id} /> : null}
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Request</label>
+                <input defaultValue={editingPackRequest?.request_text ?? ""} name="request_text" placeholder="4 blue pillows, 1 ladder, dining table art..." />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Quantity</label>
+                <input defaultValue={String(editingPackRequest?.quantity ?? 1)} min={1} name="quantity" type="number" />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room</label>
+                <input defaultValue={editingPackRequest?.room ?? ""} name="room" />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Category</label>
+                <input defaultValue={editingPackRequest?.category ?? ""} name="category" />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Color</label>
+                <input defaultValue={editingPackRequest?.color ?? ""} name="color" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Notes</label>
+                <textarea defaultValue={editingPackRequest?.notes ?? ""} name="notes" placeholder="Optional styling notes, alternates, or client preferences." />
+              </div>
+              <label className="flex items-center gap-3 text-sm font-medium text-[#33413b] md:col-span-2">
+                <input defaultChecked={editingPackRequest?.optional ?? false} name="optional" type="checkbox" />
+                Mark as optional
+              </label>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-[#33413b]">Exact Inventory Item (optional)</label>
+                <JobExactItemPicker
+                  defaultValue={editingPackRequest?.requested_item_id ?? ""}
+                  initialSearch={editingPackRequest?.requested_item_name ?? editingPackRequest?.request_text ?? ""}
+                  inputName="requested_item_id"
+                  items={packCandidates.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    item_code: item.item_code,
+                    status: item.status,
+                    category: item.category,
+                    color: item.color,
+                    current_location_name: item.current_location_name,
+                  }))}
+                />
+                <p className={`mt-2 ${mutedTextClass}`}>
+                  Select the item you plan to use. Saving a new request adds it as the exact item; it is not checked out until you choose Check Out to Project.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 md:col-span-2">
+                <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">
+                  {editingPackRequest ? "Save Pack Request" : "Add Pack Request"}
+                </PendingSubmitButton>
+                {editingPackRequest ? (
+                  <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list" })}>
+                    Cancel Edit
+                  </Link>
+                ) : null}
+              </div>
+            </form>
+
+            {editingPackRequest ? (
+              <form action={createExactInventoryItemForPackRequestAction} className="mt-6 grid gap-4 rounded-2xl border border-[#ecdcc7] bg-white p-5 md:grid-cols-2">
+                <input name="job_id" type="hidden" value={id} />
+                <input name="pack_request_id" type="hidden" value={editingPackRequest.id} />
+                <div className="md:col-span-2">
+                  <h3 className="text-lg font-semibold text-[#20322a]">Create Exact Inventory Item</h3>
+                  <p className={`mt-2 ${mutedTextClass}`}>
+                    Use this when the request describes a real piece that never got entered into inventory. The new item will be added as this request&apos;s exact item automatically.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Item Name</label>
+                  <input defaultValue={editingPackRequest.request_text} name="name" placeholder="Walnut dining table with black metal legs" required />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">SKU</label>
+                  <input name="sku" placeholder="Optional SKU" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Room</label>
+                  <input defaultValue={editingPackRequest.room ?? ""} name="room" placeholder="Dining room" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Category</label>
+                  <input defaultValue={editingPackRequest.category ?? ""} name="category" placeholder="Tables / Dining" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Color</label>
+                  <input defaultValue={editingPackRequest.color ?? ""} name="color" placeholder="Walnut/Brown" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Condition</label>
+                  <select defaultValue="good" name="condition">
+                    {inventoryConditionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-sm font-semibold text-[#33413b]">Inventory Notes</label>
+                  <textarea
+                    defaultValue={editingPackRequest.notes ?? ""}
+                    name="notes"
+                    placeholder="Add any identifying details that will help the team recognize this exact piece later."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <PendingSubmitButton className={quietButtonClass} pendingLabel="Creating…">
+                    Create and Add Exact Item
+                  </PendingSubmitButton>
+                </div>
+              </form>
+            ) : null}
+          </PersistentDetails>
+        ) : null}
         <div className="mt-5 space-y-6">
           {openPackRequests.length === 0 ? (
             <p className={mutedTextClass}>No pack requests yet.</p>
@@ -1103,14 +1136,18 @@ export default async function JobDetailPage({
             ))
           )}
         </div>
-      </section>
+      </PersistentDetails>
 
       {extraPickedItems.length > 0 ? (
-        <section className={`${sectionCardClass} scroll-mt-6`} id="extra-items">
-          <SectionHeader
-            title="Legacy Unlinked Items"
-            description="Older exact-item logs without a matching pack request still live here until they are cleaned up."
-          />
+        <PersistentDetails storageKey={`job:${id}:extra-items`} className={`${sectionCardClass} group scroll-mt-6`} id="extra-items" open={detailsOpen(activeSection, "extra-items", true)}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <SectionHeader
+              title="Legacy Unlinked Items"
+              countLabel={buildCountLabel(extraPickedItems.length, "item")}
+              description="Older exact-item logs without a matching pack request still live here until they are cleaned up."
+            />
+            <SectionChevron />
+          </summary>
           <div className="mt-5 space-y-4">
             {extraPickedItems.map((pickedItem) => (
               <article key={pickedItem.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
@@ -1145,14 +1182,18 @@ export default async function JobDetailPage({
               </article>
             ))}
           </div>
-        </section>
+        </PersistentDetails>
       ) : null}
 
-      {pickedQueueItems.length > 0 ? <section className={`${sectionCardClass} scroll-mt-6`} id="picked-queue">
-        <SectionHeader
-          title="Picked Queue"
-          description="These exact picks are logged for this project but not yet checked out. Use this as the trailer/load queue. As items are checked out, they disappear from here and move into Checked Out to Project."
-        />
+      {pickedQueueItems.length > 0 ? <PersistentDetails storageKey={`job:${id}:picked-queue`} className={`${sectionCardClass} group scroll-mt-6`} id="picked-queue" open={detailsOpen(activeSection, "picked-queue", true)}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <SectionHeader
+            title="Picked Queue"
+            countLabel={buildCountLabel(pickedQueueItems.length, "item")}
+            description="These exact picks are logged for this project but not yet checked out. Use this as the trailer/load queue. As items are checked out, they disappear from here and move into Checked Out to Project."
+          />
+          <SectionChevron />
+        </summary>
         <div className="mt-5 space-y-4">
           {pickedQueueItems.length === 0 ? (
             <p className={mutedTextClass}>No picked items are waiting for checkout.</p>
@@ -1205,14 +1246,20 @@ export default async function JobDetailPage({
             })
           )}
         </div>
-      </section> : null}
+      </PersistentDetails> : null}
 
-      {activeAssignments.length > 0 ? <section className={`${sectionCardClass} scroll-mt-6`} id="assignments">
-        <SectionHeader
-          title="Checked Out to Project"
-          description="These items are currently checked out to this project. Treat this as the on-trailer / at-house list. Use Check In when the item physically returns from the house or stage."
-          right={<CheckInAllItemsForm action={checkInAllItemsAction} itemCount={activeAssignments.length} jobId={id} />}
-        />
+      {activeAssignments.length > 0 ? <PersistentDetails storageKey={`job:${id}:assignments`} className={`${sectionCardClass} group scroll-mt-6`} id="assignments" open={detailsOpen(activeSection, "assignments", true)}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <SectionHeader
+            title="Checked Out to Project"
+            countLabel={buildCountLabel(activeAssignments.length, "item")}
+            description="These items are currently checked out to this project. Treat this as the on-trailer / at-house list. Use Check In when the item physically returns from the house or stage."
+          />
+          <SectionChevron />
+        </summary>
+        <div className="mt-4">
+          <CheckInAllItemsForm action={checkInAllItemsAction} itemCount={activeAssignments.length} jobId={id} />
+        </div>
         <div className="mt-5 space-y-4">
           {activeAssignments.length === 0 ? (
             <p className={mutedTextClass}>No active assignments.</p>
@@ -1241,13 +1288,17 @@ export default async function JobDetailPage({
             ))
           )}
         </div>
-      </section> : null}
+      </PersistentDetails> : null}
 
-      {completedAssignments.length > 0 ? <section className={sectionCardClass}>
-        <SectionHeader
-          title="Checked In"
-          description="Check-in closes the assignment and puts the inventory item back into available status."
-        />
+      {completedAssignments.length > 0 ? <PersistentDetails storageKey={`job:${id}:checked-in`} className={`${sectionCardClass} group`}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+          <SectionHeader
+            title="Checked In"
+            countLabel={buildCountLabel(completedAssignments.length, "item")}
+            description="Check-in closes the assignment and puts the inventory item back into available status."
+          />
+          <SectionChevron />
+        </summary>
         <div className="mt-5 space-y-3">
           {completedAssignments.length === 0 ? (
             <p className={mutedTextClass}>No completed check-ins yet.</p>
@@ -1262,7 +1313,7 @@ export default async function JobDetailPage({
             ))
           )}
         </div>
-      </section> : null}
+      </PersistentDetails> : null}
     </section>
   );
 }
