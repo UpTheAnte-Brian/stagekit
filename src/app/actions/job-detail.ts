@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 import {
   applySceneTemplateToJob,
@@ -467,10 +468,12 @@ export async function assignItemAction(formData: FormData) {
 
   try {
     await assignItemToJob(jobId, itemId);
-    redirect(buildJobUrl(jobId, { message: "Item assigned.", tone: "success", section }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: "Item assigned.", tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to assign item.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
@@ -483,10 +486,12 @@ export async function checkInItemAction(formData: FormData) {
 
   try {
     await checkInItem(jobItemId);
-    redirect(buildJobUrl(jobId, { message: "Item checked in.", tone: "success", section: "assignments" }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: "Item checked in.", tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to check in item.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "assignments" }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
@@ -498,10 +503,12 @@ export async function checkInAllItemsAction(formData: FormData) {
     const message = checkedInCount === 0
       ? "No items were still checked out to this project."
       : `Checked in ${checkedInCount} item${checkedInCount === 1 ? "" : "s"}.`;
-    redirect(buildJobUrl(jobId, { message, tone: "success", section: "assignments" }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message, tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to check in project items.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "assignments" }));
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
