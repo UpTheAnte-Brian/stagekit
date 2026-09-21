@@ -10,6 +10,7 @@ import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-f
 import { CheckInAllItemsForm } from "@/components/jobs/check-in-all-items-form";
 import { CloseDetailsButton } from "@/components/web/close-details-button";
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingBlockLink } from "@/components/web/pending-block-link";
 import { PendingLink } from "@/components/web/pending-link";
 import {
   getJobDetail,
@@ -358,15 +359,15 @@ export default async function JobDetailPage({
             <p className="mt-4 text-lg text-[#d8e6dd]">{projectSubtitle || "Project detail"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link className={headerButtonClass} href={buildJobUrl(id, { section: "on-site-consults" })}>
+            <PendingBlockLink className={headerButtonClass} href={buildJobUrl(id, { section: "on-site-consults" })} pendingLabel="Opening consult…">
               On-Site Consult
-            </Link>
-            <Link className={headerButtonClass} href={buildJobUrl(id, { section: "edit-project" })}>
+            </PendingBlockLink>
+            <PendingBlockLink className={headerButtonClass} href={buildJobUrl(id, { section: "edit-project" })} pendingLabel="Opening details…">
               Edit Details
-            </Link>
-            <Link className={headerButtonClass} href="/jobs">
+            </PendingBlockLink>
+            <PendingBlockLink className={headerButtonClass} href="/jobs" pendingLabel="Opening projects…">
               Back to Projects
-            </Link>
+            </PendingBlockLink>
           </div>
         </div>
       </header>

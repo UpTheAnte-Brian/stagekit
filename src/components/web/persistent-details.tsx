@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { Children, useEffect, useRef, useState, type ComponentProps } from "react";
 
 type Props = ComponentProps<"details"> & { storageKey: string; resetToken?: string; forceOpen?: boolean; lazyRender?: boolean };
 
@@ -8,6 +8,8 @@ type Props = ComponentProps<"details"> & { storageKey: string; resetToken?: stri
 export function PersistentDetails({ storageKey, resetToken, forceOpen = false, open = false, lazyRender = false, children, ...props }: Props) {
   const ref = useRef<HTMLDetailsElement>(null);
   const [hasRenderedChildren, setHasRenderedChildren] = useState(open || forceOpen || !lazyRender);
+  const childList = lazyRender ? Children.toArray(children) : null;
+  const renderedChildren = lazyRender && !hasRenderedChildren ? childList?.slice(0, 1) : children;
 
   useEffect(() => {
     if (ref.current && (resetToken || forceOpen)) {
@@ -31,7 +33,7 @@ export function PersistentDetails({ storageKey, resetToken, forceOpen = false, o
       if (event.currentTarget.open) setHasRenderedChildren(true);
       try { sessionStorage.setItem(storageKey, String(event.currentTarget.open)); } catch {}
     }}>
-      {hasRenderedChildren ? children : null}
+      {renderedChildren}
     </details>
   );
 }
