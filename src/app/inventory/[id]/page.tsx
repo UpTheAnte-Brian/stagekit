@@ -7,6 +7,7 @@ import { InventoryPhotoViewer } from "@/components/inventory/inventory-photo-vie
 import { PhotoUploadForm } from "@/components/inventory/photo-upload-form";
 import { InventoryThumbnailCacheSeed } from "@/components/inventory/inventory-thumbnail-cache-seed";
 import { FlashMessage } from "@/components/web/flash-message";
+import { PendingBlockLink } from "@/components/web/pending-block-link";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { normalizeInventoryReturnTo } from "@/lib/inventory-navigation";
 import { isInventoryAuditTag, type InventoryAuditTag } from "@/lib/inventory-audit";
@@ -702,15 +703,15 @@ export default async function ItemDetailPage({
             </div>
 
             {activeAssignmentJob ? (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              <PendingBlockLink
+                className="block rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 transition hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                href={`/jobs/${activeAssignmentJob.id}`}
+                pendingLabel={`Opening ${activeAssignmentJob.name}…`}
+              >
                 <p className="font-semibold">Currently assigned to {activeAssignmentJob.name}</p>
                 <p className="mt-1">{activeAssignmentJob.address_label ?? "No project address saved."}</p>
-                <p className="mt-2">
-                  <Link className="font-semibold underline" href={`/jobs/${activeAssignmentJob.id}`}>
-                    Open project
-                  </Link>
-                </p>
-              </div>
+                <p className="mt-2 font-semibold underline">Open project</p>
+              </PendingBlockLink>
             ) : (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <p className="font-semibold">Status: ready to assign</p>

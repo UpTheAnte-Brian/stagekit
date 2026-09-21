@@ -94,10 +94,6 @@ function parseInventoryCondition(value: string) {
   return inventoryConditionOptions.includes(value as InventoryItemCondition) ? (value as InventoryItemCondition) : "good";
 }
 
-function buildJobSectionHash(section?: string) {
-  return section ? `#${section}` : "";
-}
-
 function buildJobUrl(
   jobId: string,
   {
@@ -133,8 +129,7 @@ function buildJobUrl(
   }
 
   const query = params.toString();
-  const basePath = query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
-  return `${basePath}${buildJobSectionHash(section)}`;
+  return query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
 }
 
 function readJobId(formData: FormData) {
@@ -286,11 +281,11 @@ export async function savePackRequestAction(formData: FormData) {
   const resolvedColor = color || requestedItem?.color || "";
 
   if (!resolvedText) {
-    redirect(buildJobUrl(jobId, { message: "Add a request description or choose an inventory item.", tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
+    redirect(buildJobUrl(jobId, { message: "Add a request description or choose an inventory item.", tone: "error", editRequestId: editRedirectId }));
   }
 
   if (!Number.isFinite(requestQuantity) || requestQuantity < 1) {
-    redirect(buildJobUrl(jobId, { message: "Quantity must be at least 1.", tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
+    redirect(buildJobUrl(jobId, { message: "Quantity must be at least 1.", tone: "error", editRequestId: editRedirectId }));
   }
 
   try {
@@ -334,7 +329,7 @@ export async function savePackRequestAction(formData: FormData) {
     }
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : packRequestId ? "Failed to update pack request." : "Failed to add pack request.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "add-pack-list", editRequestId: editRedirectId }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", editRequestId: editRedirectId }));
   }
 
   const message = packRequestId
@@ -342,14 +337,14 @@ export async function savePackRequestAction(formData: FormData) {
     : selectedItemId
       ? "Pack request and exact item added."
       : "Pack request added.";
-  redirect(buildJobUrl(jobId, { message, tone: "success", section: "pack-requests" }));
+  redirect(buildJobUrl(jobId, { message, tone: "success" }));
 }
 
 export async function toggleOptionalAction(formData: FormData) {
   const jobId = readJobId(formData);
   const packRequestId = readString(formData.get("pack_request_id"));
   if (!packRequestId) {
-    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error" }));
   }
 
   try {
@@ -357,11 +352,10 @@ export async function toggleOptionalAction(formData: FormData) {
     redirect(buildJobUrl(jobId, {
       message: `Pack request marked ${nextOptional ? "optional" : "required"}.`,
       tone: "success",
-      section: "pack-requests",
     }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to update pack request.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
@@ -369,15 +363,15 @@ export async function cancelPackRequestAction(formData: FormData) {
   const jobId = readJobId(formData);
   const packRequestId = readString(formData.get("pack_request_id"));
   if (!packRequestId) {
-    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error" }));
   }
 
   try {
     await updatePackRequestStatus(packRequestId, "cancelled");
-    redirect(buildJobUrl(jobId, { message: "Pack request updated.", tone: "success", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request updated.", tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to update pack request.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
@@ -385,15 +379,15 @@ export async function deletePackRequestAction(formData: FormData) {
   const jobId = readJobId(formData);
   const packRequestId = readString(formData.get("pack_request_id"));
   if (!packRequestId) {
-    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error" }));
   }
 
   try {
     await deletePackRequest(packRequestId);
-    redirect(buildJobUrl(jobId, { message: "Pack request removed.", tone: "success", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request removed.", tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to remove pack request.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
@@ -409,7 +403,7 @@ export async function createExactInventoryItemForPackRequestAction(formData: For
   const condition = parseInventoryCondition(readString(formData.get("condition")));
 
   if (!packRequestId) {
-    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error", section: "pack-requests" }));
+    redirect(buildJobUrl(jobId, { message: "Pack request is required.", tone: "error" }));
   }
 
   if (!name) {
@@ -516,9 +510,8 @@ export async function logPickedItemAction(formData: FormData) {
   const jobId = readJobId(formData);
   const itemId = readString(formData.get("item_id"));
   const packRequestId = readString(formData.get("pack_request_id"));
-  const section = readString(formData.get("section")) || "pack-requests";
   if (!itemId) {
-    redirect(buildJobUrl(jobId, { message: "Inventory item is required.", tone: "error", section }));
+    redirect(buildJobUrl(jobId, { message: "Inventory item is required.", tone: "error" }));
   }
 
   try {
@@ -527,28 +520,27 @@ export async function logPickedItemAction(formData: FormData) {
       itemId,
       packRequestId: packRequestId || null,
     });
-    redirect(buildJobUrl(jobId, { message: "Exact item logged.", tone: "success", section }));
+    redirect(buildJobUrl(jobId, { message: "Exact item logged.", tone: "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to log exact item.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
 }
 
 export async function deletePickedItemAction(formData: FormData) {
   const jobId = readJobId(formData);
   const jobPickItemId = readString(formData.get("job_pick_item_id"));
-  const section = readString(formData.get("section")) || "pack-requests";
   if (!jobPickItemId) {
-    redirect(buildJobUrl(jobId, { message: "Picked item is required.", tone: "error", section }));
+    redirect(buildJobUrl(jobId, { message: "Picked item is required.", tone: "error" }));
   }
 
   try {
     await deleteJobPickItem(jobPickItemId, jobId);
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to remove exact item.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error" }));
   }
-  redirect(buildJobUrl(jobId, { message: "Exact pick and matching original selection removed.", tone: "success", section }));
+  redirect(buildJobUrl(jobId, { message: "Exact pick and matching original selection removed.", tone: "success" }));
 }
 
 export async function quickSelectAction(formData: FormData) {
@@ -557,10 +549,9 @@ export async function quickSelectAction(formData: FormData) {
   const packRequestId = readString(formData.get("pack_request_id"));
   const notes = readString(formData.get("notes"));
   const pickRequestId = packRequestId || null;
-  const section = "pack-requests";
 
   if (selectedItemIds.length === 0) {
-    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to add to this request.", tone: "error", section, pickRequestId }));
+    redirect(buildJobUrl(jobId, { message: "Choose at least one inventory item to add to this request.", tone: "error", pickRequestId }));
   }
 
   let successCount = 0;
@@ -600,14 +591,13 @@ export async function quickSelectAction(formData: FormData) {
     }
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to add selected items to the request.";
-    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section, pickRequestId }));
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", pickRequestId }));
   }
 
   if (failureMessage) {
     redirect(buildJobUrl(jobId, {
       message: `Logged ${successCount} item${successCount === 1 ? "" : "s"}. ${failureMessage}`,
       tone: "error",
-      section,
       pickRequestId,
     }));
   }
@@ -615,7 +605,6 @@ export async function quickSelectAction(formData: FormData) {
   redirect(buildJobUrl(jobId, {
     message: packRequestId ? `Added ${successCount} exact item${successCount === 1 ? "" : "s"} to the request.` : `Created bulk pack request with ${successCount} item${successCount === 1 ? "" : "s"}.`,
     tone: "success",
-    section,
     pickRequestId,
   }));
 }

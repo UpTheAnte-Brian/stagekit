@@ -118,10 +118,6 @@ function roomGroupKey(value: string | null | undefined) {
   return normalizeRoomLabel(value).toLocaleLowerCase() || "no room";
 }
 
-function buildJobSectionHash(section?: string) {
-  return section ? `#${section}` : "";
-}
-
 function buildJobUrl(
   jobId: string,
   {
@@ -157,8 +153,7 @@ function buildJobUrl(
   }
 
   const query = params.toString();
-  const basePath = query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
-  return `${basePath}${buildJobSectionHash(section)}`;
+  return query ? `/jobs/${jobId}?${query}` : `/jobs/${jobId}`;
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
@@ -199,11 +194,15 @@ function SectionHeader({
   );
 }
 
-function SectionChevron() {
+function SectionChevron({ groupName }: { groupName?: "packRequest" } = {}) {
+  const className = groupName === "packRequest"
+    ? "h-5 w-5 shrink-0 text-[#6f756c] transition-transform group-open/packRequest:rotate-180"
+    : "h-5 w-5 shrink-0 text-[#6f756c] transition-transform group-open:rotate-180";
+
   return (
     <svg
       aria-hidden="true"
-      className="h-5 w-5 shrink-0 text-[#6f756c] transition-transform group-open:rotate-180"
+      className={className}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -820,7 +819,7 @@ export default async function JobDetailPage({
                 }
               />
               {editingPackRequest ? (
-                <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "pack-requests" })}>
+                <Link className={secondaryButtonClass} href={buildJobUrl(id)}>
                   Cancel
                 </Link>
               ) : (
@@ -884,7 +883,7 @@ export default async function JobDetailPage({
                   {editingPackRequest ? "Save Pack Request" : "Add Pack Request"}
                 </PendingSubmitButton>
                 {editingPackRequest ? (
-                  <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "pack-requests" })}>
+                  <Link className={secondaryButtonClass} href={buildJobUrl(id)}>
                     Cancel Edit
                   </Link>
                 ) : (
@@ -973,29 +972,44 @@ export default async function JobDetailPage({
                 </summary>
                 {requests.map((request) => {
                   return (
-                    <article key={request.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="max-w-3xl">
+                    <PersistentDetails
+                      key={request.id}
+                      storageKey={`job:${id}:pack-request:${request.id}`}
+                      className="group/packRequest rounded-2xl border border-[#ecdcc7] bg-white p-4"
+                      lazyRender
+                      open={activePickRequest?.id === request.id || editingPackRequest?.id === request.id}
+                    >
+                      <summary className="flex cursor-pointer list-none items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                        <div className="min-w-0">
                           <p className="text-xl font-semibold text-[#20322a]">
                             {request.quantity} x {request.request_text}
                           </p>
                           <p className={`${mutedTextClass} mt-2`}>
                             {request.room ?? "No room"} • {request.category ?? "No category"} • {request.color ?? "No color"}
                           </p>
-                          {request.scene_template_name ? (
-                            <p className={`${mutedTextClass} mt-2`}>
-                              Scene: {request.scene_template_name}
-                              {request.scene_room_label ? ` • ${request.scene_room_label}` : ""}
-                            </p>
-                          ) : null}
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className={request.picked_count >= request.quantity ? "text-sm font-semibold text-emerald-700" : "text-sm font-semibold text-[#6f756c]"}>
+                              {request.picked_count}/{request.quantity} exact
+                            </span>
+                            {request.optional ? <span className="rounded-full border border-[#e3d0ba] px-2 py-0.5 text-xs font-semibold text-[#6f756c]">Optional</span> : null}
+                            {request.active_job_names.length > 0 ? <span className="rounded-full border border-rose-200 px-2 py-0.5 text-xs font-semibold text-rose-700">Active elsewhere</span> : null}
+                          </div>
                         </div>
-                        <span className="rounded-full bg-[#17352c] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#d8e6dd]">
-                          {request.status === "packed" ? "legacy packed" : request.status}
-                        </span>
-                      </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="rounded-full bg-[#17352c] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#d8e6dd]">
+                            {request.status === "packed" ? "legacy packed" : request.status}
+                          </span>
+                          <SectionChevron groupName="packRequest" />
+                        </div>
+                      </summary>
 
-                      <div className="mt-4 space-y-2">
-                          {request.optional ? <p className={mutedTextClass}>Optional item</p> : null}
+                      <div className="mt-4 space-y-2 border-t border-[#ecdcc7] pt-4">
+                        {request.scene_template_name ? (
+                          <p className={mutedTextClass}>
+                            Scene: {request.scene_template_name}
+                            {request.scene_room_label ? ` • ${request.scene_room_label}` : ""}
+                          </p>
+                        ) : null}
                         <p className={request.picked_count >= request.quantity ? "text-sm leading-6 text-emerald-700" : mutedTextClass}>
                           Exact items added to this request: {request.picked_count}
                         </p>
@@ -1044,7 +1058,6 @@ export default async function JobDetailPage({
                                 <form action={assignItemAction}>
                                   <input name="job_id" type="hidden" value={id} />
                                   <input name="item_id" type="hidden" value={pickedItem.item_id} />
-                                  <input name="section" type="hidden" value="pack-requests" />
                                   <PendingSubmitButton className={secondaryButtonClass} disabled={pickedItem.item_status !== "available"} pendingLabel="Checking out…">
                                     {getCheckoutButtonLabel(pickedItem.item_status, activeAssignedItemIds.has(pickedItem.item_id))}
                                   </PendingSubmitButton>
@@ -1052,7 +1065,6 @@ export default async function JobDetailPage({
                                 <form action={deletePickedItemAction}>
                                   <input name="job_id" type="hidden" value={id} />
                                   <input name="job_pick_item_id" type="hidden" value={pickedItem.id} />
-                                  <input name="section" type="hidden" value="pack-requests" />
                                   <PendingSubmitButton pendingLabel="Removing…" className={secondaryButtonClass} type="submit">
                                     Remove Pick
                                   </PendingSubmitButton>
@@ -1064,7 +1076,7 @@ export default async function JobDetailPage({
                       ) : null}
 
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { section: "add-pack-list", editRequestId: request.id })}>
+                        <Link className={secondaryButtonClass} href={buildJobUrl(id, { editRequestId: request.id })}>
                           Edit
                         </Link>
                         <form action={toggleOptionalAction}>
@@ -1121,7 +1133,6 @@ export default async function JobDetailPage({
                             <input name="job_id" type="hidden" value={id} />
                             <input name="item_id" type="hidden" value={request.requested_item_id} />
                             <input name="pack_request_id" type="hidden" value={request.id} />
-                            <input name="section" type="hidden" value="pack-requests" />
                             <PendingSubmitButton className={secondaryButtonClass} pendingLabel="Adding…">
                               Add as Exact Item
                             </PendingSubmitButton>
@@ -1142,7 +1153,7 @@ export default async function JobDetailPage({
                           </PendingSubmitButton>
                         </form>
                       </div>
-                    </article>
+                    </PersistentDetails>
                   );
                 })}
               </PersistentDetails>
