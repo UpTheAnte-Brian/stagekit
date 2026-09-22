@@ -350,13 +350,13 @@ export default async function JobDetailPage({
   }, {});
 
   return (
-    <section className="space-y-6 pb-10">
-      <header className="rounded-[2rem] bg-[#16382d] px-6 py-6 text-white shadow-sm">
+    <section className="space-y-4 pb-8">
+      <header className="rounded-[2rem] bg-[#16382d] px-6 py-5 text-white shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#c7d8cd]">Project</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight">{job.name}</h1>
-            <p className="mt-4 text-lg text-[#d8e6dd]">{projectSubtitle || "Project detail"}</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{job.name}</h1>
+            <p className="mt-2 text-base text-[#d8e6dd]">{projectSubtitle || "Project detail"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <PendingBlockLink className={headerButtonClass} href="/jobs" pendingLabel="Opening projects…">
@@ -435,33 +435,37 @@ export default async function JobDetailPage({
         </form>
       </PersistentDetails>
 
-      <section className="rounded-[2rem] border border-[#cfe0d4] bg-[#e9f3ec] p-4 shadow-sm sm:p-6">
+      <section className="rounded-[2rem] border border-[#cfe0d4] bg-[#e9f3ec] p-4 shadow-sm">
         <SectionHeader
           title="Project Flow"
           description="Everything for this project is organized around the work as it happens: capture, plan, then pull and deliver."
         />
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-4 shadow-sm">
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">1. Capture the visit</p>
             <p className="mt-2 text-sm font-semibold text-[#20322a]">{consults.length === 0 ? "Add your notes and today’s photos." : `${consults.length} visit record${consults.length === 1 ? "" : "s"} saved.`}</p>
           </div>
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-4 shadow-sm">
+          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">2. Build the pack list</p>
             <p className="mt-2 text-sm font-semibold text-[#20322a]">{openPackRequests.length} request{openPackRequests.length === 1 ? "" : "s"} • {fulfilledRequestCount} covered</p>
           </div>
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-4 shadow-sm">
+          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">3. Pull & deliver</p>
             <p className="mt-2 text-sm font-semibold text-[#20322a]">{pickedItems.length} picked • {activeAssignments.length} checked out</p>
           </div>
         </div>
       </section>
 
-      <section className="space-y-4 rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-3 sm:p-5" id="on-site-consults">
-        <div className="px-2 pt-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 1</p>
-          <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Capture the visit</h2>
-          <p className={`${mutedTextClass} mt-1`}>Keep the source material together before turning it into a pack plan.</p>
-        </div>
+      <PersistentDetails storageKey={`job:${id}:flow:capture`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" id="on-site-consults" open={detailsOpen(activeSection, "on-site-consults")} lazyRender>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 1</p>
+            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Capture the visit</h2>
+            <p className={`${mutedTextClass} mt-1`}>{consults.length === 0 ? "Start with notes, measurements, and photos." : `${consults.length} saved visit${consults.length === 1 ? "" : "s"}.`}</p>
+          </div>
+          <SectionChevron />
+        </summary>
+        <div className="mt-4 space-y-4">
         <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={`${sectionCardClass} group`} open={detailsOpen(activeSection, "on-site-consults")}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
             <SectionHeader
@@ -548,7 +552,8 @@ export default async function JobDetailPage({
             </div>
           </section>
         ) : null}
-      </section>
+        </div>
+      </PersistentDetails>
 
       {job.status === "archived" ? <PersistentDetails storageKey={`job:${id}:archive-readiness`} className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
@@ -638,12 +643,16 @@ export default async function JobDetailPage({
         ) : null}
       </PersistentDetails> : null}
 
-      <section className="space-y-4 rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-3 sm:p-5">
-        <div className="px-2 pt-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 2</p>
-          <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Build the pack list</h2>
-          <p className={`${mutedTextClass} mt-1`}>Start with reusable scenes when they fit, then refine the project&apos;s room-by-room requests.</p>
-        </div>
+      <PersistentDetails storageKey={`job:${id}:flow:pack-list`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" open={detailsOpen(activeSection, "scene-templates") || detailsOpen(activeSection, "pack-requests") || detailsOpen(activeSection, "add-pack-list")} lazyRender>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 2</p>
+            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Build the pack list</h2>
+            <p className={`${mutedTextClass} mt-1`}>{openPackRequests.length} request{openPackRequests.length === 1 ? "" : "s"} • {fulfilledRequestCount} covered</p>
+          </div>
+          <SectionChevron />
+        </summary>
+        <div className="mt-4 space-y-4">
       {activeSection === "scene-templates" || sceneApplications.length > 0 ? <PersistentDetails storageKey={`job:${id}:scene-templates`} className={`${sectionCardClass} group scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
@@ -1168,14 +1177,19 @@ export default async function JobDetailPage({
         </div>
       </PersistentDetails>
 
-      </section>
-
-      <section className="space-y-4 rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-3 sm:p-5">
-        <div className="px-2 pt-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 3</p>
-          <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Pull, deliver & return</h2>
-          <p className={`${mutedTextClass} mt-1`}>Move chosen pieces through the load queue, checkout, and return without leaving the workflow.</p>
         </div>
+      </PersistentDetails>
+
+      <PersistentDetails storageKey={`job:${id}:flow:fulfillment`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" open={detailsOpen(activeSection, "extra-items") || detailsOpen(activeSection, "picked-queue") || detailsOpen(activeSection, "assignments")} lazyRender>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 3</p>
+            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Pull, deliver & return</h2>
+            <p className={`${mutedTextClass} mt-1`}>{pickedItems.length} picked • {activeAssignments.length} checked out</p>
+          </div>
+          <SectionChevron />
+        </summary>
+        <div className="mt-4 space-y-4">
       {extraPickedItems.length > 0 ? (
         <PersistentDetails storageKey={`job:${id}:extra-items`} className={`${sectionCardClass} group scroll-mt-6`} id="extra-items" open={detailsOpen(activeSection, "extra-items", true)}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
@@ -1352,7 +1366,8 @@ export default async function JobDetailPage({
           )}
         </div>
       </PersistentDetails> : null}
-      </section>
+        </div>
+      </PersistentDetails>
     </section>
   );
 }
