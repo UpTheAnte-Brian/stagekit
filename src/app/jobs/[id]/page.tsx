@@ -8,6 +8,7 @@ import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker"
 import { ConsultMediaGallery } from "@/components/jobs/consult-media-gallery";
 import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { CheckInAllItemsForm } from "@/components/jobs/check-in-all-items-form";
+import { WorkflowPanels } from "@/components/jobs/workflow-panels";
 import { CloseDetailsButton } from "@/components/web/close-details-button";
 import { FlashMessage } from "@/components/web/flash-message";
 import { PendingBlockLink } from "@/components/web/pending-block-link";
@@ -32,6 +33,7 @@ import {
   deleteSceneApplicationAction,
   deleteJobConsultMediaAction,
   logPickedItemAction,
+  linkDirectCheckoutToPackRequestAction,
   quickSelectAction,
   savePackRequestAction,
   saveJobConsultAction,
@@ -435,37 +437,12 @@ export default async function JobDetailPage({
         </form>
       </PersistentDetails>
 
-      <section className="rounded-[2rem] border border-[#cfe0d4] bg-[#e9f3ec] p-4 shadow-sm">
-        <SectionHeader
-          title="Project Flow"
-          description="Everything for this project is organized around the work as it happens: capture, plan, then pull and deliver."
-        />
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">1. Capture the visit</p>
-            <p className="mt-2 text-sm font-semibold text-[#20322a]">{consults.length === 0 ? "Add your notes and today’s photos." : `${consults.length} visit record${consults.length === 1 ? "" : "s"} saved.`}</p>
-          </div>
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">2. Build the pack list</p>
-            <p className="mt-2 text-sm font-semibold text-[#20322a]">{openPackRequests.length} request{openPackRequests.length === 1 ? "" : "s"} • {fulfilledRequestCount} covered</p>
-          </div>
-          <div className="rounded-2xl border border-[#b9d2c0] bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8c8c7b]">3. Pull & deliver</p>
-            <p className="mt-2 text-sm font-semibold text-[#20322a]">{pickedItems.length} picked • {activeAssignments.length} checked out</p>
-          </div>
-        </div>
-      </section>
-
-      <PersistentDetails storageKey={`job:${id}:flow:capture`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" id="on-site-consults" open={detailsOpen(activeSection, "on-site-consults")} lazyRender>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 1</p>
-            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Capture the visit</h2>
-            <p className={`${mutedTextClass} mt-1`}>{consults.length === 0 ? "Start with notes, measurements, and photos." : `${consults.length} saved visit${consults.length === 1 ? "" : "s"}.`}</p>
-          </div>
-          <SectionChevron />
-        </summary>
-        <div className="mt-4 space-y-4">
+      <WorkflowPanels panels={[
+        { id: "capture", label: "Step 1", title: "Capture the visit", status: consults.length === 0 ? "Start with notes, measurements, and photos." : `${consults.length} saved visit${consults.length === 1 ? "" : "s"}` },
+        { id: "pack", label: "Step 2", title: "Build the pack list", status: `${openPackRequests.length} requests • ${fulfilledRequestCount} covered` },
+        { id: "fulfillment", label: "Step 3", title: "Pull, deliver & return", status: `${pickedQueueItems.length} in queue • ${activeAssignments.length} checked out` },
+      ]}>
+      <section className="space-y-4" data-workflow-panel="capture" id="on-site-consults">
         <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={`${sectionCardClass} group`} open={detailsOpen(activeSection, "on-site-consults")}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
             <SectionHeader
@@ -552,8 +529,7 @@ export default async function JobDetailPage({
             </div>
           </section>
         ) : null}
-        </div>
-      </PersistentDetails>
+      </section>
 
       {job.status === "archived" ? <PersistentDetails storageKey={`job:${id}:archive-readiness`} className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
@@ -643,16 +619,7 @@ export default async function JobDetailPage({
         ) : null}
       </PersistentDetails> : null}
 
-      <PersistentDetails storageKey={`job:${id}:flow:pack-list`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" open={detailsOpen(activeSection, "scene-templates") || detailsOpen(activeSection, "pack-requests") || detailsOpen(activeSection, "add-pack-list")} lazyRender>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 2</p>
-            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Build the pack list</h2>
-            <p className={`${mutedTextClass} mt-1`}>{openPackRequests.length} request{openPackRequests.length === 1 ? "" : "s"} • {fulfilledRequestCount} covered</p>
-          </div>
-          <SectionChevron />
-        </summary>
-        <div className="mt-4 space-y-4">
+      <section className="space-y-4" data-workflow-panel="pack">
       {activeSection === "scene-templates" || sceneApplications.length > 0 ? <PersistentDetails storageKey={`job:${id}:scene-templates`} className={`${sectionCardClass} group scroll-mt-6`} id="scene-templates" open={detailsOpen(activeSection, "scene-templates")}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
           <SectionHeader
@@ -1176,20 +1143,39 @@ export default async function JobDetailPage({
           )}
         </div>
       </PersistentDetails>
+      </section>
 
-        </div>
-      </PersistentDetails>
-
-      <PersistentDetails storageKey={`job:${id}:flow:fulfillment`} className="rounded-[2rem] border border-[#cfe0d4] bg-[#f4f8f5] p-4" open={detailsOpen(activeSection, "extra-items") || detailsOpen(activeSection, "picked-queue") || detailsOpen(activeSection, "assignments")} lazyRender>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#60766a]">Step 3</p>
-            <h2 className="mt-1 text-xl font-semibold text-[#20322a]">Pull, deliver & return</h2>
-            <p className={`${mutedTextClass} mt-1`}>{pickedItems.length} picked • {activeAssignments.length} checked out</p>
+      <section className="space-y-4" data-workflow-panel="fulfillment">
+      {assignedWithoutExactPickCount > 0 ? (
+        <section className="rounded-3xl border border-amber-300 bg-amber-50 p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-[#20322a]">Reconcile direct checkouts</h3>
+          <p className={`${mutedTextClass} mt-1`}>
+            {assignedWithoutExactPickCount} checked-out item{assignedWithoutExactPickCount === 1 ? " was" : "s were"} added directly from Inventory, without a pack request. Link each one below to preserve the final plan.
+          </p>
+          <div className="mt-4 space-y-3">
+            {activeAssignments.filter((assignment) => !exactItemIds.has(assignment.item_id)).map((assignment) => (
+              <form action={linkDirectCheckoutToPackRequestAction} className="grid gap-3 rounded-2xl border border-amber-200 bg-white p-4 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)_auto] md:items-end" key={assignment.id}>
+                <input name="job_id" type="hidden" value={id} />
+                <input name="item_id" type="hidden" value={assignment.item_id} />
+                <div>
+                  <p className="font-semibold text-[#20322a]">{assignment.item_name} ({assignment.item_code})</p>
+                  <p className={`${mutedTextClass} mt-1`}>{assignment.item_room ?? "No room"} • checked out {formatTimestamp(assignment.checked_out_at)}</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-[#33413b]">Matching pack request</label>
+                  <select defaultValue="" name="pack_request_id">
+                    <option disabled value="">Choose request</option>
+                    {openPackRequests.map((request) => (
+                      <option key={request.id} value={request.id}>{request.room ? `${request.room} • ` : ""}{request.request_text}</option>
+                    ))}
+                  </select>
+                </div>
+                <PendingSubmitButton className={primaryButtonClass} pendingLabel="Linking…">Link to request</PendingSubmitButton>
+              </form>
+            ))}
           </div>
-          <SectionChevron />
-        </summary>
-        <div className="mt-4 space-y-4">
+        </section>
+      ) : null}
       {extraPickedItems.length > 0 ? (
         <PersistentDetails storageKey={`job:${id}:extra-items`} className={`${sectionCardClass} group scroll-mt-6`} id="extra-items" open={detailsOpen(activeSection, "extra-items", true)}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
@@ -1366,8 +1352,8 @@ export default async function JobDetailPage({
           )}
         </div>
       </PersistentDetails> : null}
-        </div>
-      </PersistentDetails>
+      </section>
+      </WorkflowPanels>
     </section>
   );
 }

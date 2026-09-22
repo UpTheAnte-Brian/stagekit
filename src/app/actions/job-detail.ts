@@ -527,6 +527,29 @@ export async function logPickedItemAction(formData: FormData) {
   }
 }
 
+export async function linkDirectCheckoutToPackRequestAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const itemId = readString(formData.get("item_id"));
+  const packRequestId = readString(formData.get("pack_request_id"));
+  if (!itemId || !packRequestId) {
+    redirect(buildJobUrl(jobId, { message: "Choose the matching pack request.", tone: "error", section: "assignments" }));
+  }
+
+  try {
+    await createJobPickItem({
+      jobId,
+      itemId,
+      packRequestId,
+      notes: "Linked after a direct checkout.",
+    });
+    revalidatePath(`/jobs/${jobId}`);
+    redirect(buildJobUrl(jobId, { message: "Checkout linked to its pack request.", tone: "success", section: "assignments" }));
+  } catch (error) {
+    const nextMessage = error instanceof Error ? error.message : "Failed to link checkout to pack request.";
+    redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "assignments" }));
+  }
+}
+
 export async function deletePickedItemAction(formData: FormData) {
   const jobId = readJobId(formData);
   const jobPickItemId = readString(formData.get("job_pick_item_id"));
