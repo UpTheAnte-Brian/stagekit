@@ -22,7 +22,7 @@ export default async function ProjectMapPage() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Projects</p>
           <h1 className="text-2xl font-semibold tracking-tight">Project map</h1>
-          <p className="text-sm text-muted">{mappedProjects.length} project{mappedProjects.length === 1 ? "" : "s"} pinned from saved Google Maps coordinates.</p>
+          <p className="text-sm text-muted">{mappedProjects.length} project{mappedProjects.length === 1 ? "" : "s"} pinned from saved Google Maps coordinates. Select a pin to open its project.</p>
         </div>
         <Link className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium hover:border-accent/40" href="/jobs">Back to Projects</Link>
       </div>

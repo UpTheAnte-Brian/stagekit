@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type MapProject = {
@@ -29,8 +30,9 @@ declare global {
   }
 }
 
-export function ProjectMap({ apiKey, projects, onProjectSelect }: { apiKey: string | undefined; projects: MapProject[]; onProjectSelect?: (id: string) => void }) {
+export function ProjectMap({ apiKey, projects }: { apiKey: string | undefined; projects: MapProject[] }) {
   const mapElement = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
@@ -51,8 +53,8 @@ export function ProjectMap({ apiKey, projects, onProjectSelect }: { apiKey: stri
     projects.forEach((project) => {
       const position = { lat: project.latitude, lng: project.longitude };
       bounds.extend(position);
-      const marker = new maps.Marker({ map, position, title: project.name });
-      if (onProjectSelect) marker.addListener("click", () => onProjectSelect(project.id));
+      const marker = new maps.Marker({ map, position, title: `Open ${project.name}` });
+      marker.addListener("click", () => router.push(`/jobs/${project.id}`));
     });
     if (projects.length === 1) {
       map.setCenter({ lat: projects[0].latitude, lng: projects[0].longitude });
@@ -60,7 +62,7 @@ export function ProjectMap({ apiKey, projects, onProjectSelect }: { apiKey: stri
     } else {
       map.fitBounds(bounds);
     }
-  }, [onProjectSelect, projects, ready]);
+  }, [projects, ready, router]);
 
   if (!apiKey) {
     return <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Add <code>NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY</code> to enable the interactive map.</p>;
