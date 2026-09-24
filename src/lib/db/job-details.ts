@@ -2,6 +2,12 @@ import "server-only";
 
 import type { Database } from "@/lib/supabase/database.types";
 import { listItemThumbnailUrls } from "@/lib/db/inventory";
+import {
+  buildProjectAddressLabel,
+  canGeocodeProjectAddress,
+  geocodeProjectAddress,
+  isGoogleMapsGeocodingConfigured,
+} from "@/lib/google-maps/geocoding";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
@@ -363,15 +369,41 @@ export async function updateJob({
   const normalizedState = state.trim();
   const normalizedPostal = postal.trim();
 
+  const nextAddress = {
+    address1: normalizedAddress1 || null,
+    address2: normalizedAddress2 || null,
+    city: normalizedCity || null,
+    state: normalizedState || null,
+    postal: normalizedPostal || null,
+  };
+  const { data: currentJob, error: currentJobError } = await supabase
+    .from("jobs")
+    .select("address1,address2,city,state,postal,latitude,longitude")
+    .eq("id", jobId)
+    .single();
+
+  if (currentJobError) {
+    throw new Error(currentJobError.message);
+  }
+
+  const addressChanged = ["address1", "address2", "city", "state", "postal"].some(
+    (key) => currentJob[key as keyof typeof nextAddress] !== nextAddress[key as keyof typeof nextAddress],
+  );
+  const needsGeocoding = addressChanged || currentJob.latitude == null || currentJob.longitude == null;
+  const geocodedAddress = needsGeocoding && canGeocodeProjectAddress(nextAddress) ? await geocodeProjectAddress(nextAddress) : null;
+  const shouldClearCoordinates = addressChanged && !geocodedAddress;
+
   const { error } = await supabase
     .from("jobs")
     .update({
       name: name.trim(),
-      address1: normalizedAddress1 || null,
-      address2: normalizedAddress2 || null,
-      city: normalizedCity || null,
-      state: normalizedState || null,
-      postal: normalizedPostal || null,
+      ...nextAddress,
+      address_label: geocodedAddress?.addressLabel ?? (buildProjectAddressLabel(nextAddress) || null),
+      ...(geocodedAddress
+        ? { latitude: geocodedAddress.latitude, longitude: geocodedAddress.longitude, geocoded_at: new Date().toISOString() }
+        : shouldClearCoordinates
+          ? { latitude: null, longitude: null, geocoded_at: null }
+          : {}),
       notes: notes.trim() || null,
       status: status.trim(),
     })
@@ -380,6 +412,13 @@ export async function updateJob({
   if (error) {
     throw new Error(error.message);
   }
+
+  return {
+    geocoded: Boolean(geocodedAddress),
+    incompleteAddress: needsGeocoding && !canGeocodeProjectAddress(nextAddress),
+    geocodingNotConfigured: needsGeocoding && canGeocodeProjectAddress(nextAddress) && !isGoogleMapsGeocodingConfigured(),
+    addressNotFound: needsGeocoding && canGeocodeProjectAddress(nextAddress) && isGoogleMapsGeocodingConfigured() && !geocodedAddress,
+  };
 }
 
 export async function updateJobStatus(jobId: string, status: "active" | "completed" | "archived" | "cancelled") {

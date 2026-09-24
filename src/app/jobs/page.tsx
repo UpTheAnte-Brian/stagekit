@@ -4,6 +4,7 @@ import { FlashMessage } from "@/components/web/flash-message";
 import { PendingBlockLink } from "@/components/web/pending-block-link";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
 import { listJobsWithStats, type JobWithStats } from "@/lib/db/jobs";
+import { buildProjectAddressLabel, canGeocodeProjectAddress, geocodeProjectAddress } from "@/lib/google-maps/geocoding";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function readString(value: FormDataEntryValue | null) {
@@ -59,15 +60,17 @@ async function createJobAction(formData: FormData) {
   const city = readString(formData.get("city"));
   const state = readString(formData.get("state"));
   const postal = readString(formData.get("postal"));
+  const projectAddress = { address1: toNullableText(address1), address2: toNullableText(address2), city: toNullableText(city), state: toNullableText(state), postal: toNullableText(postal) };
+  const geocodedAddress = canGeocodeProjectAddress(projectAddress) ? await geocodeProjectAddress(projectAddress) : null;
   const { data, error } = await supabase
     .from("jobs")
     .insert({
       name,
-      address1: toNullableText(address1),
-      address2: toNullableText(address2),
-      city: toNullableText(city),
-      state: toNullableText(state),
-      postal: toNullableText(postal),
+      ...projectAddress,
+      address_label: geocodedAddress?.addressLabel ?? (buildProjectAddressLabel(projectAddress) || null),
+      latitude: geocodedAddress?.latitude ?? null,
+      longitude: geocodedAddress?.longitude ?? null,
+      geocoded_at: geocodedAddress ? new Date().toISOString() : null,
       start_date: toNullableText(readString(formData.get("start_date"))),
       end_date: toNullableText(readString(formData.get("end_date"))),
       status: toNullableText(readString(formData.get("status"))) ?? "active",

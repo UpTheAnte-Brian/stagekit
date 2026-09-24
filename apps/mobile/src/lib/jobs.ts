@@ -214,23 +214,23 @@ async function listJobSceneApplicationsCompat(supabase: ReturnType<typeof getSup
   return (data ?? []) as JobSceneApplicationRow[];
 }
 
-function mapJobRow(row: Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "city" | "state" | "postal">): Job {
+function mapJobRow(row: Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "address_label" | "city" | "state" | "postal" | "latitude" | "longitude">): Job {
   return {
     ...row,
     country: "US",
-    address_label: buildAddressLabel([row.address1, row.address2, row.city, row.state, row.postal]),
-    latitude: null,
-    longitude: null,
+    address_label: row.address_label ?? buildAddressLabel([row.address1, row.address2, row.city, row.state, row.postal]),
+    latitude: row.latitude,
+    longitude: row.longitude,
   };
 }
 
-function mapJobDetailRow(row: Pick<JobRow, "id" | "name" | "status" | "notes" | "address1" | "address2" | "city" | "state" | "postal">): JobDetail {
+function mapJobDetailRow(row: Pick<JobRow, "id" | "name" | "status" | "notes" | "address1" | "address2" | "address_label" | "city" | "state" | "postal" | "latitude" | "longitude">): JobDetail {
   return {
     ...row,
     country: "US",
-    address_label: buildAddressLabel([row.address1, row.address2, row.city, row.state, row.postal]),
-    latitude: null,
-    longitude: null,
+    address_label: row.address_label ?? buildAddressLabel([row.address1, row.address2, row.city, row.state, row.postal]),
+    latitude: row.latitude,
+    longitude: row.longitude,
   };
 }
 
@@ -238,14 +238,14 @@ export async function listJobs() {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("jobs")
-    .select("id,name,status,address1,address2,city,state,postal")
+    .select("id,name,status,address1,address2,address_label,city,state,postal,latitude,longitude")
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => mapJobRow(row as Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "city" | "state" | "postal">));
+  return (data ?? []).map((row) => mapJobRow(row as Pick<JobRow, "id" | "name" | "status" | "address1" | "address2" | "address_label" | "city" | "state" | "postal" | "latitude" | "longitude">));
 }
 
 export async function createJob({
@@ -399,7 +399,7 @@ export async function getJobDetail(jobId: string) {
   const supabase = getSupabaseClient();
   const { data: job, error: jobError } = await supabase
     .from("jobs")
-    .select("id,name,status,notes,address1,address2,city,state,postal")
+    .select("id,name,status,notes,address1,address2,address_label,city,state,postal,latitude,longitude")
     .eq("id", jobId)
     .single();
 
@@ -612,7 +612,7 @@ export async function getJobDetail(jobId: string) {
   }) as JobSceneApplication[];
 
   return {
-    job: mapJobDetailRow(job as Pick<JobRow, "id" | "name" | "status" | "notes" | "address1" | "address2" | "city" | "state" | "postal">),
+    job: mapJobDetailRow(job as Pick<JobRow, "id" | "name" | "status" | "notes" | "address1" | "address2" | "address_label" | "city" | "state" | "postal" | "latitude" | "longitude">),
     assignments,
     packRequests: packRequestList,
     pickedItems: exactPickList,
@@ -981,7 +981,7 @@ export async function listActiveJobLocations() {
 
   const { data: jobs, error: jobsError } = await supabase
     .from("jobs")
-    .select("id,name,address1,address2,city,state,postal")
+    .select("id,name,address1,address2,address_label,city,state,postal,latitude,longitude")
     .in("id", jobIds)
     .order("name", { ascending: true });
 
@@ -993,9 +993,9 @@ export async function listActiveJobLocations() {
   return (jobs ?? []).map((job) => ({
     id: job.id,
     name: job.name,
-    address_label: buildAddressLabel([job.address1, job.address2, job.city, job.state, job.postal]),
-    latitude: null,
-    longitude: null,
+    address_label: job.address_label ?? buildAddressLabel([job.address1, job.address2, job.city, job.state, job.postal]),
+    latitude: job.latitude,
+    longitude: job.longitude,
     activeItemCount: activeCountsByJobId[job.id] ?? 0,
   })) as ActiveJobLocation[];
 }

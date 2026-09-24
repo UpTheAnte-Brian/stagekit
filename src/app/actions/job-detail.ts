@@ -167,7 +167,7 @@ export async function updateJobAction(formData: FormData) {
   }
 
   try {
-    await updateJob({
+    const result = await updateJob({
       jobId,
       name,
       address1: readString(formData.get("address1")),
@@ -178,7 +178,18 @@ export async function updateJobAction(formData: FormData) {
       notes: readString(formData.get("notes")),
       status,
     });
-    redirect(buildJobUrl(jobId, { message: "Project updated.", tone: "success" }));
+    revalidatePath("/jobs");
+    revalidatePath("/projects/map");
+    const message = result.geocoded
+      ? "Project updated and coordinates stored."
+      : result.incompleteAddress
+        ? "Project updated. Add a street address, city, and state to store coordinates."
+        : result.geocodingNotConfigured
+          ? "Project updated. Add the Google Maps server key to store coordinates."
+          : result.addressNotFound
+            ? "Project updated, but Google Maps could not find this address. Check the address and save again."
+            : "Project updated.";
+    redirect(buildJobUrl(jobId, { message, tone: result.addressNotFound ? "error" : "success" }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to update project.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section: "edit-project" }));

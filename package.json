@@ -17,6 +17,7 @@
     "inventory:build-audit-queue": "node scripts/build-inventory-audit-review-queue.mjs",
     "inventory:apply-audit-tags": "node scripts/apply-inventory-audit-tags.mjs",
     "inventory:refresh-audit-tags": "node scripts/refresh-inventory-audit-tags.mjs",
+    "projects:backfill-coordinates": "node scripts/backfill-project-coordinates.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
