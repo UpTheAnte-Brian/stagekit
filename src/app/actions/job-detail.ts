@@ -15,6 +15,8 @@ import {
   deletePackRequest,
   deleteSceneApplication,
   linkRequestedItemToPackRequest,
+  setJobConsultMediaPortfolioCandidate,
+  setJobPortfolioCoverMedia,
   togglePackRequestOptional,
   updateJob,
   updateJobConsult,
@@ -268,6 +270,33 @@ export async function deleteJobConsultMediaAction(formData: FormData) {
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to remove consult media.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
+  }
+}
+
+export async function setPortfolioCandidateAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const mediaId = readString(formData.get("media_id"));
+  const selected = readBoolean(formData.get("selected"));
+  const section = "on-site-consults";
+  if (!mediaId) redirect(buildJobUrl(jobId, { message: "Finished media is required.", tone: "error", section }));
+  try {
+    await setJobConsultMediaPortfolioCandidate({ jobId, mediaId, selected });
+    redirect(buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section }));
+  } catch (error) {
+    redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update portfolio shortlist.", tone: "error", section }));
+  }
+}
+
+export async function setPortfolioCoverAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const mediaId = readString(formData.get("media_id"));
+  const section = "on-site-consults";
+  if (!mediaId) redirect(buildJobUrl(jobId, { message: "Finished media is required.", tone: "error", section }));
+  try {
+    await setJobPortfolioCoverMedia({ jobId, mediaId });
+    redirect(buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section }));
+  } catch (error) {
+    redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to select portfolio cover.", tone: "error", section }));
   }
 }
 

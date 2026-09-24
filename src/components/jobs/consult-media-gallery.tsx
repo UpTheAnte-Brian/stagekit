@@ -8,16 +8,21 @@ type ConsultMedia = {
   id: string;
   file_name: string;
   is_video: boolean;
+  portfolio_candidate: boolean;
+  portfolio_cover: boolean;
   url: string | null;
 };
 
 type ConsultMediaGalleryProps = {
   action: (formData: FormData) => void | Promise<void>;
+  candidateAction?: (formData: FormData) => void | Promise<void>;
+  coverAction?: (formData: FormData) => void | Promise<void>;
+  isFinishedWalkthrough?: boolean;
   jobId: string;
   media: ConsultMedia[];
 };
 
-export function ConsultMediaGallery({ action, jobId, media }: ConsultMediaGalleryProps) {
+export function ConsultMediaGallery({ action, candidateAction, coverAction, isFinishedWalkthrough = false, jobId, media }: ConsultMediaGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeMedia = activeIndex === null ? null : media[activeIndex] ?? null;
 
@@ -52,11 +57,32 @@ export function ConsultMediaGallery({ action, jobId, media }: ConsultMediaGaller
             </button>
             <div className="flex items-center justify-between gap-3 p-3">
               <p className="min-w-0 truncate text-sm font-medium text-[#33413b]">{item.file_name}</p>
-              <form action={action}>
-                <input name="job_id" type="hidden" value={jobId} />
-                <input name="media_id" type="hidden" value={item.id} />
-                <PendingSubmitButton className="text-xs font-semibold text-[#a7502d] hover:underline" pendingLabel="Removing…">Remove</PendingSubmitButton>
-              </form>
+              <div className="flex items-center gap-3">
+                {isFinishedWalkthrough && candidateAction ? (
+                  <form action={candidateAction}>
+                    <input name="job_id" type="hidden" value={jobId} />
+                    <input name="media_id" type="hidden" value={item.id} />
+                    <input name="selected" type="hidden" value={item.portfolio_candidate ? "false" : "true"} />
+                    <PendingSubmitButton className={item.portfolio_candidate ? "text-xs font-semibold text-[#76531e] hover:underline" : "text-xs font-semibold text-[#254238] hover:underline"} pendingLabel="Saving…">
+                      {item.portfolio_candidate ? "Shortlisted" : "Shortlist"}
+                    </PendingSubmitButton>
+                  </form>
+                ) : null}
+                {isFinishedWalkthrough && !item.is_video && coverAction ? (
+                  <form action={coverAction}>
+                    <input name="job_id" type="hidden" value={jobId} />
+                    <input name="media_id" type="hidden" value={item.id} />
+                    <PendingSubmitButton className={item.portfolio_cover ? "text-xs font-semibold text-[#a7502d] hover:underline" : "text-xs font-semibold text-[#254238] hover:underline"} pendingLabel="Saving…">
+                      {item.portfolio_cover ? "Portfolio cover" : "Set cover"}
+                    </PendingSubmitButton>
+                  </form>
+                ) : null}
+                <form action={action}>
+                  <input name="job_id" type="hidden" value={jobId} />
+                  <input name="media_id" type="hidden" value={item.id} />
+                  <PendingSubmitButton className="text-xs font-semibold text-[#a7502d] hover:underline" pendingLabel="Removing…">Remove</PendingSubmitButton>
+                </form>
+              </div>
             </div>
           </div>
         ))}

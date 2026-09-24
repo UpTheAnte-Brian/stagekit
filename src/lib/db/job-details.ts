@@ -267,7 +267,7 @@ export type JobSceneApplication = {
 
 export type JobConsultMedia = Pick<
   JobConsultMediaRow,
-  "id" | "file_name" | "content_type" | "file_size_bytes" | "created_at"
+  "id" | "file_name" | "content_type" | "file_size_bytes" | "created_at" | "portfolio_candidate" | "portfolio_cover"
 > & {
   url: string | null;
   is_video: boolean;
@@ -452,7 +452,7 @@ async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createS
   const consultIds = consults.map((consult) => consult.id);
   const { data: mediaRows, error: mediaError } = await supabase
     .from("job_consult_media")
-    .select("id,consult_id,storage_bucket,storage_path,file_name,content_type,file_size_bytes,created_at")
+    .select("id,consult_id,storage_bucket,storage_path,file_name,content_type,file_size_bytes,created_at,portfolio_candidate,portfolio_cover")
     .in("consult_id", consultIds)
     .order("created_at", { ascending: true });
 
@@ -479,6 +479,8 @@ async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createS
       created_at: media.created_at,
       url: urlsByMediaId.get(media.id) ?? null,
       is_video: media.content_type?.startsWith("video/") ?? false,
+      portfolio_candidate: media.portfolio_candidate,
+      portfolio_cover: media.portfolio_cover,
     });
     mediaByConsultId.set(media.consult_id, mediaForConsult);
   }
@@ -583,6 +585,52 @@ export async function deleteJobConsultMedia(mediaId: string) {
   if (storageError) {
     throw new Error(storageError.message);
   }
+}
+
+async function getFinishedWalkthroughMediaForJob(jobId: string, mediaId: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("job_consult_media")
+    .select("id,consult_id,content_type,job_consults!inner(job_id,visit_type)")
+    .eq("id", mediaId)
+    .eq("job_consults.job_id", jobId)
+    .eq("job_consults.visit_type", "finished_walkthrough")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Choose media from a finished walkthrough.");
+  return data;
+}
+
+export async function setJobConsultMediaPortfolioCandidate({ jobId, mediaId, selected }: { jobId: string; mediaId: string; selected: boolean }) {
+  const media = await getFinishedWalkthroughMediaForJob(jobId, mediaId);
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("job_consult_media")
+    .update(selected ? { portfolio_candidate: true } : { portfolio_candidate: false, portfolio_cover: false })
+    .eq("id", media.id);
+  if (error) throw new Error(error.message);
+}
+
+export async function setJobPortfolioCoverMedia({ jobId, mediaId }: { jobId: string; mediaId: string }) {
+  const media = await getFinishedWalkthroughMediaForJob(jobId, mediaId);
+  if (media.content_type?.startsWith("video/")) throw new Error("Choose a photo as the portfolio cover.");
+
+  const supabase = await createServerSupabaseClient();
+  const { data: visits, error: visitsError } = await supabase
+    .from("job_consults")
+    .select("id")
+    .eq("job_id", jobId)
+    .eq("visit_type", "finished_walkthrough");
+  if (visitsError) throw new Error(visitsError.message);
+
+  const consultIds = (visits ?? []).map((visit) => visit.id);
+  if (consultIds.length > 0) {
+    const { error: clearError } = await supabase.from("job_consult_media").update({ portfolio_cover: false }).in("consult_id", consultIds);
+    if (clearError) throw new Error(clearError.message);
+  }
+
+  const { error } = await supabase.from("job_consult_media").update({ portfolio_candidate: true, portfolio_cover: true }).eq("id", media.id);
+  if (error) throw new Error(error.message);
 }
 
 export async function getJobDetail(jobId: string) {

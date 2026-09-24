@@ -37,6 +37,8 @@ import {
   quickSelectAction,
   savePackRequestAction,
   saveJobConsultAction,
+  setPortfolioCandidateAction,
+  setPortfolioCoverAction,
   toggleOptionalAction,
   updateJobAction,
 } from "@/app/actions/job-detail";
@@ -356,6 +358,7 @@ export default async function JobDetailPage({
   }, {});
   const finishedWalkthroughs = consults.filter((consult) => consult.visit_type === "finished_walkthrough");
   const finishedMediaCount = finishedWalkthroughs.reduce((count, consult) => count + consult.media.length, 0);
+  const portfolioCandidateCount = finishedWalkthroughs.reduce((count, consult) => count + consult.media.filter((media) => media.portfolio_candidate).length, 0);
 
   return (
     <section className="space-y-4 pb-8">
@@ -492,7 +495,7 @@ export default async function JobDetailPage({
                 <h3 className="text-lg font-semibold text-[#20322a]" id="saved-visits-heading">Saved visits</h3>
                 <p className={`${mutedTextClass} mt-1`}>Finished walkthrough media stays separate from planning/reference visits while remaining on the same project timeline.</p>
               </div>
-              <p className={mutedTextClass}>{finishedMediaCount} finished file{finishedMediaCount === 1 ? "" : "s"} ready for future curation.</p>
+              <p className={mutedTextClass}>{portfolioCandidateCount} of {finishedMediaCount} finished file{finishedMediaCount === 1 ? "" : "s"} shortlisted. Shortlisted files are still private.</p>
             </div>
             <div className="mt-5 space-y-3">
               {consults.map((consult) => (
@@ -538,7 +541,14 @@ export default async function JobDetailPage({
                       </form>
                     </PersistentDetails>
                     {consult.media.length > 0 ? (
-                      <ConsultMediaGallery action={deleteJobConsultMediaAction} jobId={id} media={consult.media} />
+                      <ConsultMediaGallery
+                        action={deleteJobConsultMediaAction}
+                        candidateAction={setPortfolioCandidateAction}
+                        coverAction={setPortfolioCoverAction}
+                        isFinishedWalkthrough={consult.visit_type === "finished_walkthrough"}
+                        jobId={id}
+                        media={consult.media}
+                      />
                     ) : null}
                     <ConsultMediaUploadForm
                       consultId={consult.id}

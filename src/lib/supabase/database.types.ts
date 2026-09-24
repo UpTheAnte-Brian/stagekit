@@ -234,6 +234,8 @@ export type Database = {
           file_name: string
           file_size_bytes: number | null
           id: string
+          portfolio_candidate: boolean
+          portfolio_cover: boolean
           storage_bucket: string
           storage_path: string
         }
@@ -244,6 +246,8 @@ export type Database = {
           file_name: string
           file_size_bytes?: number | null
           id?: string
+          portfolio_candidate?: boolean
+          portfolio_cover?: boolean
           storage_bucket?: string
           storage_path: string
         }
@@ -254,6 +258,8 @@ export type Database = {
           file_name?: string
           file_size_bytes?: number | null
           id?: string
+          portfolio_candidate?: boolean
+          portfolio_cover?: boolean
           storage_bucket?: string
           storage_path?: string
         }
