@@ -109,6 +109,10 @@ function formatStatus(value: string) {
     .join(" ");
 }
 
+function visitTypeLabel(value: string) {
+  return value === "finished_walkthrough" ? "Finished walkthrough" : "On-site visit";
+}
+
 function detailsOpen(activeSection: string | null, sectionName: string, fallback = false) {
   return fallback || activeSection === sectionName;
 }
@@ -350,6 +354,8 @@ export default async function JobDetailPage({
     acc[application.scene_template_id] = (acc[application.scene_template_id] ?? 0) + 1;
     return acc;
   }, {});
+  const finishedWalkthroughs = consults.filter((consult) => consult.visit_type === "finished_walkthrough");
+  const finishedMediaCount = finishedWalkthroughs.reduce((count, consult) => count + consult.media.length, 0);
 
   return (
     <section className="space-y-4 pb-8">
@@ -438,7 +444,7 @@ export default async function JobDetailPage({
       </PersistentDetails>
 
       <WorkflowPanels panels={[
-        { id: "capture", label: "Step 1", title: "Capture the visit", status: consults.length === 0 ? "Start with notes, measurements, and photos." : `${consults.length} saved visit${consults.length === 1 ? "" : "s"}` },
+        { id: "capture", label: "Step 1", title: "Capture the visits", status: consults.length === 0 ? "Start with notes, measurements, and photos." : `${consults.length} saved visit${consults.length === 1 ? "" : "s"} • ${finishedMediaCount} finished image${finishedMediaCount === 1 ? "" : "s"}` },
         { id: "pack", label: "Step 2", title: "Build the pack list", status: `${openPackRequests.length} requests • ${fulfilledRequestCount} covered` },
         { id: "fulfillment", label: "Step 3", title: "Pull, deliver & return", status: `${pickedQueueItems.length} in queue • ${activeAssignments.length} checked out` },
       ]}>
@@ -446,9 +452,9 @@ export default async function JobDetailPage({
         <PersistentDetails storageKey={`job:${id}:on-site-consults`} className={`${sectionCardClass} group`} open={detailsOpen(activeSection, "on-site-consults")}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
             <SectionHeader
-              title="1. Capture On-Site Visit"
+              title="1. Capture Project Visits"
               countLabel={buildCountLabel(consults.length, "visit")}
-              description="Save raw notes and room measurements first. Then add today’s photos and larger walkthrough videos directly to the saved visit."
+              description="Keep planning visits and finished walkthroughs in one project timeline. Finished walkthrough images become the record you can later curate for the portfolio."
               right={<span className={quietButtonClass}>Add visit</span>}
             />
             <SectionChevron />
@@ -456,18 +462,25 @@ export default async function JobDetailPage({
 
           <form action={saveJobConsultAction} className="mt-5 grid gap-4 md:grid-cols-2">
             <input name="job_id" type="hidden" value={id} />
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Visit type</label>
+              <select defaultValue="site_visit" name="visit_type">
+                <option value="site_visit">On-site visit — notes, measurements & reference</option>
+                <option value="finished_walkthrough">Finished walkthrough — final rooms & media</option>
+              </select>
+            </div>
             <input name="title" type="hidden" value="On-site visit" />
             <div>
               <label className="mb-2 block text-sm font-semibold text-[#33413b]">When</label>
               <input name="occurred_at" type="datetime-local" />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Walkthrough notes</label>
+              <label className="mb-2 block text-sm font-semibold text-[#33413b]">Visit notes</label>
               <textarea name="notes" placeholder={"Fireplace room\n12’ or 9’ (in front of fireplace) by 13’\n\nSun room\n11’\n\nBed 1 — 11’ x 10.5’"} />
               <p className={`${mutedTextClass} mt-2`}>Keep the notes in the form they happened. You can clean them up later if needed.</p>
             </div>
             <div className="md:col-span-2">
-              <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">Save Visit Notes</PendingSubmitButton>
+              <PendingSubmitButton className={primaryButtonClass} pendingLabel="Saving…">Save Project Visit</PendingSubmitButton>
             </div>
           </form>
         </PersistentDetails>
@@ -477,9 +490,9 @@ export default async function JobDetailPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-[#20322a]" id="saved-visits-heading">Saved visits</h3>
-                <p className={`${mutedTextClass} mt-1`}>Expand a visit to review notes, photos, and videos.</p>
+                <p className={`${mutedTextClass} mt-1`}>Finished walkthrough media stays separate from planning/reference visits while remaining on the same project timeline.</p>
               </div>
-              <p className={mutedTextClass}>Use the pack list below to turn a visit into requests.</p>
+              <p className={mutedTextClass}>{finishedMediaCount} finished file{finishedMediaCount === 1 ? "" : "s"} ready for future curation.</p>
             </div>
             <div className="mt-5 space-y-3">
               {consults.map((consult) => (
@@ -490,6 +503,7 @@ export default async function JobDetailPage({
                       <p className={`${mutedTextClass} mt-1`}>{formatTimestamp(consult.occurred_at)}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <span className={consult.visit_type === "finished_walkthrough" ? "rounded-full bg-[#fbf0df] px-3 py-1 text-xs font-semibold text-[#9a591f]" : "rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]"}>{visitTypeLabel(consult.visit_type)}</span>
                       <span className="rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]">{consult.media.length} file{consult.media.length === 1 ? "" : "s"}</span>
                       <span className={quietButtonClass}>View visit</span>
                     </div>
@@ -504,6 +518,13 @@ export default async function JobDetailPage({
                         <div>
                           <label className="mb-1 block text-xs font-semibold text-[#33413b]">Consult name</label>
                           <input defaultValue={consult.title} name="title" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-[#33413b]">Visit type</label>
+                          <select defaultValue={consult.visit_type} name="visit_type">
+                            <option value="site_visit">On-site visit</option>
+                            <option value="finished_walkthrough">Finished walkthrough</option>
+                          </select>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-semibold text-[#33413b]">When</label>

@@ -273,7 +273,7 @@ export type JobConsultMedia = Pick<
   is_video: boolean;
 };
 
-export type JobConsult = Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at"> & {
+export type JobConsult = Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at" | "visit_type"> & {
   media: JobConsultMedia[];
 };
 
@@ -433,7 +433,7 @@ export async function updateJobStatus(jobId: string, status: "active" | "complet
 async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, jobId: string): Promise<JobConsult[]> {
   const { data: consultRows, error: consultError } = await supabase
     .from("job_consults")
-    .select("id,title,occurred_at,notes,created_at,updated_at")
+    .select("id,title,occurred_at,notes,created_at,updated_at,visit_type")
     .eq("job_id", jobId)
     .order("occurred_at", { ascending: false });
 
@@ -444,7 +444,7 @@ async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createS
     throw new Error(consultError.message);
   }
 
-  const consults = (consultRows ?? []) as Array<Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at">>;
+  const consults = (consultRows ?? []) as Array<Pick<JobConsultRow, "id" | "title" | "occurred_at" | "notes" | "created_at" | "updated_at" | "visit_type">>;
   if (consults.length === 0) {
     return [];
   }
@@ -491,11 +491,13 @@ export async function createJobConsult({
   title,
   occurredAt,
   notes,
+  visitType,
 }: {
   jobId: string;
   title: string;
   occurredAt: string;
   notes: string;
+  visitType: "site_visit" | "finished_walkthrough";
 }) {
   const supabase = await createServerSupabaseClient();
   const {
@@ -508,6 +510,7 @@ export async function createJobConsult({
       title: title.trim() || "On-site consult",
       occurred_at: occurredAt || new Date().toISOString(),
       notes: notes.trim() || null,
+      visit_type: visitType,
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -519,7 +522,7 @@ export async function createJobConsult({
   return data.id;
 }
 
-export async function updateJobConsult({ consultId, title, occurredAt, notes }: { consultId: string; title: string; occurredAt: string; notes: string }) {
+export async function updateJobConsult({ consultId, title, occurredAt, notes, visitType }: { consultId: string; title: string; occurredAt: string; notes: string; visitType: "site_visit" | "finished_walkthrough" }) {
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase
     .from("job_consults")
@@ -527,6 +530,7 @@ export async function updateJobConsult({ consultId, title, occurredAt, notes }: 
       title: title.trim() || "On-site consult",
       occurred_at: occurredAt || new Date().toISOString(),
       notes: notes.trim() || null,
+      visit_type: visitType,
     })
     .eq("id", consultId);
 

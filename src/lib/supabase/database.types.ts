@@ -277,6 +277,7 @@ export type Database = {
           occurred_at: string
           title: string
           updated_at: string
+          visit_type: string
         }
         Insert: {
           created_at?: string
@@ -287,6 +288,7 @@ export type Database = {
           occurred_at?: string
           title?: string
           updated_at?: string
+          visit_type?: string
         }
         Update: {
           created_at?: string
@@ -297,6 +299,7 @@ export type Database = {
           occurred_at?: string
           title?: string
           updated_at?: string
+          visit_type?: string
         }
         Relationships: [
           {

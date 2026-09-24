@@ -4,8 +4,11 @@ import "./globals.css";
 import { AppFrame } from "@/components/web/app-frame";
 
 export const metadata: Metadata = {
-  title: "StageKit",
-  description: "Inventory staging app powered by Next.js and Supabase local dev",
+  title: {
+    default: "AJ Home Staging | Staging Matters",
+    template: "%s | AJ Home Staging",
+  },
+  description: "Thoughtful home staging that helps buyers see what is possible.",
   icons: {
     icon: [
       { url: "/favicon.svg?v=2", type: "image/svg+xml" },

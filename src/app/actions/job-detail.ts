@@ -28,6 +28,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
 const inventoryConditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
 const MAX_CONSULT_MEDIA_BYTES = 1024 * 1024 * 1024;
+const visitTypes = ["site_visit", "finished_walkthrough"] as const;
 
 function readString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -35,6 +36,13 @@ function readString(value: FormDataEntryValue | null) {
 
 function readBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true" || value === "1";
+}
+
+function readVisitType(value: FormDataEntryValue | null) {
+  const visitType = readString(value);
+  return visitTypes.includes(visitType as (typeof visitTypes)[number])
+    ? (visitType as (typeof visitTypes)[number])
+    : "site_visit";
 }
 
 function readConsultMediaFiles(formData: FormData) {
@@ -200,20 +208,25 @@ export async function saveJobConsultAction(formData: FormData) {
   const jobId = readJobId(formData);
   const consultId = readString(formData.get("consult_id"));
   const section = "on-site-consults";
-  const title = readString(formData.get("title"));
+  const submittedTitle = readString(formData.get("title"));
   const occurredAt = readString(formData.get("occurred_at"));
   const notes = readString(formData.get("notes"));
+  const visitType = readVisitType(formData.get("visit_type"));
+  const title = !submittedTitle || (submittedTitle === "On-site visit" && visitType === "finished_walkthrough")
+    ? (visitType === "finished_walkthrough" ? "Finished walkthrough" : "On-site visit")
+    : submittedTitle;
   const files = readConsultMediaFiles(formData);
 
   try {
     if (consultId) {
-      await updateJobConsult({ consultId, title, occurredAt, notes });
-      redirect(buildJobUrl(jobId, { message: "On-site consult updated.", tone: "success", section }));
+      await updateJobConsult({ consultId, title, occurredAt, notes, visitType });
+      redirect(buildJobUrl(jobId, { message: visitType === "finished_walkthrough" ? "Finished walkthrough updated." : "On-site visit updated.", tone: "success", section }));
     }
-    const createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes });
+    const createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes, visitType });
     await uploadConsultMediaFiles(jobId, createdConsultId, files);
     const fileMessage = files.length === 0 ? "" : ` with ${files.length} media file${files.length === 1 ? "" : "s"}`;
-    redirect(buildJobUrl(jobId, { message: `On-site consult saved${fileMessage}.`, tone: "success", section, editRequestId: createdConsultId }));
+    const visitLabel = visitType === "finished_walkthrough" ? "Finished walkthrough" : "On-site visit";
+    redirect(buildJobUrl(jobId, { message: `${visitLabel} saved${fileMessage}.`, tone: "success", section, editRequestId: createdConsultId }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to save on-site consult.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
