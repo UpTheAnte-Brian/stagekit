@@ -27,6 +27,7 @@ import {
   checkInAllItemsAction,
   checkInItemAction,
   createExactInventoryItemForPackRequestAction,
+  createPhotoReleaseAction,
   createSceneTemplateAction,
   deletePackRequestAction,
   deletePickedItemAction,
@@ -273,6 +274,7 @@ export default async function JobDetailPage({
   const activeSection = firstValue(search.section) ?? null;
   const editRequestId = firstValue(search.edit_request) ?? null;
   const pickRequestId = firstValue(search.pick_request) ?? null;
+  const releaseToken = firstValue(search.release) ?? null;
 
   const [{ job, assignments, packRequests, pickedItems, sceneApplications, consults }, packCandidates, sceneTemplates] = await Promise.all([
     getJobDetail(id).catch((error) => {
@@ -560,6 +562,26 @@ export default async function JobDetailPage({
             </div>
           </section>
         ) : null}
+
+        <PersistentDetails storageKey={`job:${id}:portfolio-release`} className={sectionCardClass} id="portfolio-release" open={detailsOpen(activeSection, "portfolio-release")}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <SectionHeader
+              title="Homeowner Photo Approval"
+              description="Create a private, 30-day review link from the finished-media shortlist. Approval is recorded image by image before anything can be shared publicly."
+              right={<span className={quietButtonClass}>Create review link</span>}
+            />
+          </summary>
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+            <form action={createPhotoReleaseAction} className="grid gap-3 sm:grid-cols-2">
+              <input name="job_id" type="hidden" value={id} />
+              <div><label className="mb-1 block text-xs font-semibold text-[#33413b]">Homeowner name</label><input name="recipient_name" placeholder="Optional" /></div>
+              <div><label className="mb-1 block text-xs font-semibold text-[#33413b]">Homeowner email</label><input name="recipient_email" placeholder="Optional — for your reference" type="email" /></div>
+              <fieldset className="sm:col-span-2"><legend className="text-xs font-semibold text-[#33413b]">Request approval for</legend><div className="mt-2 flex flex-wrap gap-4 text-sm text-[#4e584f]"><label><input className="mr-2" defaultChecked name="channels" type="checkbox" value="website" />Website</label><label><input className="mr-2" defaultChecked name="channels" type="checkbox" value="linkedin" />LinkedIn</label><label><input className="mr-2" name="channels" type="checkbox" value="proposals" />Client proposals</label></div></fieldset>
+              <div className="sm:col-span-2"><PendingSubmitButton className={primaryButtonClass} pendingLabel="Creating…">Create private review link</PendingSubmitButton></div>
+            </form>
+            <div className="rounded-2xl border border-[#e7d7bf] bg-[#fff8ef] p-4"><p className="text-sm font-semibold text-[#33413b]">Before you send it</p><p className={`${mutedTextClass} mt-2`}>Only shortlisted finished-walkthrough media will appear. The link is not published, expires in 30 days, and lets the homeowner approve only the images they choose.</p>{releaseToken ? <div className="mt-4 rounded-xl border border-[#d6c49f] bg-white p-3"><p className="text-xs font-semibold uppercase tracking-wide text-[#76531e]">Private review link</p><Link className="mt-1 block break-all text-sm font-semibold text-[#254238] underline" href={`/release/${releaseToken}`} target="_blank">/release/{releaseToken}</Link><p className="mt-2 text-xs text-[#6f756c]">Copy this link into your own email or text when you are ready.</p></div> : null}</div>
+          </div>
+        </PersistentDetails>
       </section>
 
       {job.status === "archived" ? <PersistentDetails storageKey={`job:${id}:archive-readiness`} className={`${sectionCardClass} scroll-mt-6`} id="archive-readiness" open={detailsOpen(activeSection, "archive-readiness", true)}>

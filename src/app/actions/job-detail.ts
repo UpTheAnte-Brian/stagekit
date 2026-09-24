@@ -26,6 +26,7 @@ import {
 } from "@/lib/db/job-details";
 import { assignItemToJob, checkInAllJobItems, checkInItem, createItem, type InventoryItemCondition } from "@/lib/db/inventory";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createPhotoRelease } from "@/lib/db/photo-releases";
 
 const projectStatuses = ["active", "completed", "archived", "cancelled"] as const;
 const inventoryConditionOptions: InventoryItemCondition[] = ["new", "like_new", "good", "fair", "rough"];
@@ -112,12 +113,14 @@ function buildJobUrl(
     section,
     editRequestId,
     pickRequestId,
+    releaseToken,
   }: {
     message?: string;
     tone?: "success" | "error";
     section?: string;
     editRequestId?: string | null;
     pickRequestId?: string | null;
+    releaseToken?: string | null;
   } = {},
 ) {
   const params = new URLSearchParams();
@@ -136,6 +139,9 @@ function buildJobUrl(
   }
   if (pickRequestId) {
     params.set("pick_request", pickRequestId);
+  }
+  if (releaseToken) {
+    params.set("release", releaseToken);
   }
 
   const query = params.toString();
@@ -297,6 +303,22 @@ export async function setPortfolioCoverAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section }));
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to select portfolio cover.", tone: "error", section }));
+  }
+}
+
+export async function createPhotoReleaseAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const section = "portfolio-release";
+  try {
+    const token = await createPhotoRelease({
+      jobId,
+      recipientName: readString(formData.get("recipient_name")),
+      recipientEmail: readString(formData.get("recipient_email")),
+      channels: formData.getAll("channels").filter((value): value is string => typeof value === "string"),
+    });
+    redirect(buildJobUrl(jobId, { message: "Private homeowner review link created. Copy it below when you are ready to send it.", tone: "success", section, releaseToken: token }));
+  } catch (error) {
+    redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to create the homeowner review link.", tone: "error", section }));
   }
 }
 

@@ -78,6 +78,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
                 <span className="block text-sm text-muted">Web workspace for inventory and job operations.</span>
               </span>
             </Link>
+            <Link className="hidden rounded-lg border border-[#c9b58a] bg-[#fffdf9] px-3 py-2 text-sm font-semibold text-[#665021] hover:bg-[#f4ead6] sm:inline-flex" href="/">
+              View AJ site
+            </Link>
             <form action={signOutAction} className="lg:hidden">
               <PendingSubmitButton className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium" pendingLabel="Signing out…">
                 Sign Out

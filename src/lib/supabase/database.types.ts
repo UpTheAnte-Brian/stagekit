@@ -317,6 +317,92 @@ export type Database = {
           },
         ]
       }
+      job_photo_release_items: {
+        Row: {
+          decision: string
+          id: string
+          media_id: string
+          release_id: string
+        }
+        Insert: {
+          decision?: string
+          id?: string
+          media_id: string
+          release_id: string
+        }
+        Update: {
+          decision?: string
+          id?: string
+          media_id?: string
+          release_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_photo_release_items_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "job_consult_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photo_release_items_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "job_photo_releases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_photo_releases: {
+        Row: {
+          access_token: string
+          channels: string[]
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          job_id: string
+          recipient_email: string | null
+          recipient_name: string | null
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          access_token?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          job_id: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          access_token?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          job_id?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_photo_releases_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_items: {
         Row: {
           checked_in_at: string | null
