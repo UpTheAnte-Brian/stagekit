@@ -28,7 +28,7 @@ export default function HomePage() {
           <h1 className="mt-5 max-w-2xl font-serif text-5xl leading-[1.04] tracking-tight text-[#26332c] sm:text-6xl">Staging that lets buyers feel at home.</h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-[#59635c]">AJ Home Staging creates welcoming, considered spaces that help a home stand out—and help buyers imagine the life waiting inside.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className="rounded-full bg-[#283a31] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1d2c25]" href="#contact">Start a conversation</a>
+            <a className="rounded-full bg-[#283a31] px-6 py-3 text-sm font-semibold !text-[#fffdf8] shadow-sm transition hover:bg-[#1d2c25]" href="#contact">Start a conversation</a>
             <a className="rounded-full border border-[#c9b58a] px-6 py-3 text-sm font-semibold text-[#665021] transition hover:bg-[#efe7d5]" href="#portfolio">See our work</a>
           </div>
         </div>
