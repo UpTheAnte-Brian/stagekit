@@ -225,20 +225,23 @@ export async function saveJobConsultAction(formData: FormData) {
     : submittedTitle;
   const files = readConsultMediaFiles(formData);
 
+  let createdConsultId: string | null = null;
+  let fileMessage = "";
   try {
     if (consultId) {
       await updateJobConsult({ consultId, title, occurredAt, notes, visitType });
-      redirect(buildJobUrl(jobId, { message: visitType === "finished_walkthrough" ? "Finished walkthrough updated." : "On-site visit updated.", tone: "success", section }));
+    } else {
+      createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes, visitType });
+      await uploadConsultMediaFiles(jobId, createdConsultId, files);
+      fileMessage = files.length === 0 ? "" : ` with ${files.length} media file${files.length === 1 ? "" : "s"}`;
     }
-    const createdConsultId = await createJobConsult({ jobId, title, occurredAt, notes, visitType });
-    await uploadConsultMediaFiles(jobId, createdConsultId, files);
-    const fileMessage = files.length === 0 ? "" : ` with ${files.length} media file${files.length === 1 ? "" : "s"}`;
-    const visitLabel = visitType === "finished_walkthrough" ? "Finished walkthrough" : "On-site visit";
-    redirect(buildJobUrl(jobId, { message: `${visitLabel} saved${fileMessage}.`, tone: "success", section, editRequestId: createdConsultId }));
   } catch (error) {
     const nextMessage = error instanceof Error ? error.message : "Failed to save on-site consult.";
     redirect(buildJobUrl(jobId, { message: nextMessage, tone: "error", section }));
   }
+
+  const visitLabel = visitType === "finished_walkthrough" ? "Finished walkthrough" : "On-site visit";
+  redirect(buildJobUrl(jobId, { message: createdConsultId ? `${visitLabel} saved${fileMessage}.` : `${visitLabel} updated.`, tone: "success", section, editRequestId: createdConsultId }));
 }
 
 export async function uploadJobConsultMediaAction(formData: FormData) {
@@ -287,10 +290,10 @@ export async function setPortfolioCandidateAction(formData: FormData) {
   if (!mediaId) redirect(buildJobUrl(jobId, { message: "Finished media is required.", tone: "error", section }));
   try {
     await setJobConsultMediaPortfolioCandidate({ jobId, mediaId, selected });
-    redirect(buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section }));
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update portfolio shortlist.", tone: "error", section }));
   }
+  redirect(buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section }));
 }
 
 export async function setPortfolioCoverAction(formData: FormData) {
@@ -300,26 +303,27 @@ export async function setPortfolioCoverAction(formData: FormData) {
   if (!mediaId) redirect(buildJobUrl(jobId, { message: "Finished media is required.", tone: "error", section }));
   try {
     await setJobPortfolioCoverMedia({ jobId, mediaId });
-    redirect(buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section }));
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to select portfolio cover.", tone: "error", section }));
   }
+  redirect(buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section }));
 }
 
 export async function createPhotoReleaseAction(formData: FormData) {
   const jobId = readJobId(formData);
   const section = "portfolio-release";
+  let token = "";
   try {
-    const token = await createPhotoRelease({
+    token = await createPhotoRelease({
       jobId,
       recipientName: readString(formData.get("recipient_name")),
       recipientEmail: readString(formData.get("recipient_email")),
       channels: formData.getAll("channels").filter((value): value is string => typeof value === "string"),
     });
-    redirect(buildJobUrl(jobId, { message: "Private homeowner review link created. Copy it below when you are ready to send it.", tone: "success", section, releaseToken: token }));
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to create the homeowner review link.", tone: "error", section }));
   }
+  redirect(buildJobUrl(jobId, { message: "Private homeowner review link created. Copy it below when you are ready to send it.", tone: "success", section, releaseToken: token }));
 }
 
 export async function archiveProjectAction(formData: FormData) {

@@ -89,3 +89,35 @@ export async function respondToPhotoRelease({ token, approvedItemIds, declined }
   const { error: releaseError } = await supabase.from("job_photo_releases").update({ status: declined ? "declined" : "approved", responded_at: new Date().toISOString() }).eq("id", release.id);
   if (releaseError) throw new Error(releaseError.message);
 }
+
+export async function listApprovedPortfolioMedia() {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data: releases, error: releaseError } = await supabase
+      .from("job_photo_releases")
+      .select("id")
+      .eq("status", "approved")
+      .contains("channels", ["website"])
+      .order("responded_at", { ascending: false })
+      .limit(6);
+    if (releaseError || !releases?.length) return [];
+
+    const { data: items, error: itemError } = await supabase
+      .from("job_photo_release_items")
+      .select("id,job_consult_media!inner(storage_bucket,storage_path,content_type,portfolio_cover)")
+      .in("release_id", releases.map((release) => release.id))
+      .eq("decision", "approved")
+      .limit(6);
+    if (itemError) return [];
+    const approvedPhotos = (items ?? [])
+      .filter((item) => !item.job_consult_media.content_type?.startsWith("video/"))
+      .sort((a, b) => Number(b.job_consult_media.portfolio_cover) - Number(a.job_consult_media.portfolio_cover));
+    return Promise.all(approvedPhotos.map(async (item) => {
+      const media = item.job_consult_media;
+      const { data } = await supabase.storage.from(media.storage_bucket).createSignedUrl(media.storage_path, 60 * 30);
+      return { id: item.id, url: data?.signedUrl ?? null };
+    }));
+  } catch {
+    return [];
+  }
+}

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
+import { PendingLink } from "@/components/web/pending-link";
 
 const services = [
   ["Vacant Staging", "A tailored furniture and accessory plan that helps every room make an immediate impression."],
@@ -6,7 +9,8 @@ const services = [
   ["In-Home Consultations", "A practical room-by-room plan for sellers who want expert direction and a clear next step."],
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const approvedPortfolioMedia = await listApprovedPortfolioMedia();
   return (
     <main className="min-h-screen bg-[#f8f6f1] text-[#1e2622]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-10">
@@ -18,7 +22,7 @@ export default function HomePage() {
           <a href="#services">Services</a>
           <a href="#approach">Our approach</a>
           <a href="#portfolio">Our work</a>
-          <Link className="rounded-full border border-[#aa8644] px-4 py-2 text-[#735722] transition hover:bg-[#aa8644] hover:text-white" href="/login">Client & team login</Link>
+          <Suspense fallback={<Link className="rounded-full border border-[#aa8644] px-4 py-2 text-[#735722]" href="/login">Client & team login</Link>}><PendingLink className="rounded-full border border-[#aa8644] px-4 py-2 text-[#735722] transition hover:bg-[#aa8644] hover:text-white" href="/login" pendingLabel="Opening login…">Client & team login</PendingLink></Suspense>
         </nav>
       </header>
 
@@ -55,7 +59,7 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-10" id="portfolio">
         <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#9e7b39]">Selected work</p><h2 className="mt-3 font-serif text-4xl text-[#26332c]">Finished homes, thoughtfully remembered.</h2></div><p className="max-w-md text-sm leading-6 text-[#657067]">Our portfolio is growing from homeowner-approved finished walkthroughs. Each project will share the finished space while protecting the privacy of the people who lived there.</p></div>
-        <div className="mt-10 grid gap-5 md:grid-cols-3"><div className="aspect-[4/5] rounded-[1.5rem] bg-[#d9d4ca]" /><div className="aspect-[4/5] rounded-[1.5rem] bg-[#bfcbbd] md:mt-10" /><div className="aspect-[4/5] rounded-[1.5rem] bg-[#cbbba6]" /></div>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">{approvedPortfolioMedia.length > 0 ? approvedPortfolioMedia.map((media, index) => <div className={`aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#d9d4ca] ${index % 3 === 1 ? "md:mt-10" : ""}`} key={media.id}>{media.url ? <img alt="AJ Home Staging finished project" className="h-full w-full object-cover" src={media.url} /> : null}</div>) : <><div className="aspect-[4/5] rounded-[1.5rem] bg-[#d9d4ca]" /><div className="aspect-[4/5] rounded-[1.5rem] bg-[#bfcbbd] md:mt-10" /><div className="aspect-[4/5] rounded-[1.5rem] bg-[#cbbba6]" /></>}</div>
       </section>
 
       <section className="bg-[#283a31] px-6 py-16 text-white lg:px-10" id="approach"><div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2"><h2 className="font-serif text-4xl leading-tight">Beautifully staged. Carefully managed.</h2><p className="max-w-xl text-lg leading-8 text-[#d9e3d8]">Behind every finished room is an intentional process—from the first visit to the final walkthrough. Our client experience and project records are designed to make every detail feel considered.</p></div></section>
