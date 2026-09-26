@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
+
+export const dynamic = "force-dynamic";
 import { PendingLink } from "@/components/web/pending-link";
 
 const services = [
