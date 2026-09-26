@@ -428,7 +428,7 @@ export default async function JobDetailPage({
           </div>
           <div className="rounded-2xl border border-[#ecdcc7] bg-[#fff8ef] px-4 py-3 md:col-span-2">
             <p className={mutedTextClass}>
-              {projectLocation ? `Map address: ${projectLocation}, US` : "Add a full address so this project can be pinned on a map later."}
+              {projectLocation ? `Map address: ${projectLocation}` : "Add a full address so this project can be pinned on a map later."}
             </p>
             <p className={`${mutedTextClass} mt-2`}>
               {job.latitude != null && job.longitude != null

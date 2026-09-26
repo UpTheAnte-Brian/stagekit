@@ -18,6 +18,7 @@
     "inventory:apply-audit-tags": "node scripts/apply-inventory-audit-tags.mjs",
     "inventory:refresh-audit-tags": "node scripts/refresh-inventory-audit-tags.mjs",
     "projects:backfill-coordinates": "node scripts/backfill-project-coordinates.mjs",
+    "projects:import-historical": "node scripts/import-historical-projects-to-supabase.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "source": "Quicken Mac transaction data and the AJ Home Staging Google Maps saved list, reviewed 2026-09-25",
+  "source_files": [
+    "Brian's Finances-export-2026-09-25.csv",
+    "AJ Home Staging Google Maps saved list screenshot, 2026-09-25"
+  ],
+  "fields_used": [
+    "Memo/Notes",
+    "Tags",
+    "Category",
+    "Business"
+  ],
+  "purpose": "User-reviewed source list for importing historical staging projects. Transaction amounts are deliberately excluded.",
+  "reviewed_by_user": true,
+  "reviewed_at": "2026-09-25",
+  "import_defaults": {
+    "status": "completed",
+    "country": "US",
+    "notes": "Historical project imported from the reviewed Quicken and Google Maps cleanup list."
+  },
+  "records": [
+    { "candidate_key": "2201-3rd-avenue-minneapolis", "project_name": "2201 3rd Avenue", "address1": "2201 3rd Avenue", "city": "Minneapolis", "state": "MN", "address_confidence": "high", "source_labels": ["2201 3rd Avenue, Minneapolis", "Google Maps: 2201 3rd Ave S"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "20595-park-place", "project_name": "20595 Park Place", "address1": "20595 Park Place", "city": "Excelsior", "state": "MN", "address_confidence": "medium", "source_labels": ["20595 Park Place", "Google Maps: 20595 Park Pl"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "246-9th-avenue-north", "project_name": "246 9th Ave N", "address1": "246 9th Ave N", "city": "Hopkins", "state": "MN", "address_confidence": "high", "source_labels": ["246 9th Ave N", "Google Maps: 246 9th Ave N"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "341-10th-avenue-north", "project_name": "341 10th Ave N", "address1": "341 10th Ave N", "city": "Hopkins", "state": "MN", "address_confidence": "medium", "source_labels": ["341 10th Ave N", "Google Maps: 341 10th Ave N"], "review_status": "needs_city" },
+    { "candidate_key": "1637-longview-drive", "project_name": "1637 Longview Drive", "address1": "1637 Longview Drive", "city": "New Brighton", "state": "MN", "address_confidence": "medium", "source_labels": ["1637 Longview Drive", "Google Maps: 1637 Longview Dr"], "review_status": "needs_city" },
+    { "candidate_key": "1825-forest-view-lane", "project_name": "1825 Forest View Lane", "address1": "1825 Forest View Lane", "city": "Plymouth", "state": "MN", "address_confidence": "medium", "source_labels": ["1825 Forest View Lane", "Google Maps: 1825 Forestview Ln N"], "review_status": "needs_city_and_street_name_confirmation" },
+    { "candidate_key": "hardscrabble", "project_name": "Hardscrabble home", "address1": "5940 Hardscrabble Cir", "city": "Mound", "state": "MN", "address_confidence": "low", "source_labels": ["Hardscrabble"], "review_status": "needs_address" },
+    { "candidate_key": "marshall-loft-apartments", "project_name": "Marshall Loft Apartments", "address1": "250 N Finn St", "city": "St Paul", "state": "MN", "address_confidence": "low", "source_labels": ["Marshall Loft Apartments"], "review_status": "needs_address" },
+    { "candidate_key": "2275-cox-trail", "project_name": "2275 Cox Trail", "address1": "2275 Cox Trail", "city": "Long Lake", "state": "MN", "address_confidence": "medium", "source_labels": ["2275 Cox Trail", "2275 Cox Tr", "Google Maps: 2275 Cox Tr"], "review_status": "needs_city" },
+    { "candidate_key": "3745-togo-road", "project_name": "3745 Togo Road", "address1": "3745 Togo Road", "city": "Wayzata", "state": "MN", "address_confidence": "medium", "source_labels": ["Togo Rd.", "3745 Togo Road Staging Proposal.pdf"], "review_status": "needs_city" },
+    { "candidate_key": "115-chicago-avenue", "project_name": "115 Chicago Ave", "address1": "115 Chicago Ave S", "city": "Wayzata", "state": "MN", "address_confidence": "medium", "source_labels": ["115 Chicago Ave", "Google Maps: 115 Chicago Ave S"], "review_status": "needs_city" },
+    { "candidate_key": "125-hampshire", "project_name": "125 Hampshire", "address1": "1435 Hampshire Ave S", "city": "St Louis Park", "state": "MN", "address_confidence": "low", "source_labels": ["125 Hampshire"], "review_status": "needs_street_type_and_city" },
+    { "candidate_key": "604-upton-avenue-south", "project_name": "604 Upton Ave S", "address1": "604 Upton Ave S", "city": "Minneapolis", "state": "MN", "address_confidence": "medium", "source_labels": ["604 Upton Ave S maybe, if they didn't pay tax", "Google Maps: 604 Upton Ave S"], "review_status": "needs_city" },
+    { "candidate_key": "245-19th-avenue-north", "project_name": "245 19th Avenue North", "address1": "245 19th Avenue North", "city": "Hopkins", "state": "MN", "address_confidence": "medium", "source_labels": ["245 19th Avenue North", "Google Maps: 245 19th Ave N"], "review_status": "needs_city" },
+    { "candidate_key": "hotel-ivy", "project_name": "Hotel Ivy", "address1": "201 S 11th St", "city": "Minneapolis", "state": "MN", "address_confidence": "medium", "source_labels": ["Hotel Ivy", "Google Maps: Hotel Ivy, a Luxury Collection Hotel, Minneapolis"], "review_status": "needs_street_address" },
+    { "candidate_key": "2495-willow-drive-north", "project_name": "2495 Willow Drive North", "address1": "2495 Willow Drive North", "city": "Medina", "state": "MN", "address_confidence": "medium", "source_labels": ["2495 Willow Drive North", "Google Maps: 2495 Willow Dr N"], "review_status": "needs_city" },
+    { "candidate_key": "105-ridgewood-drive", "project_name": "105 Ridgewood Dr", "address1": "105 Ridgewood Dr", "city": "Hopkins", "state": "MN", "address_confidence": "medium", "source_labels": ["105 Ridgewood", "105 Ridgewood Dr", "Google Maps: 105 Ridgewood Dr"], "review_status": "needs_city" },
+    { "candidate_key": "6500-indian-hills-drive", "project_name": "6500 Indian Hills Drive", "address1": "6500 Indian Hills Rd", "city": "Edina", "state": "MN", "address_confidence": "medium", "source_labels": ["6500 Indian Hills…", "6500 Indian Hills Drive"], "review_status": "needs_city" },
+    { "candidate_key": "fox-ridge", "project_name": "Fox Ridge home", "address1": "4281 Fox Ridge Rd", "city": "Eagan", "state": "MN", "address_confidence": "low", "source_labels": ["Fox Ridge"], "review_status": "needs_address" },
+    { "candidate_key": "1080-crest-ridge-court", "project_name": "1080 Crest Ridge Ct", "address1": "1080 Crest Ridge Ct", "city": "Mound", "state": "MN", "address_confidence": "medium", "source_labels": ["1080 Crest Ridge Ct", "Google Maps: 1080 Crest Ridge Ct"], "review_status": "needs_city" },
+    { "candidate_key": "melody-lane", "project_name": "Melody Lane home", "address1": "13111 Melody Ln", "city": "Minnetonka", "state": "MN", "address_confidence": "low", "source_labels": ["Melody Lane"], "review_status": "needs_street_number_and_city" },
+    { "candidate_key": "abbot", "project_name": "Abbot home", "address1": "3823 Abbott Ave S", "city": "Minneapolis", "state": "MN", "address_confidence": "low", "source_labels": ["abbot"], "review_status": "needs_address" },
+    { "candidate_key": "5205-west-61st-street-edina", "project_name": "5205 W 61st St", "address1": "5205 W 61st St", "city": "Edina", "state": "MN", "address_confidence": "high", "source_labels": ["5205 W 61st St", "Edina"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "3806-west-32nd-street-minneapolis", "project_name": "3806 W 32nd Street", "address1": "3806 W 32nd Street", "city": "Minneapolis", "state": "MN", "address_confidence": "high", "source_labels": ["3806 W32nd Street Mpls"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "5126-shady-island-road-shorewood", "project_name": "5126 Shady Island Rd", "address1": "5126 Shady Island Rd", "city": "Shorewood", "state": "MN", "address_confidence": "high", "source_labels": ["5126 Shady Island Rd.", "Shorewood"], "review_status": "ready_for_address_verification" },
+    { "candidate_key": "55-fairhope", "project_name": "55 Fairhope", "address1": "55 Fairhope Ave", "city": "Excelsior", "state": "MN", "address_confidence": "low", "source_labels": ["55 Fairhope", "Google Maps: 55 Fairhope"], "review_status": "needs_street_type_and_city" },
+    { "candidate_key": "18665-highland-avenue", "project_name": "18665 Highland Ave", "address1": "18665 Highland Ave", "city": "Wayzata", "state": "MN", "address_confidence": "medium", "source_labels": ["18665 Highland Ave Proposal.pdf"], "review_status": "needs_city" }
+  ]
+}
