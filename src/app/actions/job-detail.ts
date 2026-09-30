@@ -16,6 +16,7 @@ import {
   deleteSceneApplication,
   linkRequestedItemToPackRequest,
   setJobConsultMediaPortfolioCandidate,
+  setJobConsultMediaRoom,
   setJobPortfolioCoverMedia,
   togglePackRequestOptional,
   updateJob,
@@ -296,6 +297,20 @@ export async function setPortfolioCandidateAction(formData: FormData) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update portfolio shortlist.", tone: "error", section }));
   }
   redirect(buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section }));
+}
+
+export async function setConsultMediaRoomAction(formData: FormData) {
+  const jobId = readJobId(formData);
+  const mediaId = readString(formData.get("media_id"));
+  const roomLabel = readString(formData.get("room_label"));
+  const section = "on-site-consults";
+  if (!mediaId) redirect(buildJobUrl(jobId, { message: "Consult media is required.", tone: "error", section }));
+  try {
+    await setJobConsultMediaRoom({ jobId, mediaId, roomLabel });
+  } catch (error) {
+    redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update the media room.", tone: "error", section }));
+  }
+  redirect(buildJobUrl(jobId, { message: roomLabel ? `Photo linked to ${roomLabel}.` : "Photo room cleared.", tone: "success", section }));
 }
 
 export async function setPortfolioCoverAction(formData: FormData) {

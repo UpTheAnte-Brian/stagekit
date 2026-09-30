@@ -267,7 +267,7 @@ export type JobSceneApplication = {
 
 export type JobConsultMedia = Pick<
   JobConsultMediaRow,
-  "id" | "file_name" | "content_type" | "file_size_bytes" | "created_at" | "portfolio_candidate" | "portfolio_cover"
+  "id" | "file_name" | "content_type" | "file_size_bytes" | "created_at" | "portfolio_candidate" | "portfolio_cover" | "room_label"
 > & {
   url: string | null;
   is_video: boolean;
@@ -452,7 +452,7 @@ async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createS
   const consultIds = consults.map((consult) => consult.id);
   const { data: mediaRows, error: mediaError } = await supabase
     .from("job_consult_media")
-    .select("id,consult_id,storage_bucket,storage_path,file_name,content_type,file_size_bytes,created_at,portfolio_candidate,portfolio_cover")
+    .select("id,consult_id,storage_bucket,storage_path,file_name,content_type,file_size_bytes,created_at,portfolio_candidate,portfolio_cover,room_label")
     .in("consult_id", consultIds)
     .order("created_at", { ascending: true });
 
@@ -481,6 +481,7 @@ async function listJobConsultsCompat(supabase: Awaited<ReturnType<typeof createS
       is_video: media.content_type?.startsWith("video/") ?? false,
       portfolio_candidate: media.portfolio_candidate,
       portfolio_cover: media.portfolio_cover,
+      room_label: media.room_label,
     });
     mediaByConsultId.set(media.consult_id, mediaForConsult);
   }
@@ -585,6 +586,24 @@ export async function deleteJobConsultMedia(mediaId: string) {
   if (storageError) {
     throw new Error(storageError.message);
   }
+}
+
+export async function setJobConsultMediaRoom({ jobId, mediaId, roomLabel }: { jobId: string; mediaId: string; roomLabel: string }) {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("job_consult_media")
+    .select("id,job_consults!inner(job_id)")
+    .eq("id", mediaId)
+    .eq("job_consults.job_id", jobId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Choose media from this project.");
+
+  const { error: updateError } = await supabase
+    .from("job_consult_media")
+    .update({ room_label: roomLabel.trim().replace(/\s+/g, " ") || null })
+    .eq("id", mediaId);
+  if (updateError) throw new Error(updateError.message);
 }
 
 async function getFinishedWalkthroughMediaForJob(jobId: string, mediaId: string) {

@@ -236,6 +236,7 @@ export type Database = {
           id: string
           portfolio_candidate: boolean
           portfolio_cover: boolean
+          room_label: string | null
           storage_bucket: string
           storage_path: string
         }
@@ -248,6 +249,7 @@ export type Database = {
           id?: string
           portfolio_candidate?: boolean
           portfolio_cover?: boolean
+          room_label?: string | null
           storage_bucket?: string
           storage_path: string
         }
@@ -260,6 +262,7 @@ export type Database = {
           id?: string
           portfolio_candidate?: boolean
           portfolio_cover?: boolean
+          room_label?: string | null
           storage_bucket?: string
           storage_path?: string
         }

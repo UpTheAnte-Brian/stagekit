@@ -38,6 +38,7 @@ import {
   quickSelectAction,
   savePackRequestAction,
   saveJobConsultAction,
+  setConsultMediaRoomAction,
   setPortfolioCandidateAction,
   setPortfolioCoverAction,
   toggleOptionalAction,
@@ -361,6 +362,14 @@ export default async function JobDetailPage({
   const finishedWalkthroughs = consults.filter((consult) => consult.visit_type === "finished_walkthrough");
   const finishedMediaCount = finishedWalkthroughs.reduce((count, consult) => count + consult.media.length, 0);
   const portfolioCandidateCount = finishedWalkthroughs.reduce((count, consult) => count + consult.media.filter((media) => media.portfolio_candidate).length, 0);
+  const projectRoomOptions = [...new Set(openPackRequestsByRoom.map(([roomLabel]) => roomLabel).filter((roomLabel) => roomLabel !== "No room"))];
+  const roomMediaByKey = consults.flatMap((consult) => consult.media)
+    .filter((media) => !media.is_video && Boolean(normalizeRoomLabel(media.room_label)))
+    .reduce<Map<string, typeof consults[number]["media"]>>((groups, media) => {
+      const key = roomGroupKey(media.room_label);
+      groups.set(key, [...(groups.get(key) ?? []), media]);
+      return groups;
+    }, new Map());
 
   return (
     <section className="space-y-4 pb-8">
@@ -550,6 +559,8 @@ export default async function JobDetailPage({
                         isFinishedWalkthrough={consult.visit_type === "finished_walkthrough"}
                         jobId={id}
                         media={consult.media}
+                        roomAction={setConsultMediaRoomAction}
+                        roomOptions={projectRoomOptions}
                       />
                     ) : null}
                     <ConsultMediaUploadForm
@@ -1005,6 +1016,19 @@ export default async function JobDetailPage({
                     <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </summary>
+                {(roomMediaByKey.get(roomGroupKey(roomLabel)) ?? []).length > 0 ? (
+                  <div className="flex gap-3 overflow-x-auto rounded-2xl border border-[#d8e6dd] bg-[#f7fbf8] p-3">
+                    {(roomMediaByKey.get(roomGroupKey(roomLabel)) ?? []).map((media) => (
+                      <a className="relative block h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-[#cfe0d4] bg-[#20322a]" href="#on-site-consults" key={media.id} title={`Open ${media.file_name} in Project Visits`}>
+                        {media.url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img alt={`${roomLabel} reference: ${media.file_name}`} className="h-full w-full object-cover" loading="lazy" src={media.url} />
+                        ) : <span className="flex h-full items-center justify-center p-2 text-center text-xs text-white">Preview unavailable</span>}
+                      </a>
+                    ))}
+                    <p className="min-w-36 self-center text-sm leading-5 text-[#4e584f]">{roomLabel} reference photos<br /><span className="text-xs text-[#6f756c]">From project visits</span></p>
+                  </div>
+                ) : null}
                 {requests.map((request) => {
                   return (
                     <PersistentDetails

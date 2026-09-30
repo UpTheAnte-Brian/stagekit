@@ -10,6 +10,7 @@ type ConsultMedia = {
   is_video: boolean;
   portfolio_candidate: boolean;
   portfolio_cover: boolean;
+  room_label: string | null;
   url: string | null;
 };
 
@@ -20,9 +21,11 @@ type ConsultMediaGalleryProps = {
   isFinishedWalkthrough?: boolean;
   jobId: string;
   media: ConsultMedia[];
+  roomOptions?: string[];
+  roomAction?: (formData: FormData) => void | Promise<void>;
 };
 
-export function ConsultMediaGallery({ action, candidateAction, coverAction, isFinishedWalkthrough = false, jobId, media }: ConsultMediaGalleryProps) {
+export function ConsultMediaGallery({ action, candidateAction, coverAction, isFinishedWalkthrough = false, jobId, media, roomOptions = [], roomAction }: ConsultMediaGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeMedia = activeIndex === null ? null : media[activeIndex] ?? null;
 
@@ -56,7 +59,20 @@ export function ConsultMediaGallery({ action, candidateAction, coverAction, isFi
               <span className="absolute bottom-2 right-2 rounded-full bg-[#16382d]/85 px-2 py-1 text-xs font-semibold text-white">{item.is_video ? "Play" : "View"}</span>
             </button>
             <div className="flex items-center justify-between gap-3 p-3">
-              <p className="min-w-0 truncate text-sm font-medium text-[#33413b]">{item.file_name}</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#33413b]">{item.file_name}</p>
+                {roomAction ? (
+                  <form action={roomAction} className="mt-2 flex items-center gap-2">
+                    <input name="job_id" type="hidden" value={jobId} />
+                    <input name="media_id" type="hidden" value={item.id} />
+                    <input aria-label={`Room for ${item.file_name}`} className="min-w-0 rounded-md border border-[#e3d0ba] bg-white px-2 py-1 text-xs" defaultValue={item.room_label ?? ""} list={`project-rooms-${item.id}`} name="room_label" placeholder="Link to room" />
+                    <datalist id={`project-rooms-${item.id}`}>
+                      {roomOptions.map((room) => <option key={room} value={room} />)}
+                    </datalist>
+                    <PendingSubmitButton className="shrink-0 text-xs font-semibold text-[#254238] hover:underline" pendingLabel="Saving…">Save room</PendingSubmitButton>
+                  </form>
+                ) : item.room_label ? <p className="mt-1 text-xs font-medium text-[#60766a]">{item.room_label}</p> : null}
+              </div>
               <div className="flex items-center gap-3">
                 {isFinishedWalkthrough && candidateAction ? (
                   <form action={candidateAction}>

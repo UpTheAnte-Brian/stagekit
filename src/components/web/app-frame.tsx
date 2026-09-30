@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { signOutAction } from "@/app/actions/auth";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
+import { PendingBlockLink } from "@/components/web/pending-block-link";
 
 type NavItem = {
   href: string;
@@ -78,9 +79,9 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
                 <span className="block text-sm text-muted">Web workspace for inventory and job operations.</span>
               </span>
             </Link>
-            <Link className="hidden rounded-lg border border-[#c9b58a] bg-[#fffdf9] px-3 py-2 text-sm font-semibold text-[#665021] hover:bg-[#f4ead6] sm:inline-flex" href="/">
+            <PendingBlockLink className="hidden rounded-lg border border-[#c9b58a] bg-[#fffdf9] px-3 py-2 text-sm font-semibold text-[#665021] hover:bg-[#f4ead6] sm:inline-flex" href="/" pendingLabel="Opening site…">
               View AJ site
-            </Link>
+            </PendingBlockLink>
             <form action={signOutAction} className="lg:hidden">
               <PendingSubmitButton className="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium" pendingLabel="Signing out…">
                 Sign Out
@@ -92,10 +93,10 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
-                <Link key={item.href} className={navItemClass(active)} href={item.href}>
+                <PendingBlockLink key={item.href} className={navItemClass(active)} href={item.href} pendingLabel={`Loading ${item.label}…`}>
                   <div className={`text-sm font-semibold ${navLabelClass(active)}`}>{item.label}</div>
                   <div className={`mt-1 text-xs ${navDescriptionClass(active)}`}>{item.description}</div>
-                </Link>
+                </PendingBlockLink>
               );
             })}
           </nav>
@@ -117,16 +118,17 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         {navItems.map((item) => {
           const active = isActivePath(pathname, item.href);
           return (
-            <Link
+            <PendingBlockLink
               key={item.href}
               className={[
                 "rounded-xl px-3 py-3 text-center text-sm font-medium transition",
                 active ? "bg-[#173f97] text-white" : "text-muted hover:bg-slate-50 hover:text-foreground",
               ].join(" ")}
               href={item.href}
+              pendingLabel={`Loading ${item.label}…`}
             >
               {item.label}
-            </Link>
+            </PendingBlockLink>
           );
         })}
       </nav>
