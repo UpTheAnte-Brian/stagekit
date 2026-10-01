@@ -513,13 +513,12 @@ export default async function JobDetailPage({
                 <PersistentDetails storageKey={`job:${id}:consult:${consult.id}`} key={consult.id} className="rounded-2xl border border-[#ecdcc7] bg-white p-4" open={consult.id === editRequestId}>
                   <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3 [&::-webkit-details-marker]:hidden">
                     <div>
-                      <h4 className="text-lg font-semibold text-[#20322a]">{consult.title}</h4>
+                      <h4 className="text-lg font-semibold text-[#20322a] underline decoration-[#9fb7aa] decoration-2 underline-offset-4">{consult.title}</h4>
                       <p className={`${mutedTextClass} mt-1`}>{formatTimestamp(consult.occurred_at)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={consult.visit_type === "finished_walkthrough" ? "rounded-full bg-[#fbf0df] px-3 py-1 text-xs font-semibold text-[#9a591f]" : "rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]"}>{visitTypeLabel(consult.visit_type)}</span>
                       <span className="rounded-full bg-[#f7fbf8] px-3 py-1 text-xs font-semibold text-[#254238]">{consult.media.length} file{consult.media.length === 1 ? "" : "s"}</span>
-                      <span className={quietButtonClass}>View visit</span>
                     </div>
                   </summary>
                   <div className="mt-4 border-t border-[#ecdcc7] pt-4">

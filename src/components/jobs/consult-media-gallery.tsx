@@ -62,14 +62,17 @@ export function ConsultMediaGallery({ action, candidateAction, coverAction, isFi
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[#33413b]">{item.file_name}</p>
                 {roomAction ? (
-                  <form action={roomAction} className="mt-2 flex items-center gap-2">
+                  <form action={roomAction} className="mt-3">
                     <input name="job_id" type="hidden" value={jobId} />
                     <input name="media_id" type="hidden" value={item.id} />
-                    <input aria-label={`Room for ${item.file_name}`} className="min-w-0 rounded-md border border-[#e3d0ba] bg-white px-2 py-1 text-xs" defaultValue={item.room_label ?? ""} list={`project-rooms-${item.id}`} name="room_label" placeholder="Link to room" />
-                    <datalist id={`project-rooms-${item.id}`}>
-                      {roomOptions.map((room) => <option key={room} value={room} />)}
-                    </datalist>
-                    <PendingSubmitButton className="shrink-0 text-xs font-semibold text-[#254238] hover:underline" pendingLabel="Saving…">Save room</PendingSubmitButton>
+                    <label className="block text-xs font-semibold text-[#526158]" htmlFor={`room-${item.id}`}>Room</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input aria-label={`Room for ${item.file_name}`} className="min-w-0 flex-1 rounded-md border border-[#c9b58a] bg-white px-2 py-1.5 text-xs" defaultValue={item.room_label ?? ""} id={`room-${item.id}`} list={`project-rooms-${item.id}`} name="room_label" placeholder="Choose or type a room" />
+                      <datalist id={`project-rooms-${item.id}`}>
+                        {roomOptions.map((room) => <option key={room} value={room} />)}
+                      </datalist>
+                      <PendingSubmitButton className="shrink-0 rounded-md bg-[#254238] px-2 py-1.5 text-xs font-semibold text-white hover:bg-[#16382d]" pendingLabel="Saving…">Save</PendingSubmitButton>
+                    </div>
                   </form>
                 ) : item.room_label ? <p className="mt-1 text-xs font-medium text-[#60766a]">{item.room_label}</p> : null}
               </div>
