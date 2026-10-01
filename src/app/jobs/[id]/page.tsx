@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { JobExactItemPicker } from "@/components/jobs/job-exact-item-picker";
 import { JobQuickSelectPicker } from "@/components/jobs/job-quick-select-picker";
 import { ConsultMediaGallery } from "@/components/jobs/consult-media-gallery";
+import { RoomReferenceGallery } from "@/components/jobs/room-reference-gallery";
 import { ConsultMediaUploadForm } from "@/components/jobs/consult-media-upload-form";
 import { CheckInAllItemsForm } from "@/components/jobs/check-in-all-items-form";
 import { WorkflowPanels } from "@/components/jobs/workflow-panels";
@@ -1015,17 +1016,7 @@ export default async function JobDetailPage({
                   </svg>
                 </summary>
                 {(roomMediaByKey.get(roomGroupKey(roomLabel)) ?? []).length > 0 ? (
-                  <div className="flex gap-3 overflow-x-auto rounded-2xl border border-[#d8e6dd] bg-[#f7fbf8] p-3">
-                    {(roomMediaByKey.get(roomGroupKey(roomLabel)) ?? []).map((media) => (
-                      <a className="relative block h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-[#cfe0d4] bg-[#20322a]" href="#on-site-consults" key={media.id} title={`Open ${media.file_name} in Project Visits`}>
-                        {media.url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img alt={`${roomLabel} reference: ${media.file_name}`} className="h-full w-full object-cover" loading="lazy" src={media.url} />
-                        ) : <span className="flex h-full items-center justify-center p-2 text-center text-xs text-white">Preview unavailable</span>}
-                      </a>
-                    ))}
-                    <p className="min-w-36 self-center text-sm leading-5 text-[#4e584f]">{roomLabel} reference photos<br /><span className="text-xs text-[#6f756c]">From project visits</span></p>
-                  </div>
+                  <RoomReferenceGallery media={roomMediaByKey.get(roomGroupKey(roomLabel)) ?? []} roomLabel={roomLabel} />
                 ) : null}
                 {requests.map((request) => {
                   return (
