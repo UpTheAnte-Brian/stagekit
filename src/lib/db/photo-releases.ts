@@ -10,19 +10,18 @@ export async function createPhotoRelease({ jobId, recipientName, recipientEmail,
   const { data: visits, error: visitError } = await supabase
     .from("job_consults")
     .select("id")
-    .eq("job_id", jobId)
-    .eq("visit_type", "finished_walkthrough");
+    .eq("job_id", jobId);
   if (visitError) throw new Error(visitError.message);
 
   const visitIds = (visits ?? []).map((visit) => visit.id);
-  if (visitIds.length === 0) throw new Error("Add a finished walkthrough and shortlist its best images first.");
+  if (visitIds.length === 0) throw new Error("Add a project visit and shortlist its best images first.");
   const { data: media, error: mediaError } = await supabase
     .from("job_consult_media")
     .select("id")
     .in("consult_id", visitIds)
     .eq("portfolio_candidate", true);
   if (mediaError) throw new Error(mediaError.message);
-  if (!media?.length) throw new Error("Shortlist at least one finished image before creating a homeowner release.");
+  if (!media?.length) throw new Error("Shortlist at least one image before creating a homeowner release.");
 
   const selectedChannels = channels.filter((channel): channel is (typeof allowedChannels)[number] => allowedChannels.includes(channel as (typeof allowedChannels)[number]));
   const { data: userData } = await supabase.auth.getUser();

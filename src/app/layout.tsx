@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 
 import { AppFrame } from "@/components/web/app-frame";
@@ -26,7 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
-        <AppFrame>{children}</AppFrame>
+        <Suspense fallback={<main className="min-h-screen bg-[#f8f6f1]" />}>
+          <AppFrame>{children}</AppFrame>
+        </Suspense>
       </body>
     </html>
   );

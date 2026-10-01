@@ -18,14 +18,14 @@ type ConsultMediaGalleryProps = {
   action: (formData: FormData) => void | Promise<void>;
   candidateAction?: (formData: FormData) => void | Promise<void>;
   coverAction?: (formData: FormData) => void | Promise<void>;
-  isFinishedWalkthrough?: boolean;
+  isPublicEligible?: boolean;
   jobId: string;
   media: ConsultMedia[];
   roomOptions?: string[];
   roomAction?: (formData: FormData) => void | Promise<void>;
 };
 
-export function ConsultMediaGallery({ action, candidateAction, coverAction, isFinishedWalkthrough = false, jobId, media, roomOptions = [], roomAction }: ConsultMediaGalleryProps) {
+export function ConsultMediaGallery({ action, candidateAction, coverAction, isPublicEligible = false, jobId, media, roomOptions = [], roomAction }: ConsultMediaGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activeMedia = activeIndex === null ? null : media[activeIndex] ?? null;
 
@@ -77,7 +77,7 @@ export function ConsultMediaGallery({ action, candidateAction, coverAction, isFi
                 ) : item.room_label ? <p className="mt-1 text-xs font-medium text-[#60766a]">{item.room_label}</p> : null}
               </div>
               <div className="flex items-center gap-3">
-                {isFinishedWalkthrough && candidateAction ? (
+                {isPublicEligible && candidateAction ? (
                   <form action={candidateAction}>
                     <input name="job_id" type="hidden" value={jobId} />
                     <input name="media_id" type="hidden" value={item.id} />
@@ -87,7 +87,7 @@ export function ConsultMediaGallery({ action, candidateAction, coverAction, isFi
                     </PendingSubmitButton>
                   </form>
                 ) : null}
-                {isFinishedWalkthrough && !item.is_video && coverAction ? (
+                {isPublicEligible && !item.is_video && coverAction ? (
                   <form action={coverAction}>
                     <input name="job_id" type="hidden" value={jobId} />
                     <input name="media_id" type="hidden" value={item.id} />

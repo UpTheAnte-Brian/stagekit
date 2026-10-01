@@ -606,22 +606,21 @@ export async function setJobConsultMediaRoom({ jobId, mediaId, roomLabel }: { jo
   if (updateError) throw new Error(updateError.message);
 }
 
-async function getFinishedWalkthroughMediaForJob(jobId: string, mediaId: string) {
+async function getJobMediaForPortfolio(jobId: string, mediaId: string) {
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase
     .from("job_consult_media")
     .select("id,consult_id,content_type,job_consults!inner(job_id,visit_type)")
     .eq("id", mediaId)
     .eq("job_consults.job_id", jobId)
-    .eq("job_consults.visit_type", "finished_walkthrough")
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Choose media from a finished walkthrough.");
+  if (!data) throw new Error("Choose media from this project.");
   return data;
 }
 
 export async function setJobConsultMediaPortfolioCandidate({ jobId, mediaId, selected }: { jobId: string; mediaId: string; selected: boolean }) {
-  const media = await getFinishedWalkthroughMediaForJob(jobId, mediaId);
+  const media = await getJobMediaForPortfolio(jobId, mediaId);
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase
     .from("job_consult_media")
@@ -631,15 +630,14 @@ export async function setJobConsultMediaPortfolioCandidate({ jobId, mediaId, sel
 }
 
 export async function setJobPortfolioCoverMedia({ jobId, mediaId }: { jobId: string; mediaId: string }) {
-  const media = await getFinishedWalkthroughMediaForJob(jobId, mediaId);
+  const media = await getJobMediaForPortfolio(jobId, mediaId);
   if (media.content_type?.startsWith("video/")) throw new Error("Choose a photo as the portfolio cover.");
 
   const supabase = await createServerSupabaseClient();
   const { data: visits, error: visitsError } = await supabase
     .from("job_consults")
     .select("id")
-    .eq("job_id", jobId)
-    .eq("visit_type", "finished_walkthrough");
+    .eq("job_id", jobId);
   if (visitsError) throw new Error(visitsError.message);
 
   const consultIds = (visits ?? []).map((visit) => visit.id);
