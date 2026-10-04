@@ -93,7 +93,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
-                <PendingBlockLink key={item.href} className={navItemClass(active)} href={item.href} pendingLabel={`Loading ${item.label}…`}>
+                <PendingBlockLink key={`${item.href}-${pathname}`} className={navItemClass(active)} href={item.href} pendingLabel={`Loading ${item.label}…`}>
                   <div className={`text-sm font-semibold ${navLabelClass(active)}`}>{item.label}</div>
                   <div className={`mt-1 text-xs ${navDescriptionClass(active)}`}>{item.description}</div>
                 </PendingBlockLink>
@@ -119,7 +119,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           const active = isActivePath(pathname, item.href);
           return (
             <PendingBlockLink
-              key={item.href}
+              key={`${item.href}-${pathname}`}
               className={[
                 "rounded-xl px-3 py-3 text-center text-sm font-medium transition",
                 active ? "bg-[#173f97] text-white" : "text-muted hover:bg-slate-50 hover:text-foreground",

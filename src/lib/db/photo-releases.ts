@@ -5,6 +5,15 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const allowedChannels = ["website", "linkedin", "proposals"] as const;
 
+export type PublicWorkPlace = {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  beforeUrl: string;
+  afterUrl: string;
+};
+
 export async function createPhotoRelease({ jobId, recipientName, recipientEmail, channels }: { jobId: string; recipientName: string; recipientEmail: string; channels: string[] }) {
   const supabase = await createServerSupabaseClient();
   const { data: visits, error: visitError } = await supabase
@@ -116,6 +125,90 @@ export async function listApprovedPortfolioMedia() {
       const { data } = await supabase.storage.from(media.storage_bucket).createSignedUrl(media.storage_path, 60 * 30);
       return { id: item.id, url: data?.signedUrl ?? null };
     }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns only website-approved image pairs for the public work map. Locations
+ * are rounded to a nearby community point so the map never reveals an address.
+ */
+export async function listPublicWorkPlaces(): Promise<PublicWorkPlace[]> {
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const { data: releases, error: releasesError } = await supabase
+      .from("job_photo_releases")
+      .select("id,job_id")
+      .eq("status", "approved")
+      .contains("channels", ["website"]);
+    if (releasesError || !releases?.length) return [];
+
+    const { data: releaseItems, error: releaseItemsError } = await supabase
+      .from("job_photo_release_items")
+      .select("media_id,release_id")
+      .in("release_id", releases.map((release) => release.id))
+      .eq("decision", "approved");
+    if (releaseItemsError || !releaseItems?.length) return [];
+
+    const jobIdByReleaseId = new Map(releases.map((release) => [release.id, release.job_id]));
+    const approvedMediaIds = [...new Set(releaseItems.map((item) => item.media_id))];
+    const { data: media, error: mediaError } = await supabase
+      .from("job_consult_media")
+      .select("id,consult_id,storage_bucket,storage_path,content_type,created_at")
+      .in("id", approvedMediaIds)
+      .like("content_type", "image/%")
+      .order("created_at", { ascending: true });
+    if (mediaError || !media?.length) return [];
+
+    const { data: consults, error: consultsError } = await supabase
+      .from("job_consults")
+      .select("id,job_id,visit_type")
+      .in("id", [...new Set(media.map((item) => item.consult_id))]);
+    if (consultsError || !consults?.length) return [];
+
+    const { data: jobs, error: jobsError } = await supabase
+      .from("jobs")
+      .select("id,city,latitude,longitude")
+      .in("id", [...new Set(releases.map((release) => release.job_id))])
+      .not("latitude", "is", null)
+      .not("longitude", "is", null);
+    if (jobsError || !jobs?.length) return [];
+
+    const consultById = new Map(consults.map((consult) => [consult.id, consult]));
+    const approvedJobIdsByMediaId = new Map<string, Set<string>>();
+    for (const item of releaseItems) {
+      const jobId = jobIdByReleaseId.get(item.release_id);
+      if (jobId) approvedJobIdsByMediaId.set(item.media_id, new Set([...(approvedJobIdsByMediaId.get(item.media_id) ?? []), jobId]));
+    }
+    const imagesByJobId = new Map<string, { before?: typeof media[number]; after?: typeof media[number] }>();
+    for (const image of media) {
+      const consult = consultById.get(image.consult_id);
+      if (!consult || !approvedJobIdsByMediaId.get(image.id)?.has(consult.job_id)) continue;
+      const images = imagesByJobId.get(consult.job_id) ?? {};
+      if (consult.visit_type === "finished_walkthrough") images.after ??= image;
+      else images.before ??= image;
+      imagesByJobId.set(consult.job_id, images);
+    }
+
+    const places = await Promise.all(jobs.map(async (job) => {
+      const images = imagesByJobId.get(job.id);
+      if (!images?.before || !images.after || job.latitude == null || job.longitude == null) return null;
+      const [before, after] = await Promise.all([images.before, images.after].map(async (image) => {
+        const { data } = await supabase.storage.from(image.storage_bucket).createSignedUrl(image.storage_path, 60 * 30);
+        return data?.signedUrl ?? null;
+      }));
+      if (!before || !after) return null;
+      return {
+        id: job.id,
+        label: `${job.city?.trim() || "Twin Cities"} home`,
+        latitude: Math.round(job.latitude * 100) / 100,
+        longitude: Math.round(job.longitude * 100) / 100,
+        beforeUrl: before,
+        afterUrl: after,
+      };
+    }));
+    return places.filter((place): place is PublicWorkPlace => place !== null);
   } catch {
     return [];
   }
