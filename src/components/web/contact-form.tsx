@@ -8,9 +8,10 @@ export function ContactForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setStatus("sending");
     setError("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -18,7 +19,7 @@ export function ContactForm() {
       setStatus("error");
       return;
     }
-    event.currentTarget.reset();
+    formElement.reset();
     setStatus("sent");
   }
 
