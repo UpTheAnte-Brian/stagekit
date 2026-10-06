@@ -134,7 +134,7 @@ async function buildUniqueSceneSlug(name: string) {
 async function listJobPackRequestsCompat(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, jobId: string) {
   const { data, error } = await supabase
     .from("job_pack_requests")
-    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id,scene_application_id,scene_template_item_id")
+    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id,scene_application_id,scene_template_item_id,created_by")
     .eq("job_id", jobId)
     .order("created_at", { ascending: false });
 
@@ -142,7 +142,7 @@ async function listJobPackRequestsCompat(supabase: Awaited<ReturnType<typeof cre
     return (data ?? []) as Array<
       Pick<
         JobPackRequestRow,
-        "id" | "request_text" | "quantity" | "room" | "category" | "color" | "notes" | "optional" | "status" | "requested_item_id" | "scene_application_id" | "scene_template_item_id"
+        "id" | "request_text" | "quantity" | "room" | "category" | "color" | "notes" | "optional" | "status" | "requested_item_id" | "scene_application_id" | "scene_template_item_id" | "created_by"
       >
     >;
   }
@@ -153,7 +153,7 @@ async function listJobPackRequestsCompat(supabase: Awaited<ReturnType<typeof cre
 
   const { data: fallbackData, error: fallbackError } = await supabase
     .from("job_pack_requests")
-    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id")
+    .select("id,request_text,quantity,room,category,color,notes,optional,status,requested_item_id,created_by")
     .eq("job_id", jobId)
     .order("created_at", { ascending: false });
 
@@ -231,6 +231,7 @@ export type JobPickItem = {
   item_room: string | null;
   item_dimensions: string | null;
   thumbnail_url: string | null;
+  picked_by_name: string | null;
 };
 
 export type JobPackRequest = {
@@ -252,6 +253,7 @@ export type JobPackRequest = {
   active_job_names: string[];
   picked_items: JobPickItem[];
   picked_count: number;
+  created_by_name: string | null;
 };
 
 export type JobSceneApplication = {
@@ -671,7 +673,7 @@ export async function getJobDetail(jobId: string) {
   ] = await Promise.all([
     supabase.from("job_items").select("id,item_id,checked_out_at,checked_in_at").eq("job_id", jobId).order("checked_out_at", { ascending: false }),
     listJobPackRequestsCompat(supabase, jobId),
-    supabase.from("job_pick_items").select("id,job_id,pack_request_id,item_id,notes,created_at").eq("job_id", jobId).order("created_at", { ascending: false }),
+    supabase.from("job_pick_items").select("id,job_id,pack_request_id,item_id,notes,created_at,picked_by").eq("job_id", jobId).order("created_at", { ascending: false }),
     listJobSceneApplicationsCompat(supabase, jobId),
     listJobConsultsCompat(supabase, jobId),
   ]);
@@ -682,6 +684,13 @@ export async function getJobDetail(jobId: string) {
   if (pickedItemsError) {
     throw new Error(pickedItemsError.message);
   }
+
+  const actorIds = [...new Set([...packRequests.map((row) => row.created_by), ...(pickedItems ?? []).map((row) => row.picked_by)].filter((id): id is string => Boolean(id)))];
+  const { data: actorProfiles, error: actorProfilesError } = actorIds.length === 0
+    ? { data: [], error: null }
+    : await supabase.from("user_profiles").select("id,display_name").in("id", actorIds);
+  if (actorProfilesError) throw new Error(actorProfilesError.message);
+  const actorNameById = new Map((actorProfiles ?? []).map((profile) => [profile.id, profile.display_name]));
 
   const assignedItemIds = [...new Set((jobItems ?? []).map((row) => row.item_id))];
   const requestedItemIds = [...new Set(packRequests.map((row) => row.requested_item_id).filter((value): value is string => Boolean(value)))];
@@ -780,6 +789,7 @@ export async function getJobDetail(jobId: string) {
       item_room: item?.room ?? null,
       item_dimensions: item?.dimensions ?? null,
       thumbnail_url: thumbnailUrlByItemId.get(pickedItem.item_id) ?? null,
+      picked_by_name: pickedItem.picked_by ? actorNameById.get(pickedItem.picked_by) ?? null : null,
     };
   }) as JobPickItem[];
 
@@ -817,6 +827,7 @@ export async function getJobDetail(jobId: string) {
         request.requested_item_id != null ? [...new Set((activeJobNamesByItemId[request.requested_item_id] ?? []).filter((name) => name !== job.name))] : [],
       picked_items: requestPickedItems,
       picked_count: requestPickedItems.length,
+      created_by_name: request.created_by ? actorNameById.get(request.created_by) ?? null : null,
     };
   }) as JobPackRequest[];
 

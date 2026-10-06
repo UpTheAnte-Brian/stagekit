@@ -1035,6 +1035,7 @@ export default async function JobDetailPage({
                           <p className={`${mutedTextClass} mt-2`}>
                             {request.room ?? "No room"} • {request.category ?? "No category"} • {request.color ?? "No color"}
                           </p>
+                          {request.created_by_name ? <p className={`${mutedTextClass} mt-1`}>Added by {request.created_by_name}</p> : null}
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className={request.picked_count >= request.quantity ? "text-sm font-semibold text-emerald-700" : "text-sm font-semibold text-[#6f756c]"}>
                               {request.picked_count}/{request.quantity} exact
@@ -1322,6 +1323,7 @@ export default async function JobDetailPage({
                         Source request: {linkedRequest ? `${linkedRequest.request_text}${linkedRequest.room ? ` • ${linkedRequest.room}` : ""}` : "Legacy unlinked pick"}
                       </p>
                       {pickedItem.notes ? <p className={`${mutedTextClass} mt-2`}>Pick notes: {pickedItem.notes}</p> : null}
+                      {pickedItem.picked_by_name ? <p className={`${mutedTextClass} mt-2`}>Picked by {pickedItem.picked_by_name}</p> : null}
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">

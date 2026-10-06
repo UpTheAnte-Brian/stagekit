@@ -30,6 +30,11 @@ const navItems: NavItem[] = [
     label: "Map",
     description: "Project locations",
   },
+  {
+    href: "/team",
+    label: "Team",
+    description: "Access and invitations",
+  },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -89,7 +94,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             </form>
           </div>
 
-          <nav aria-label="Primary" className="grid gap-2 sm:grid-cols-3 lg:min-w-[29rem]">
+          <nav aria-label="Primary" className="grid gap-2 sm:grid-cols-4 lg:min-w-[38rem]">
             {navItems.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
@@ -113,7 +118,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
       <nav
         aria-label="Mobile primary"
-        className="fixed inset-x-4 bottom-4 z-20 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-white/95 p-2 shadow-lg backdrop-blur md:hidden"
+        className="fixed inset-x-4 bottom-4 z-20 grid grid-cols-4 gap-2 rounded-2xl border border-border bg-white/95 p-2 shadow-lg backdrop-blur md:hidden"
       >
         {navItems.map((item) => {
           const active = isActivePath(pathname, item.href);

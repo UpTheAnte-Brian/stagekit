@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
 import { getPublicCoverageSummary } from "@/lib/db/jobs";
 import { CoverageMap } from "@/components/web/coverage-map";
 import { ContactForm } from "@/components/web/contact-form";
 
 export const dynamic = "force-dynamic";
-import { PendingLink } from "@/components/web/pending-link";
 
 const services = [
   ["Vacant Staging", "A tailored furniture and accessory plan that helps every room make an immediate impression."],
@@ -30,7 +28,6 @@ export default async function HomePage() {
             <a className="transition hover:text-[#1f2924]" href="#approach">Our approach</a>
             <Link className="transition hover:text-[#1f2924]" href="/work">Our work</Link>
             <a className="transition hover:text-[#1f2924]" href="#coverage">Coverage area</a>
-            <Suspense fallback={<Link className="rounded-full border border-[#aa8644] px-4 py-2 text-[#735722]" href="/login">Client & team login</Link>}><PendingLink className="rounded-full border border-[#aa8644] px-4 py-2 text-[#735722] transition hover:bg-[#aa8644] hover:text-white" href="/login" pendingLabel="Opening login…">Client & team login</PendingLink></Suspense>
           </nav>
         </div>
       </header>
@@ -79,7 +76,7 @@ export default async function HomePage() {
             <p className="mt-5 max-w-md text-lg leading-8 text-[#59635c]">From the west metro to St. Paul and beyond, we have helped homes across the Twin Cities make a stronger first impression.</p>
             {coverage.mappedProjectCount > 0 ? <div className="mt-8 flex flex-wrap gap-3"><div className="rounded-2xl border border-[#dfd4bc] bg-[#f8f3e8] px-5 py-4"><strong className="block font-serif text-3xl text-[#26332c]">{coverage.mappedProjectCount}+</strong><span className="text-sm text-[#657067]">mapped projects</span></div><div className="rounded-2xl border border-[#d5dfd3] bg-[#eff4ee] px-5 py-4"><strong className="block font-serif text-3xl text-[#26332c]">{coverage.communityCount}+</strong><span className="text-sm text-[#657067]">communities served</span></div></div> : null}
           </div>
-          <CoverageMap coverage={coverage} />
+          <CoverageMap apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY} coverage={coverage} />
         </div>
       </section>
 

@@ -14,21 +14,12 @@ async function authAction(formData: FormData) {
   const email = readString(formData.get("email"));
   const password = readString(formData.get("password"));
   const nextPath = readString(formData.get("next")) || "/inventory";
-  const intent = readString(formData.get("intent"));
 
   if (!email || !password) {
     redirect(`/login?message=${encodeURIComponent("Email and password are required.")}`);
   }
 
   const supabase = await createServerSupabaseClient();
-  if (intent === "signup") {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      redirect(`/login?message=${encodeURIComponent(error.message)}`);
-    }
-    redirect(nextPath);
-  }
-
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     redirect(`/login?message=${encodeURIComponent(error.message)}`);
@@ -51,7 +42,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <section className="mx-auto mt-10 max-w-md rounded-2xl border border-border bg-surface p-6 shadow-sm">
       <h1 className="text-2xl font-semibold">StageKit</h1>
-      <p className="mt-1 text-sm text-muted">Sign in or create an account to manage inventory and jobs.</p>
+      <p className="mt-1 text-sm text-muted">Sign in to manage inventory and jobs.</p>
       {message ? <div className="mt-4"><FlashMessage message={message} tone="error" /></div> : null}
       <form action={authAction} className="mt-6 space-y-4">
         <input type="hidden" name="next" value={nextPath} />
@@ -75,14 +66,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             pendingLabel="Signing in…"
           >
             Sign In
-          </PendingSubmitButton>
-          <PendingSubmitButton
-            name="intent"
-            value="signup"
-            className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium"
-            pendingLabel="Signing up…"
-          >
-            Sign Up
           </PendingSubmitButton>
         </div>
       </form>

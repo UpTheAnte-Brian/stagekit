@@ -1,38 +1,95 @@
-import type { PublicCoverageSummary } from "@/lib/db/jobs";
+"use client";
 
-export function CoverageMap({ coverage }: { coverage: PublicCoverageSummary }) {
+import Script from "next/script";
+import { useEffect, useRef, useState } from "react";
+import type { PublicCoverageCommunity, PublicCoverageSummary } from "@/lib/db/jobs";
+
+type Position = { lat: number; lng: number };
+
+type GoogleMap = {
+  fitBounds: (bounds: { extend: (position: Position) => void }) => void;
+  setCenter: (position: Position) => void;
+  setZoom: (zoom: number) => void;
+};
+
+type GoogleMapsApi = {
+  Geocoder: new () => { geocode: (request: { address: string }, callback: (results: Array<{ geometry: { location: { lat: () => number; lng: () => number } } }> | null, status: string) => void) => void };
+  LatLngBounds: new () => { extend: (position: Position) => void };
+  Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMap;
+  Marker: new (options: { label?: string; map: GoogleMap; position: Position; title: string }) => { addListener: (event: string, listener: () => void) => void };
+};
+
+const twinCities = { lat: 44.9778, lng: -93.265 };
+
+function CommunityDetail({ community }: { community: PublicCoverageCommunity }) {
+  return (
+    <div aria-live="polite" className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/80 bg-[#fffdf8]/95 p-4 shadow-lg backdrop-blur-sm sm:right-auto sm:max-w-xs">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9e7b39]">City coverage</p>
+      <p className="mt-1 font-serif text-2xl text-[#26332c]">{community.name}</p>
+      <p className="mt-1 text-sm leading-6 text-[#4f5d55]">{community.projectCount} completed project{community.projectCount === 1 ? "" : "s"} in this city.</p>
+    </div>
+  );
+}
+
+export function CoverageMap({ apiKey, coverage }: { apiKey: string | undefined; coverage: PublicCoverageSummary }) {
+  const mapElement = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [selectedCommunity, setSelectedCommunity] = useState<PublicCoverageCommunity | null>(null);
+
+  useEffect(() => {
+    const browserWindow = window as unknown as { google?: { maps: GoogleMapsApi } };
+    if (!ready || !mapElement.current || !browserWindow.google?.maps) return;
+
+    const maps = browserWindow.google.maps;
+    const map = new maps.Map(mapElement.current, {
+      center: twinCities,
+      clickableIcons: false,
+      mapTypeControl: false,
+      streetViewControl: false,
+      zoom: 9,
+    });
+    if (coverage.communities.length === 0) return;
+
+    const geocoder = new maps.Geocoder();
+    const bounds = new maps.LatLngBounds();
+    let resolvedCommunityCount = 0;
+    coverage.communities.forEach((community) => {
+      // Geocode the city name only. No saved project coordinate ever reaches this map.
+      geocoder.geocode({ address: `${community.name}, Minnesota` }, (results, status) => {
+        const location = results?.[0]?.geometry.location;
+        if (status !== "OK" || !location) return;
+        const position = { lat: location.lat(), lng: location.lng() };
+        bounds.extend(position);
+        resolvedCommunityCount += 1;
+        new maps.Marker({
+          label: community.projectCount > 1 ? String(community.projectCount) : undefined,
+          map,
+          position,
+          title: `${community.name}: ${community.projectCount} completed project${community.projectCount === 1 ? "" : "s"}`,
+        }).addListener("click", () => setSelectedCommunity(community));
+        if (resolvedCommunityCount === coverage.communities.length) {
+          if (coverage.communities.length === 1) {
+            map.setCenter(position);
+            map.setZoom(11);
+          } else {
+            map.fitBounds(bounds);
+          }
+        }
+      });
+    });
+  }, [coverage.communities, ready]);
+
   const hasProjects = coverage.mappedProjectCount > 0;
+  if (!apiKey) {
+    return <p className="rounded-2xl border border-[#dfd4bc] bg-[#f8f3e8] px-5 py-4 text-sm leading-6 text-[#4f5d55]">Our coverage includes {coverage.communityCount} Twin Cities communities. Add the browser Google Maps key to display the interactive map.</p>;
+  }
 
   return (
     <div className="relative min-h-[25rem] overflow-hidden rounded-[2rem] border border-[#d8d0bd] bg-[#dfe8dd] shadow-[0_18px_45px_rgba(39,55,45,0.12)]">
-      <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(255,255,255,0.52)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.52)_1px,transparent_1px)] [background-size:3.6rem_3.6rem]" />
-      <div className="absolute -left-16 top-12 h-64 w-[34rem] rotate-[-11deg] rounded-[48%] border-[38px] border-[#eef2ea]/90" />
-      <div className="absolute -right-24 bottom-[-7rem] h-72 w-[34rem] rotate-[19deg] rounded-[48%] border-[42px] border-[#d3e6df]/90" />
-      <div className="absolute left-[43%] top-0 h-full w-1 -rotate-[34deg] bg-white/80" />
-      <div className="absolute left-[63%] top-0 h-full w-1 rotate-[23deg] bg-white/70" />
-      <span className="absolute left-[42%] top-[38%] text-sm font-semibold tracking-wide text-[#52635a]">MINNEAPOLIS</span>
-      <span className="absolute left-[64%] top-[54%] text-sm font-semibold tracking-wide text-[#52635a]">ST. PAUL</span>
-      <span className="absolute left-[21%] top-[64%] text-xs font-medium uppercase tracking-[0.16em] text-[#68786e]">West metro</span>
-      <span className="absolute right-[10%] top-[26%] text-xs font-medium uppercase tracking-[0.16em] text-[#68786e]">North metro</span>
-      <span className="absolute bottom-[10%] right-[17%] text-xs font-medium uppercase tracking-[0.16em] text-[#68786e]">South metro</span>
-
-      {coverage.cells.map((cell, index) => (
-        <div
-          aria-label={`${cell.projectCount} completed project${cell.projectCount === 1 ? "" : "s"} in this area`}
-          className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 border-[#fffdf8]/90 bg-[#b28b45] text-[0.65rem] font-bold text-white shadow-[0_5px_12px_rgba(75,54,20,0.28)]"
-          key={`${cell.x}-${cell.y}-${index}`}
-          style={{ left: `${cell.x}%`, top: `${cell.y}%`, height: `${30 + Math.min(cell.projectCount, 5) * 5}px`, width: `${30 + Math.min(cell.projectCount, 5) * 5}px` }}
-        >
-          {cell.projectCount > 1 ? cell.projectCount : ""}
-        </div>
-      ))}
-
-      <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/80 bg-[#fffdf8]/90 p-4 backdrop-blur-sm sm:right-auto sm:max-w-xs">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9e7b39]">Twin Cities coverage</p>
-        <p className="mt-2 text-sm leading-6 text-[#4f5d55]">
-          {hasProjects ? "Each marker represents a multi-mile area, never an individual home or address." : "Project coverage will appear here as we add completed work."}
-        </p>
-      </div>
+      <Script id="public-google-maps-javascript" onError={() => setLoadError(true)} onReady={() => setReady(true)} src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`} strategy="afterInteractive" />
+      {loadError ? <p className="m-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">The map could not load. Please check the Google Maps browser-key settings.</p> : <div aria-label="Interactive Twin Cities service-area map" className="absolute inset-0" ref={mapElement} />}
+      {selectedCommunity ? <CommunityDetail community={selectedCommunity} /> : <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/80 bg-[#fffdf8]/95 p-4 shadow-lg backdrop-blur-sm sm:right-auto sm:max-w-xs"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9e7b39]">Twin Cities coverage</p><p className="mt-2 text-sm leading-6 text-[#4f5d55]">{hasProjects ? "Select a city marker to see completed projects there. Markers are placed at city level, never at a home or address." : "Project coverage will appear here as we add completed work."}</p></div>}
     </div>
   );
 }
