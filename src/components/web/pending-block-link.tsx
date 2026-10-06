@@ -38,16 +38,11 @@ export function PendingBlockLink({ children, className, href, onClick, pendingLa
   }
 
   return (
-    <Link {...props} aria-busy={isPending} className={`${className ?? ""} relative`} href={href} onClick={handleClick}>
-      {children}
-      {isPending ? (
-        <span className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-white/75 text-sm font-semibold text-foreground backdrop-blur-[1px]">
-          <span className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-4 py-2 shadow-sm">
-            <span aria-hidden="true" className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            <span>{pendingLabel}</span>
-          </span>
-        </span>
-      ) : null}
+    <Link {...props} aria-busy={isPending} className={className} href={href} onClick={handleClick}>
+      <span className="inline-flex items-center justify-center gap-2">
+        {isPending ? <span aria-hidden="true" className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" /> : null}
+        <span>{isPending ? pendingLabel : children}</span>
+      </span>
     </Link>
   );
 }

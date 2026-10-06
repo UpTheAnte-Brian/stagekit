@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
 import { getPublicCoverageSummary } from "@/lib/db/jobs";
 import { CoverageMap } from "@/components/web/coverage-map";
+import { ContactForm } from "@/components/web/contact-form";
 
 export const dynamic = "force-dynamic";
 import { PendingLink } from "@/components/web/pending-link";
@@ -84,7 +85,11 @@ export default async function HomePage() {
 
       <section className="scroll-mt-20 bg-[#283a31] px-6 py-16 text-white lg:px-10" id="approach"><div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2"><h2 className="font-serif text-4xl leading-tight">Beautifully staged. Carefully managed.</h2><p className="max-w-xl text-lg leading-8 text-[#d9e3d8]">Behind every finished room is an intentional process—from the first visit to the final walkthrough. Our client experience and project records are designed to make every detail feel considered.</p></div></section>
 
-      <footer className="scroll-mt-20 bg-[#1d2c25] px-6 py-10 text-[#e9eee6] lg:px-10" id="contact"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5"><div><p className="font-serif text-2xl">Ready to make your home memorable?</p><p className="mt-2 text-sm text-[#bac8bb]">Let’s talk about your sale and the space you want buyers to see.</p></div><a className="rounded-full bg-[#c9a662] px-6 py-3 text-sm font-semibold text-[#25342b]" href="tel:6123886499">Call 612.388.6499</a></div></footer>
+      <section className="border-y border-[#e1d9c9] bg-[#fffdf8] px-6 py-20 lg:px-10" aria-labelledby="staging-impact">
+        <div className="mx-auto max-w-7xl"><p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#9e7b39]">Why staging matters</p><h2 className="mt-3 font-serif text-4xl text-[#26332c]" id="staging-impact">A stronger first impression has real influence.</h2><div className="mt-10 grid gap-5 md:grid-cols-3"><article className="rounded-3xl border border-[#e1d9c9] bg-white p-7"><strong className="font-serif text-5xl text-[#26332c]">83%</strong><p className="mt-4 text-base leading-7 text-[#59635c]">of buyers’ agents say staging helps buyers picture a property as their future home.</p></article><article className="rounded-3xl border border-[#e1d9c9] bg-white p-7"><strong className="font-serif text-5xl text-[#26332c]">49%</strong><p className="mt-4 text-base leading-7 text-[#59635c]">of sellers’ agents report that staging reduced time on the market.</p></article><article className="rounded-3xl border border-[#e1d9c9] bg-white p-7"><strong className="font-serif text-5xl text-[#26332c]">29%</strong><p className="mt-4 text-base leading-7 text-[#59635c]">of sellers’ agents saw staging increase the dollar value offered by 1% to 10%.</p></article></div><p className="mt-6 text-sm leading-6 text-[#657067]">Source: <a className="underline decoration-[#c9a662] underline-offset-4 hover:text-[#26332c]" href="https://www.nar.realtor/research-and-statistics/research-reports/profile-of-home-staging" rel="noreferrer" target="_blank">National Association of REALTORS® 2025 Profile of Home Staging</a>.</p></div>
+      </section>
+
+      <footer className="scroll-mt-20 bg-[#1d2c25] px-6 py-16 text-[#e9eee6] lg:px-10" id="contact"><div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]"><div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#c9a662]">Contact us</p><h2 className="mt-4 font-serif text-4xl leading-tight">Ready to make your home memorable?</h2><p className="mt-4 max-w-md text-lg leading-8 text-[#bac8bb]">Tell us about your sale and the space you want buyers to see. We’ll be in touch soon.</p><a className="mt-7 inline-flex rounded-full border border-[#c9a662] px-6 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#c9a662] hover:text-[#25342b]" href="tel:6123886499">Call 612.388.6499</a></div><ContactForm /></div></footer>
     </main>
   );
 }

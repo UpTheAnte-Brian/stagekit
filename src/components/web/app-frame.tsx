@@ -55,7 +55,7 @@ function navDescriptionClass(active: boolean) {
 
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPublicPage = pathname === "/";
+  const isPublicPage = pathname === "/" || pathname === "/work";
 
   if (isPublicPage) {
     return <>{children}</>;
