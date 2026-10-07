@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { FlashMessage } from "@/components/web/flash-message";
 import { PendingSubmitButton } from "@/components/web/pending-submit-button";
@@ -68,6 +69,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             Sign In
           </PendingSubmitButton>
         </div>
+        <Link className="inline-block text-sm font-medium text-accent underline-offset-4 hover:underline" href="/forgot-password">Forgot password?</Link>
       </form>
     </section>
   );
