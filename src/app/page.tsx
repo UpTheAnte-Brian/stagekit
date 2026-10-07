@@ -3,6 +3,7 @@ import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
 import { getPublicCoverageSummary } from "@/lib/db/jobs";
 import { CoverageMap } from "@/components/web/coverage-map";
 import { ContactForm } from "@/components/web/contact-form";
+import { HeroPortfolioRotator } from "@/components/web/hero-portfolio-rotator";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +48,8 @@ export default async function HomePage() {
           </div>
         </div>
         <div className="relative min-h-96 overflow-hidden rounded-[2rem] bg-[#d8d1c2] p-7 shadow-[0_24px_60px_rgba(48,42,29,0.16)]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,255,255,0.82),transparent_20%),linear-gradient(145deg,#c5b69c_0%,#e8e1d4_46%,#9eae9d_100%)]" />
-          <div className="relative flex h-full min-h-96 flex-col justify-end rounded-[1.4rem] border border-white/40 bg-white/10 p-7 backdrop-blur-[2px]">
+          <HeroPortfolioRotator images={approvedPortfolioMedia.flatMap((media) => media.url ? [media.url] : [])} />
+          <div className="relative flex h-full min-h-96 flex-col justify-end rounded-[1.4rem] border border-white/45 bg-[#f8f6f1]/40 p-7 shadow-[inset_0_1px_rgba(255,255,255,0.35)] backdrop-blur-[3px]">
             <p className="max-w-xs font-serif text-3xl leading-tight text-[#25342b]">A home’s best first impression starts before the front door opens.</p>
             <p className="mt-4 text-sm font-medium uppercase tracking-[0.18em] text-[#536158]">AJ Home Staging</p>
           </div>
