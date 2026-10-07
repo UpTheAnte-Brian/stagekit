@@ -77,7 +77,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
           <div className="flex items-start justify-between gap-4">
             <Link className="flex items-center gap-3 rounded-2xl pr-2" href="/inventory">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white ring-1 ring-border/80 shadow-sm">
-                <Image alt="" aria-hidden height={32} priority src="/favicon.svg" width={32} />
+                <Image alt="" aria-hidden height={32} priority src="/aj-home-favicon.png" width={32} />
               </span>
               <span>
                 <span className="block text-lg font-semibold tracking-tight text-foreground">StageKit</span>

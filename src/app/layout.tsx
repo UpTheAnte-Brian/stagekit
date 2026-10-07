@@ -12,10 +12,10 @@ export const metadata: Metadata = {
   description: "Thoughtful home staging that helps buyers see what is possible.",
   icons: {
     icon: [
-      { url: "/favicon.svg?v=2", type: "image/svg+xml" },
-      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/aj-home-favicon.png?v=1", type: "image/png", sizes: "128x128" },
     ],
-    shortcut: ["/favicon.ico?v=2"],
+    shortcut: ["/aj-home-favicon.png?v=1"],
+    apple: [{ url: "/aj-home-favicon.png?v=1", sizes: "128x128", type: "image/png" }],
   },
 };
 

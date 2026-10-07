@@ -13,9 +13,9 @@ export default async function WorkPage() {
   return (
     <main className="min-h-screen bg-[#f8f6f1] px-6 py-8 text-[#1e2622] lg:px-10 lg:py-12">
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-6">
-        <Link className="group" href="/">
-          <span className="block font-serif text-2xl tracking-[0.18em] text-[#1f2924]">AJ</span>
-          <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#9e7b39]">Home Staging</span>
+        <Link aria-label="AJ Home Staging home" className="group flex items-center gap-3" href="/">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#d8d0bd]"><img alt="" className="h-full w-full object-contain" src="/aj-home-favicon.png" /></span>
+          <span><span className="block font-serif text-2xl tracking-[0.12em] text-[#1f2924]">AJ</span><span className="block text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#9e7b39]">Home Staging</span></span>
         </Link>
         <Link className="rounded-full border border-[#c9b58a] px-4 py-2 text-sm font-semibold text-[#665021] hover:bg-[#efe7d5]" href="/">Back home</Link>
       </header>

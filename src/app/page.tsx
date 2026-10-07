@@ -7,9 +7,12 @@ import { ContactForm } from "@/components/web/contact-form";
 export const dynamic = "force-dynamic";
 
 const services = [
-  ["Vacant Staging", "A tailored furniture and accessory plan that helps every room make an immediate impression."],
-  ["Occupied Staging", "Thoughtful editing and strategic additions that make a lived-in home feel market-ready."],
-  ["In-Home Consultations", "A practical room-by-room plan for sellers who want expert direction and a clear next step."],
+  ["In-Home Staging Consultations", "For the DIY seller who wants an expert eye. We walk through each room with practical recommendations for layout, edits, accessories, and the details that help a home show well."],
+  ["Vacant Staging", "Our specialty: a tailored plan, furniture, art, and accessories selected to make an empty home feel inviting, memorable, and ready for the market."],
+  ["Occupied Staging", "Strategic edits and additions for homes that are still lived in—from pillows and accessories to larger furniture pieces—built around the seller’s individual plan."],
+  ["Home Improvement Recommendations", "A focused list of pre-listing improvements, prioritized around your budget and goals so you can put effort where it will matter most."],
+  ["Vendor Connections", "Years in real estate and home projects mean access to trusted contractors and vendors who can help move the work forward."],
+  ["Select & Purchase Home Goods", "We can source accessories, fixtures, paint, and finishing details—saving you time and making the decisions feel much less overwhelming."],
 ];
 
 export default async function HomePage() {
@@ -19,12 +22,13 @@ export default async function HomePage() {
     <main className="min-h-screen bg-[#f8f6f1] text-[#1e2622]">
       <header className="sticky top-0 z-50 border-b border-[#e1d9c9]/80 bg-[#f8f6f1]/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-          <Link aria-label="AJ Home Staging home" className="group" href="/">
-            <span className="block font-serif text-2xl tracking-[0.18em] text-[#1f2924]">AJ</span>
-            <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#9e7b39]">Home Staging</span>
+          <Link aria-label="AJ Home Staging home" className="group flex items-center gap-3" href="/">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#d8d0bd]"><img alt="" className="h-full w-full object-contain" src="/aj-home-favicon.png" /></span>
+            <span><span className="block font-serif text-2xl tracking-[0.12em] text-[#1f2924]">AJ</span><span className="block text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#9e7b39]">Home Staging</span></span>
           </Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-medium text-[#48524c] md:flex">
             <a className="transition hover:text-[#1f2924]" href="#services">Services</a>
+            <a className="transition hover:text-[#1f2924]" href="#about">About AJ</a>
             <a className="transition hover:text-[#1f2924]" href="#approach">Our approach</a>
             <Link className="transition hover:text-[#1f2924]" href="/work">Our work</Link>
             <a className="transition hover:text-[#1f2924]" href="#coverage">Coverage area</a>
@@ -54,12 +58,20 @@ export default async function HomePage() {
       <section className="scroll-mt-20 border-y border-[#e1d9c9] bg-[#fffdf8]" id="services">
         <div className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#9e7b39]">How we help</p>
-          <div className="mt-5 grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-            <h2 className="font-serif text-4xl leading-tight text-[#26332c]">Every home has a story worth showing well.</h2>
-            <div className="grid gap-6 sm:grid-cols-3">
+          <div className="mt-5 grid gap-8 lg:grid-cols-[0.72fr_1.28fr]">
+            <div><h2 className="font-serif text-4xl leading-tight text-[#26332c]">Every home has a story worth showing well.</h2><p className="mt-5 max-w-md text-base leading-7 text-[#657067]">Whether you want a hands-on transformation or a clear plan to tackle yourself, we shape each service around the home, timeline, and seller.</p></div>
+            <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2">
               {services.map(([title, description]) => <article key={title} className="border-l border-[#c8ad75] pl-5"><h3 className="font-serif text-xl text-[#26332c]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#657067]">{description}</p></article>)}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="scroll-mt-20 bg-[#f1ede4] px-6 py-20 lg:px-10" id="about">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.7fr_0.9fr_1.1fr] lg:items-start">
+          <div className="overflow-hidden rounded-[1.75rem] bg-[#d8d1c2] shadow-[0_18px_45px_rgba(39,55,45,0.12)]"><img alt="The AJ Home Staging family" className="h-full min-h-80 w-full object-cover" src="/aj-family-montana.jpg" /></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#9e7b39]">About AJ Home Staging</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#26332c]">A family business with a practical eye for what makes a home sell.</h2></div>
+          <div className="space-y-6 text-lg leading-8 text-[#59635c]"><p>AJ Home Staging was established in 2022, built on years of hands-on real estate and home-staging experience. Angela leads each staging plan with an eye for how buyers will experience a space.</p><p>As a family-owned business, we bring a personal, grounded approach to every project. Brian helps make the plan happen—moving, hanging, and handling the practical details that let each room come together.</p><p>We believe the best staging helps buyers see possibility quickly: a home that photographs beautifully, feels welcoming in person, and lets its strongest features do the talking.</p></div>
         </div>
       </section>
 
