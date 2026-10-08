@@ -47,6 +47,14 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <a className="rounded-full bg-[#283a31] px-6 py-3 text-sm font-semibold !text-[#fffdf8] shadow-sm transition hover:bg-[#1d2c25]" href="#contact">Start a conversation</a>
             <Link className="rounded-full border border-[#c9b58a] px-6 py-3 text-sm font-semibold text-[#665021] transition hover:bg-[#efe7d5]" href="/work">See our work</Link>
+            <div aria-label="Follow AJ Home Staging" className="flex items-center gap-2">
+              <a aria-label="Follow AJ Home Staging on Facebook" className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9b58a] text-[#665021] transition hover:bg-[#efe7d5]" href="https://www.facebook.com/profile.php?id=100077989118996" rel="noreferrer" target="_blank">
+                <svg aria-hidden="true" className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M13.7 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5h1.7V3.9c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2v2H8v3h2.5v8h3.2Z" /></svg>
+              </a>
+              <a aria-label="Follow AJ Home Staging on Instagram" className="flex h-11 w-11 items-center justify-center rounded-full border border-[#c9b58a] text-[#665021] transition hover:bg-[#efe7d5]" href="https://www.instagram.com/aj.homestaging/" rel="noreferrer" target="_blank">
+                <svg aria-hidden="true" className="h-[1.05rem] w-[1.05rem] fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24"><rect height="16" rx="4" width="16" x="4" y="4" /><circle cx="12" cy="12" r="3.5" /><circle className="fill-current stroke-none" cx="17.3" cy="6.8" r="1" /></svg>
+              </a>
+            </div>
           </div>
         </div>
         <div className="relative min-h-96 overflow-hidden rounded-[2rem] bg-[#d8d1c2] p-7 shadow-[0_24px_60px_rgba(48,42,29,0.16)]">
