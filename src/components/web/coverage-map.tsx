@@ -19,6 +19,10 @@ type GoogleMapsApi = {
   Marker: new (options: { label?: string; map: GoogleMap; position: Position; title: string }) => { addListener: (event: string, listener: () => void) => void };
 };
 
+function mapsApiIsReady(value: { maps?: GoogleMapsApi } | undefined): value is { maps: GoogleMapsApi } {
+  return typeof value?.maps?.Map === "function";
+}
+
 const twinCities = { lat: 44.9778, lng: -93.265 };
 
 function CommunityDetail({ community }: { community: PublicCoverageCommunity }) {
@@ -39,14 +43,14 @@ export function CoverageMap({ apiKey, coverage }: { apiKey: string | undefined; 
 
   useEffect(() => {
     const markReady = () => setReady(true);
-    if ((window as unknown as { google?: { maps: GoogleMapsApi } }).google?.maps) markReady();
+    if (mapsApiIsReady((window as unknown as { google?: { maps: GoogleMapsApi } }).google)) markReady();
     window.addEventListener("google-maps-ready", markReady);
     return () => window.removeEventListener("google-maps-ready", markReady);
   }, []);
 
   useEffect(() => {
     const browserWindow = window as unknown as { google?: { maps: GoogleMapsApi } };
-    if (!ready || !mapElement.current || !browserWindow.google?.maps) return;
+    if (!ready || !mapElement.current || !mapsApiIsReady(browserWindow.google)) return;
 
     const maps = browserWindow.google.maps;
     const map = new maps.Map(mapElement.current, {
@@ -94,7 +98,7 @@ export function CoverageMap({ apiKey, coverage }: { apiKey: string | undefined; 
 
   return (
     <div className="relative min-h-[25rem] overflow-hidden rounded-[2rem] border border-[#d8d0bd] bg-[#dfe8dd] shadow-[0_18px_45px_rgba(39,55,45,0.12)]">
-      <Script id="public-google-maps-javascript" onError={() => setLoadError(true)} onReady={() => { setReady(true); window.dispatchEvent(new Event("google-maps-ready")); }} src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&loading=async`} strategy="afterInteractive" />
+      <Script id="public-google-maps-javascript" onError={() => setLoadError(true)} onReady={() => { setReady(true); window.dispatchEvent(new Event("google-maps-ready")); }} src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`} strategy="afterInteractive" />
       {loadError ? <p className="m-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">The map could not load. Please check the Google Maps browser-key settings.</p> : <div aria-label="Interactive Twin Cities service-area map" className="absolute inset-0" ref={mapElement} />}
       {selectedCommunity ? <CommunityDetail community={selectedCommunity} /> : <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/80 bg-[#fffdf8]/95 p-4 shadow-lg backdrop-blur-sm sm:right-auto sm:max-w-xs"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9e7b39]">Twin Cities coverage</p><p className="mt-2 text-sm leading-6 text-[#4f5d55]">{hasProjects ? "Select a city marker to see completed projects there. Markers are placed at city level, never at a home or address." : "Project coverage will appear here as we add completed work."}</p></div>}
     </div>
