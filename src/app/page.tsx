@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listApprovedPortfolioMedia } from "@/lib/db/photo-releases";
+import { listPublicReadyPhotoUrls } from "@/lib/db/public-ready-photos";
 import { getPublicCoverageSummary } from "@/lib/db/jobs";
 import { CoverageMap } from "@/components/web/coverage-map";
 import { ContactForm } from "@/components/web/contact-form";
@@ -17,7 +18,8 @@ const services = [
 ];
 
 export default async function HomePage() {
-  const approvedPortfolioMedia = await listApprovedPortfolioMedia();
+  const [approvedPortfolioMedia, publicReadyPhotos] = await Promise.all([listApprovedPortfolioMedia(), listPublicReadyPhotoUrls()]);
+  const publicImages = [...publicReadyPhotos, ...approvedPortfolioMedia];
   const coverage = await getPublicCoverageSummary();
   return (
     <main className="min-h-screen bg-[#f8f6f1] text-[#1e2622]">
@@ -48,7 +50,7 @@ export default async function HomePage() {
           </div>
         </div>
         <div className="relative min-h-96 overflow-hidden rounded-[2rem] bg-[#d8d1c2] p-7 shadow-[0_24px_60px_rgba(48,42,29,0.16)]">
-          <HeroPortfolioRotator images={approvedPortfolioMedia.flatMap((media) => media.url ? [media.url] : [])} />
+          <HeroPortfolioRotator images={publicImages.flatMap((media) => media.url ? [media.url] : [])} />
           <div className="relative flex h-full min-h-96 flex-col justify-end rounded-[1.4rem] border border-white/45 bg-[#f8f6f1]/40 p-7 shadow-[inset_0_1px_rgba(255,255,255,0.35)] backdrop-blur-[3px]">
             <p className="max-w-xs font-serif text-3xl leading-tight text-[#25342b]">A home’s best first impression starts before the front door opens.</p>
             <p className="mt-4 text-sm font-medium uppercase tracking-[0.18em] text-[#536158]">AJ Home Staging</p>
@@ -78,7 +80,7 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl scroll-mt-20 px-6 py-20 lg:px-10" id="portfolio">
         <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#9e7b39]">Selected work</p><h2 className="mt-3 font-serif text-4xl text-[#26332c]">Finished homes, thoughtfully remembered.</h2></div><p className="max-w-md text-sm leading-6 text-[#657067]">Our portfolio is growing from homeowner-approved finished walkthroughs. Each project will share the finished space while protecting the privacy of the people who lived there.</p></div>
-        {approvedPortfolioMedia.length > 0 ? <div className="mt-10 grid gap-5 md:grid-cols-3">{approvedPortfolioMedia.map((media, index) => <div className={`aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#d9d4ca] ${index % 3 === 1 ? "md:mt-10" : ""}`} key={media.id}>{media.url ? <img alt="AJ Home Staging finished project" className="h-full w-full object-cover" src={media.url} /> : null}</div>)}</div> : <div className="mt-10 rounded-[1.5rem] border border-[#e1d9c9] bg-white px-6 py-10 text-center"><p className="font-serif text-3xl text-[#26332c]">New transformations are on the way.</p><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#657067]">We&apos;re collecting homeowner-approved finished images to share here.</p><Link className="mt-5 inline-flex rounded-full border border-[#c9b58a] px-5 py-2.5 text-sm font-semibold text-[#665021] transition hover:bg-[#efe7d5]" href="/work">Explore our coverage</Link></div>}
+        {publicImages.length > 0 ? <div className="mt-10 grid gap-5 md:grid-cols-3">{publicImages.map((media, index) => <div className={`aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-[#d9d4ca] ${index % 3 === 1 ? "md:mt-10" : ""}`} key={media.id}>{media.url ? <img alt="AJ Home Staging finished project" className="h-full w-full object-cover" src={media.url} /> : null}</div>)}</div> : <div className="mt-10 rounded-[1.5rem] border border-[#e1d9c9] bg-white px-6 py-10 text-center"><p className="font-serif text-3xl text-[#26332c]">New transformations are on the way.</p><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#657067]">We&apos;re collecting public-ready and homeowner-approved finished images to share here.</p><Link className="mt-5 inline-flex rounded-full border border-[#c9b58a] px-5 py-2.5 text-sm font-semibold text-[#665021] transition hover:bg-[#efe7d5]" href="/work">Explore our coverage</Link></div>}
       </section>
 
       <section className="scroll-mt-20 border-y border-[#e1d9c9] bg-[#fffdf8] px-6 py-20 lg:px-10" id="coverage">

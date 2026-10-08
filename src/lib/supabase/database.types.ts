@@ -406,6 +406,45 @@ export type Database = {
           },
         ]
       }
+      public_ready_photos: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          created_by: string | null
+          file_name: string
+          file_size_bytes: number | null
+          id: string
+          notes: string | null
+          source: string
+          storage_bucket: string
+          storage_path: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          file_size_bytes?: number | null
+          id?: string
+          notes?: string | null
+          source?: string
+          storage_bucket?: string
+          storage_path: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          file_size_bytes?: number | null
+          id?: string
+          notes?: string | null
+          source?: string
+          storage_bucket?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
       job_items: {
         Row: {
           checked_in_at: string | null
