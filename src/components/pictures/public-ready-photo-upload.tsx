@@ -14,7 +14,8 @@ export function PublicReadyPhotoUpload() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const files = Array.from(inputRef.current?.files ?? []);
     if (!files.length || uploading) return;
     const invalid = files.find((file) => !file.type.startsWith("image/") || file.size > MAX_SIZE);
@@ -31,7 +32,7 @@ export function PublicReadyPhotoUpload() {
         const payload = await response.json().catch(() => null) as { message?: string } | null;
         if (!response.ok) throw new Error(payload?.message || "Could not save picture details.");
       }
-      event.currentTarget.reset(); router.refresh(); setMessage(files.length === 1 ? "Picture added to the public library." : `${files.length} pictures added to the public library.`);
+      formElement.reset(); router.refresh(); setMessage(files.length === 1 ? "Picture added to the public library." : `${files.length} pictures added to the public library.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Upload failed. Please try again."); }
     finally { setUploading(false); }
   }
