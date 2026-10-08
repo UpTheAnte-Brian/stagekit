@@ -44,7 +44,7 @@ export function ConsultMediaGallery({ action, candidateAction, coverAction, isPu
     <>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {media.map((item, index) => (
-          <div key={item.id} className="overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#fffaf4]">
+          <div className="scroll-mt-6 overflow-hidden rounded-xl border border-[#ecdcc7] bg-[#fffaf4]" id={`media-${item.id}`} key={item.id}>
             <button className="relative block h-44 w-full overflow-hidden bg-[#20322a] text-left" onClick={() => setActiveIndex(index)} type="button">
               {item.url ? (
                 item.is_video ? (

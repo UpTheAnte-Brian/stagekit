@@ -30,6 +30,7 @@ export function FlashMessage({
   clearSearchParams?: string[];
 }) {
   const [visible, setVisible] = useState(true);
+  const [mounted, setMounted] = useState(true);
   const clearTimer = useRef<number | null>(null);
   const dismissTimer = useRef<number | null>(null);
   const isDismissing = useRef(false);
@@ -56,6 +57,7 @@ export function FlashMessage({
         .forEach((param) => searchParams.delete(param));
       const search = searchParams.toString();
       window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
+      setMounted(false);
     }, 220);
   }, [clearSearchParamsKey]);
 
@@ -71,6 +73,8 @@ export function FlashMessage({
       }
     };
   }, [dismiss, duration]);
+
+  if (!mounted) return null;
 
   return (
     <div

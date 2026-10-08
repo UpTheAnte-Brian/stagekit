@@ -296,7 +296,7 @@ export async function setPortfolioCandidateAction(formData: FormData) {
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update portfolio shortlist.", tone: "error", section }));
   }
-  redirect(buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section }));
+  redirect(`${buildJobUrl(jobId, { message: selected ? "Added to the portfolio shortlist. It is still private until homeowner approval." : "Removed from the portfolio shortlist.", tone: "success", section })}#media-${mediaId}`);
 }
 
 export async function setConsultMediaRoomAction(formData: FormData) {
@@ -310,7 +310,7 @@ export async function setConsultMediaRoomAction(formData: FormData) {
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to update the media room.", tone: "error", section }));
   }
-  redirect(buildJobUrl(jobId, { message: roomLabel ? `Photo linked to ${roomLabel}.` : "Photo room cleared.", tone: "success", section }));
+  redirect(`${buildJobUrl(jobId, { message: roomLabel ? `Photo linked to ${roomLabel}.` : "Photo room cleared.", tone: "success", section })}#media-${mediaId}`);
 }
 
 export async function setPortfolioCoverAction(formData: FormData) {
@@ -323,7 +323,7 @@ export async function setPortfolioCoverAction(formData: FormData) {
   } catch (error) {
     redirect(buildJobUrl(jobId, { message: error instanceof Error ? error.message : "Failed to select portfolio cover.", tone: "error", section }));
   }
-  redirect(buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section }));
+  redirect(`${buildJobUrl(jobId, { message: "Portfolio cover selected. It remains private until homeowner approval.", tone: "success", section })}#media-${mediaId}`);
 }
 
 export async function createPhotoReleaseAction(formData: FormData) {
