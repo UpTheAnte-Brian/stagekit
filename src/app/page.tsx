@@ -5,6 +5,7 @@ import { getPublicCoverageSummary } from "@/lib/db/jobs";
 import { CoverageMap } from "@/components/web/coverage-map";
 import { ContactForm } from "@/components/web/contact-form";
 import { HeroPortfolioRotator } from "@/components/web/hero-portfolio-rotator";
+import { PublicSiteHeader } from "@/components/web/public-site-header";
 import { SelectedWorkRotator } from "@/components/web/selected-work-rotator";
 
 export const dynamic = "force-dynamic";
@@ -25,21 +26,7 @@ export default async function HomePage() {
   const coverage = await getPublicCoverageSummary();
   return (
     <main className="min-h-screen bg-[#f8f6f1] text-[#1e2622]">
-      <header className="sticky top-0 z-50 border-b border-[#e1d9c9]/80 bg-[#f8f6f1]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-          <Link aria-label="AJ Home Staging home" className="group flex items-center gap-3" href="/">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-[#d8d0bd]"><img alt="" className="h-full w-full object-contain" src="/aj-home-favicon.png" /></span>
-            <span><span className="block font-serif text-2xl tracking-[0.12em] text-[#1f2924]">AJ</span><span className="block text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#9e7b39]">Home Staging</span></span>
-          </Link>
-          <nav aria-label="Main navigation" className="hidden items-center gap-7 text-sm font-medium text-[#48524c] md:flex">
-            <a className="transition hover:text-[#1f2924]" href="#services">Services</a>
-            <a className="transition hover:text-[#1f2924]" href="#about">About AJ</a>
-            <a className="transition hover:text-[#1f2924]" href="#approach">Our approach</a>
-            <Link className="transition hover:text-[#1f2924]" href="/work">Our work</Link>
-            <a className="transition hover:text-[#1f2924]" href="#coverage">Coverage area</a>
-          </nav>
-        </div>
-      </header>
+      <PublicSiteHeader />
 
       <section className="mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-12 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:pb-28 lg:pt-20">
         <div className="flex flex-col justify-center">
@@ -100,6 +87,7 @@ export default async function HomePage() {
             <h2 className="mt-4 font-serif text-4xl leading-tight text-[#26332c]">Rooted in the Twin Cities.</h2>
             <p className="mt-5 max-w-md text-lg leading-8 text-[#59635c]">From the west metro to St. Paul and beyond, we have helped homes across the Twin Cities make a stronger first impression.</p>
             {coverage.mappedProjectCount > 0 ? <div className="mt-8 flex flex-wrap gap-3"><div className="rounded-2xl border border-[#dfd4bc] bg-[#f8f3e8] px-5 py-4"><strong className="block font-serif text-3xl text-[#26332c]">{coverage.mappedProjectCount}+</strong><span className="text-sm text-[#657067]">mapped projects</span></div><div className="rounded-2xl border border-[#d5dfd3] bg-[#eff4ee] px-5 py-4"><strong className="block font-serif text-3xl text-[#26332c]">{coverage.communityCount}+</strong><span className="text-sm text-[#657067]">communities served</span></div></div> : null}
+            <Link className="mt-5 inline-flex text-sm font-medium text-[#665021] underline decoration-[#c9b58a] underline-offset-4 transition hover:text-[#26332c]" href="/work">Take a closer look at our coverage</Link>
           </div>
           <CoverageMap apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_API_KEY} coverage={coverage} />
         </div>
