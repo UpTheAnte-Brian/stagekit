@@ -83,41 +83,41 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
           <div className="rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-muted shadow-sm">{showingCountLabel}</div>
         </div>
 
+        <details className="rounded-2xl border border-border bg-surface p-4 shadow-sm" open={isCreateSectionOpen}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-lg font-semibold">New Job</h2>
+              <p className="text-sm text-muted">Collapsed by default so the project list stays front and center.</p>
+            </div>
+            <span className="rounded-full border border-border bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">Toggle</span>
+          </summary>
+
+          <form action={createJobAction} className="mt-4 grid gap-3 md:grid-cols-2">
+            <input name="name" placeholder="Job name" required />
+            <input defaultValue="active" name="status" placeholder="Status" />
+            <input name="address1" placeholder="Street address" />
+            <input name="address2" placeholder="Address line 2" />
+            <input name="city" placeholder="City" />
+            <input name="state" placeholder="State" />
+            <input name="postal" placeholder="Postal" />
+            <input name="start_date" type="date" />
+            <input name="end_date" type="date" />
+            <textarea className="md:col-span-2" name="notes" placeholder="Notes" />
+            <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" pendingLabel="Creating…">
+              Create Job
+            </PendingSubmitButton>
+          </form>
+        </details>
+
         {jobCount === 0 ? (
           <section className="rounded-2xl border border-dashed border-border bg-surface px-5 py-8 text-center shadow-sm">
             <h2 className="text-lg font-semibold">No projects yet.</h2>
-            <p className="mt-2 text-sm text-muted">Create a new job below, then open it to manage assignments, pack requests, and scenes.</p>
+            <p className="mt-2 text-sm text-muted">Create a new job above, then open it to manage assignments, pack requests, and scenes.</p>
           </section>
         ) : (
           <ProjectsList jobs={jobs} />
         )}
       </section>
-
-      <details className="rounded-2xl border border-border bg-surface p-4 shadow-sm" open={isCreateSectionOpen}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-          <div>
-            <h2 className="text-lg font-semibold">New Job</h2>
-            <p className="text-sm text-muted">Collapsed by default so the project list stays front and center.</p>
-          </div>
-          <span className="rounded-full border border-border bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">Toggle</span>
-        </summary>
-
-        <form action={createJobAction} className="mt-4 grid gap-3 md:grid-cols-2">
-          <input name="name" placeholder="Job name" required />
-          <input defaultValue="active" name="status" placeholder="Status" />
-          <input name="address1" placeholder="Street address" />
-          <input name="address2" placeholder="Address line 2" />
-          <input name="city" placeholder="City" />
-          <input name="state" placeholder="State" />
-          <input name="postal" placeholder="Postal" />
-          <input name="start_date" type="date" />
-          <input name="end_date" type="date" />
-          <textarea className="md:col-span-2" name="notes" placeholder="Notes" />
-          <PendingSubmitButton className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground md:col-span-2" pendingLabel="Creating…">
-            Create Job
-          </PendingSubmitButton>
-        </form>
-      </details>
     </section>
   );
 }
